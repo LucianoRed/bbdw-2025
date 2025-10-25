@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Multi;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -36,6 +37,7 @@ public class ChatResource {
      */
     @POST
     @Path("/message")
+    @RunOnVirtualThread
     public String sendMessage(ChatRequest request) {
         String memoryId = request.sessionId() != null ? request.sessionId() : "default";
         return agent.sendMessage(memoryId, request.message());
