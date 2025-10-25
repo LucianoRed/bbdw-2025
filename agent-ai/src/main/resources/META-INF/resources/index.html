@@ -330,6 +330,7 @@
             font-size: 15px;
             word-wrap: break-word;
             overflow-wrap: break-word;
+            overflow-x: auto;
         }
 
         .user-message .message-content {
@@ -415,6 +416,42 @@
         .ai-message .message-content strong {
             font-weight: 600;
             color: var(--text-primary);
+        }
+
+        .ai-message .message-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1em 0;
+            display: block;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+
+        .ai-message .message-content thead {
+            background: var(--bg-tertiary);
+        }
+
+        .ai-message .message-content th,
+        .ai-message .message-content td {
+            padding: 10px 12px;
+            text-align: left;
+            border: 1px solid var(--border-color);
+            word-break: break-word;
+            max-width: 200px;
+        }
+
+        .ai-message .message-content th {
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+
+        .ai-message .message-content td {
+            color: var(--text-secondary);
+        }
+
+        .ai-message .message-content tbody tr:hover {
+            background: var(--bg-chat);
         }
 
         .streaming {
@@ -650,11 +687,11 @@
         const sessionDisplay = document.getElementById('session-display');
         const messageCountDisplay = document.getElementById('message-count');
         
-        // Estado das features
+        // Estado das features - recupera do localStorage
         const features = {
-            memory: false,
-            mcp: false,
-            streaming: true
+            memory: localStorage.getItem('feature-memory') === 'true',
+            mcp: localStorage.getItem('feature-mcp') === 'true',
+            streaming: localStorage.getItem('feature-streaming') !== 'false' // Default true
         };
 
         let messageCount = 0;
@@ -666,6 +703,17 @@
             localStorage.setItem('chatSessionId', sessionId);
         }
         
+        // Atualiza UI dos toggles baseado no localStorage
+        if (features.memory) {
+            document.getElementById('toggle-memory').classList.add('active');
+        }
+        if (features.mcp) {
+            document.getElementById('toggle-mcp').classList.add('active');
+        }
+        if (!features.streaming) {
+            document.getElementById('toggle-streaming').classList.remove('active');
+        }
+        
         // Exibe sessionId truncado
         sessionDisplay.textContent = sessionId.substring(0, 10) + '...';
 
@@ -674,6 +722,9 @@
             features[featureName] = !features[featureName];
             const toggle = document.getElementById(`toggle-${featureName}`);
             toggle.classList.toggle('active');
+            
+            // Salva no localStorage
+            localStorage.setItem(`feature-${featureName}`, features[featureName]);
             
             // Feedback visual
             const featureLabels = {

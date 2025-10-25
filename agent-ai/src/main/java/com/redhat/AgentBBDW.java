@@ -5,6 +5,7 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import io.quarkiverse.langchain4j.RegisterAiService;
 import io.quarkiverse.langchain4j.RegisterAiService.BeanChatMemoryProviderSupplier;
+import io.quarkiverse.langchain4j.mcp.runtime.McpToolBox;
 import io.smallrye.mutiny.Multi;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -23,15 +24,19 @@ import jakarta.enterprise.context.ApplicationScoped;
     - Formatação adequada para melhorar a legibilidade
     
     Ao analisar o cluster, seja proativo em buscar informações relevantes usando as ferramentas disponíveis.
+
+    Só faça chamadas para o MCP k8s-server quando for necessário.
     """)
 @ApplicationScoped
 public interface AgentBBDW {
     
+    @McpToolBox("k8s-server")
     String sendMessage(
         @MemoryId String memoryId,
         @UserMessage String message
     );
 
+    @McpToolBox("k8s-server")
     Multi<String> sendMessageStreaming(
         @MemoryId String memoryId,
         @UserMessage String message
