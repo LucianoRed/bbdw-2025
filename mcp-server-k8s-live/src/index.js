@@ -863,6 +863,12 @@ const httpServer = http.createServer(async (req, res) => {
               },
             },
           };
+        } else if (request.method === 'ping') {
+          response = {
+            jsonrpc: '2.0',
+            id: request.id,
+            result: {},
+          };
         } else if (request.method === 'tools/list') {
           // Usar a função auxiliar que retorna a lista de tools
           const result = getToolsList();
