@@ -602,7 +602,7 @@ function getToolsList() {
       },
       {
         name: "get_services",
-        description: "Obtém métricas de todos os Services do cluster, incluindo tipo, ClusterIP, portas e seletores.",
+        description: "Obtém dados de todos os Services do cluster, incluindo tipo, ClusterIP, portas e seletores.",
         inputSchema: {
           type: "object",
           properties: {
