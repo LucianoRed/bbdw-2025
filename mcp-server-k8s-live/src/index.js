@@ -844,32 +844,28 @@ const httpServer = http.createServer(async (req, res) => {
             id: request.id,
             result: {
               protocolVersion: '2024-11-05',
-              capabilities: server._options.capabilities || { tools: {} },
+              capabilities: { tools: {} },
               serverInfo: {
-                name: server._serverInfo.name,
-                version: server._serverInfo.version,
+                name: 'mcp-server-k8s-live',
+                version: '0.1.0',
               },
             },
           };
         } else if (request.method === 'tools/list') {
-          const result = await server.request(
-            { method: 'tools/list', params: {} },
-            { method: 'tools/list' }
-          );
+          // Chamar o handler diretamente
+          const result = await server._requestHandlers.get(ListToolsRequestSchema)?.(request);
           response = {
             jsonrpc: '2.0',
             id: request.id,
-            result,
+            result: result || { tools: [] },
           };
         } else if (request.method === 'tools/call') {
-          const result = await server.request(
-            { method: 'tools/call', params: request.params },
-            { method: 'tools/call' }
-          );
+          // Chamar o handler diretamente
+          const result = await server._requestHandlers.get(CallToolRequestSchema)?.(request);
           response = {
             jsonrpc: '2.0',
             id: request.id,
-            result,
+            result: result || { content: [] },
           };
         } else {
           response = {
