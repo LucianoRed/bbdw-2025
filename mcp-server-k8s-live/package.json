@@ -1,0 +1,16 @@
+{
+  "name": "mcp-server-k8s-live",
+  "version": "0.1.0",
+  "description": "MCP server para dados live de nodes/pods do Kubernetes (binpacking-live)",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.0"
+  }
+}
