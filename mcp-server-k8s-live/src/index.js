@@ -763,11 +763,20 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
   }
 });
 
+// ============================================================================
+// TRANSPORTES MCP SUPORTADOS
+// ============================================================================
+// 1. STDIO: Comunicação via stdin/stdout (padrão para CLI)
+// 2. SSE (Server-Sent Events): Streaming unidirecional do servidor para cliente
+// 3. HTTP Streamable: JSON-RPC sobre HTTP com suporte a streaming
+// ============================================================================
+
 // Transporte stdio para clientes MCP
 const ENABLE_STDIO = (process.env.ENABLE_STDIO || "true").toLowerCase() !== "false";
 if (ENABLE_STDIO) {
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  console.error('[MCP] STDIO transport enabled');
 }
 
 // HTTP server opcional para clientes que usam HTTP
@@ -790,6 +799,16 @@ function normalizeResource(value) {
 // Sessões SSE ativas (sessionId -> transport)
 const sseSessions = new Map();
 
+// Função auxiliar para ler corpo da requisição
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => resolve(body));
+    req.on('error', reject);
+  });
+}
+
 const httpServer = http.createServer(async (req, res) => {
   try {
     if (!req.url) return sendJson(res, 400, { error: 'Bad request' });
@@ -807,6 +826,77 @@ const httpServer = http.createServer(async (req, res) => {
     if (req.method === 'GET' && pathname === '/healthz') {
       return sendJson(res, 200, { status: 'ok' });
     }
+    
+    // Streamable HTTP endpoint para MCP (JSON-RPC sobre HTTP)
+    if (req.method === 'POST' && pathname === '/mcp') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Content-Type', 'application/json');
+      
+      try {
+        const body = await readBody(req);
+        const request = JSON.parse(body);
+        
+        // Processar requisição MCP
+        let response;
+        if (request.method === 'initialize') {
+          response = {
+            jsonrpc: '2.0',
+            id: request.id,
+            result: {
+              protocolVersion: '2024-11-05',
+              capabilities: server._options.capabilities || { tools: {} },
+              serverInfo: {
+                name: server._serverInfo.name,
+                version: server._serverInfo.version,
+              },
+            },
+          };
+        } else if (request.method === 'tools/list') {
+          const result = await server.request(
+            { method: 'tools/list', params: {} },
+            { method: 'tools/list' }
+          );
+          response = {
+            jsonrpc: '2.0',
+            id: request.id,
+            result,
+          };
+        } else if (request.method === 'tools/call') {
+          const result = await server.request(
+            { method: 'tools/call', params: request.params },
+            { method: 'tools/call' }
+          );
+          response = {
+            jsonrpc: '2.0',
+            id: request.id,
+            result,
+          };
+        } else {
+          response = {
+            jsonrpc: '2.0',
+            id: request.id,
+            error: {
+              code: -32601,
+              message: 'Method not found',
+            },
+          };
+        }
+        
+        return sendJson(res, 200, response);
+      } catch (e) {
+        const errorResponse = {
+          jsonrpc: '2.0',
+          id: null,
+          error: {
+            code: -32700,
+            message: 'Parse error',
+            data: e.message,
+          },
+        };
+        return sendJson(res, 400, errorResponse);
+      }
+    }
+    
     // SSE endpoint para MCP
     if (req.method === 'GET' && pathname === '/mcp/sse') {
       const endpoint = '/mcp/messages';
@@ -852,6 +942,11 @@ const httpServer = http.createServer(async (req, res) => {
 });
 
 httpServer.listen(PORT, () => {
-  // eslint-disable-next-line no-console
-  console.log(`[mcp-server-k8s-live] HTTP listening on :${PORT}`);
+  console.error(`[MCP] HTTP server listening on :${PORT}`);
+  console.error(`[MCP] Available endpoints:`);
+  console.error(`[MCP]   - POST http://localhost:${PORT}/mcp (Streamable HTTP/JSON-RPC)`);
+  console.error(`[MCP]   - GET  http://localhost:${PORT}/mcp/sse (SSE transport)`);
+  console.error(`[MCP]   - POST http://localhost:${PORT}/mcp/messages (SSE messages)`);
+  console.error(`[MCP]   - GET  http://localhost:${PORT}/live?resource=cpu&ns= (Binpacking data)`);
+  console.error(`[MCP]   - GET  http://localhost:${PORT}/healthz (Health check)`);
 });
