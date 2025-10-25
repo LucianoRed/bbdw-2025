@@ -374,6 +374,205 @@ const server = new Server({
   }
 });
 
+// Funções auxiliares para métricas adicionais
+async function getDeploymentsMetrics(ns = "") {
+  const nsFilter = ns.split(",").map(s => s.trim()).filter(s => s.length > 0);
+  const deployments = await k8sGet("/apis/apps/v1/deployments");
+  
+  const result = [];
+  for (const d of (deployments.items || [])) {
+    const namespace = d?.metadata?.namespace || "default";
+    if (nsFilter.length && !nsFilter.includes(namespace)) continue;
+    
+    const name = d?.metadata?.name || "unknown";
+    const replicas = d?.spec?.replicas || 0;
+    const readyReplicas = d?.status?.readyReplicas || 0;
+    const availableReplicas = d?.status?.availableReplicas || 0;
+    const updatedReplicas = d?.status?.updatedReplicas || 0;
+    
+    result.push({
+      namespace,
+      name,
+      replicas,
+      readyReplicas,
+      availableReplicas,
+      updatedReplicas,
+      status: readyReplicas === replicas ? "Ready" : "Not Ready",
+      conditions: d?.status?.conditions || [],
+    });
+  }
+  return result;
+}
+
+async function getServicesMetrics(ns = "") {
+  const nsFilter = ns.split(",").map(s => s.trim()).filter(s => s.length > 0);
+  const services = await k8sGet("/api/v1/services");
+  
+  const result = [];
+  for (const s of (services.items || [])) {
+    const namespace = s?.metadata?.namespace || "default";
+    if (nsFilter.length && !nsFilter.includes(namespace)) continue;
+    
+    const name = s?.metadata?.name || "unknown";
+    const type = s?.spec?.type || "ClusterIP";
+    const clusterIP = s?.spec?.clusterIP || "None";
+    const ports = (s?.spec?.ports || []).map(p => ({
+      name: p?.name || "",
+      port: p?.port || 0,
+      targetPort: p?.targetPort || "",
+      protocol: p?.protocol || "TCP",
+    }));
+    
+    result.push({
+      namespace,
+      name,
+      type,
+      clusterIP,
+      ports,
+      selector: s?.spec?.selector || {},
+    });
+  }
+  return result;
+}
+
+async function getStorageMetrics(ns = "") {
+  const nsFilter = ns.split(",").map(s => s.trim()).filter(s => s.length > 0);
+  
+  // PersistentVolumes (cluster-wide)
+  const pvs = await k8sGet("/api/v1/persistentvolumes");
+  const pvList = (pvs.items || []).map(pv => ({
+    name: pv?.metadata?.name || "unknown",
+    capacity: pv?.spec?.capacity?.storage || "0",
+    accessModes: pv?.spec?.accessModes || [],
+    storageClass: pv?.spec?.storageClassName || "default",
+    status: pv?.status?.phase || "Unknown",
+    claimRef: pv?.spec?.claimRef ? `${pv.spec.claimRef.namespace}/${pv.spec.claimRef.name}` : null,
+  }));
+  
+  // PersistentVolumeClaims
+  const pvcs = await k8sGet("/api/v1/persistentvolumeclaims");
+  const pvcList = [];
+  for (const pvc of (pvcs.items || [])) {
+    const namespace = pvc?.metadata?.namespace || "default";
+    if (nsFilter.length && !nsFilter.includes(namespace)) continue;
+    
+    pvcList.push({
+      namespace,
+      name: pvc?.metadata?.name || "unknown",
+      status: pvc?.status?.phase || "Unknown",
+      volume: pvc?.spec?.volumeName || null,
+      capacity: pvc?.status?.capacity?.storage || "0",
+      requestedStorage: pvc?.spec?.resources?.requests?.storage || "0",
+      accessModes: pvc?.spec?.accessModes || [],
+      storageClass: pvc?.spec?.storageClassName || "default",
+    });
+  }
+  
+  return { persistentVolumes: pvList, persistentVolumeClaims: pvcList };
+}
+
+async function getEventsMetrics(ns = "", limit = 50) {
+  const nsFilter = ns.split(",").map(s => s.trim()).filter(s => s.length > 0);
+  const events = await k8sGet("/api/v1/events");
+  
+  const result = [];
+  for (const e of (events.items || [])) {
+    const namespace = e?.metadata?.namespace || "default";
+    if (nsFilter.length && !nsFilter.includes(namespace)) continue;
+    
+    result.push({
+      namespace,
+      name: e?.metadata?.name || "",
+      type: e?.type || "Normal",
+      reason: e?.reason || "",
+      message: e?.message || "",
+      involvedObject: {
+        kind: e?.involvedObject?.kind || "",
+        name: e?.involvedObject?.name || "",
+      },
+      firstTimestamp: e?.firstTimestamp || null,
+      lastTimestamp: e?.lastTimestamp || null,
+      count: e?.count || 1,
+    });
+  }
+  
+  // Ordenar por lastTimestamp (mais recente primeiro)
+  result.sort((a, b) => {
+    const tA = a.lastTimestamp || a.firstTimestamp || "";
+    const tB = b.lastTimestamp || b.firstTimestamp || "";
+    return tB.localeCompare(tA);
+  });
+  
+  return result.slice(0, limit);
+}
+
+async function getClusterOverview() {
+  const nodes = await k8sGet("/api/v1/nodes");
+  const pods = await k8sGet("/api/v1/pods");
+  const namespaces = await k8sGet("/api/v1/namespaces");
+  const deployments = await k8sGet("/apis/apps/v1/deployments");
+  const services = await k8sGet("/api/v1/services");
+  
+  // Contagem de nós por role
+  let masterCount = 0, workerCount = 0, infraCount = 0;
+  let totalCpu = 0, totalMemory = 0;
+  
+  for (const n of (nodes.items || [])) {
+    const labels = n?.metadata?.labels || {};
+    if (labels["node-role.kubernetes.io/master"] || labels["node-role.kubernetes.io/control-plane"]) {
+      masterCount++;
+    } else if (labels["machine-type"] === "infra-node" || labels["node-role.kubernetes.io/infra"]) {
+      infraCount++;
+    } else {
+      workerCount++;
+    }
+    
+    const alloc = n?.status?.allocatable || {};
+    totalCpu += parseCpuMillicores(alloc.cpu || "0");
+    totalMemory += parseMemBytes(alloc.memory || "0");
+  }
+  
+  // Contagem de pods por status
+  let runningPods = 0, pendingPods = 0, failedPods = 0, succeededPods = 0;
+  for (const p of (pods.items || [])) {
+    const phase = p?.status?.phase || "";
+    switch (phase) {
+      case "Running": runningPods++; break;
+      case "Pending": pendingPods++; break;
+      case "Failed": failedPods++; break;
+      case "Succeeded": succeededPods++; break;
+    }
+  }
+  
+  return {
+    cluster: {
+      totalNodes: nodes.items?.length || 0,
+      masterNodes: masterCount,
+      workerNodes: workerCount,
+      infraNodes: infraCount,
+      totalCpuCores: (totalCpu / 1000).toFixed(2),
+      totalMemoryGiB: (totalMemory / (1024 * 1024 * 1024)).toFixed(2),
+    },
+    pods: {
+      total: pods.items?.length || 0,
+      running: runningPods,
+      pending: pendingPods,
+      failed: failedPods,
+      succeeded: succeededPods,
+    },
+    namespaces: {
+      total: namespaces.items?.length || 0,
+      active: namespaces.items?.filter(ns => ns?.status?.phase === "Active").length || 0,
+    },
+    deployments: {
+      total: deployments.items?.length || 0,
+    },
+    services: {
+      total: services.items?.length || 0,
+    },
+  };
+}
+
 // Handler: tools/list
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
@@ -389,7 +588,61 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           additionalProperties: false,
         },
-      }
+      },
+      {
+        name: "get_deployments",
+        description: "Obtém métricas de todos os Deployments do cluster, incluindo status de réplicas, disponibilidade e condições.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            ns: { type: "string", description: "Namespaces separados por vírgula para filtrar (opcional)." },
+          },
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "get_services",
+        description: "Obtém métricas de todos os Services do cluster, incluindo tipo, ClusterIP, portas e seletores.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            ns: { type: "string", description: "Namespaces separados por vírgula para filtrar (opcional)." },
+          },
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "get_storage",
+        description: "Obtém métricas de armazenamento do cluster, incluindo PersistentVolumes e PersistentVolumeClaims com capacidades e status.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            ns: { type: "string", description: "Namespaces separados por vírgula para filtrar PVCs (opcional)." },
+          },
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "get_events",
+        description: "Obtém eventos recentes do cluster, incluindo tipo, razão, mensagem e objeto envolvido.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            ns: { type: "string", description: "Namespaces separados por vírgula para filtrar (opcional)." },
+            limit: { type: "number", default: 50, description: "Número máximo de eventos a retornar (padrão: 50)." },
+          },
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "get_cluster_overview",
+        description: "Obtém uma visão geral do cluster com estatísticas agregadas de nós, pods, namespaces, deployments e services.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          additionalProperties: false,
+        },
+      },
     ],
   };
 });
@@ -398,33 +651,113 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (req) => {
   const name = req.params?.name;
   const args = (req.params?.arguments || {});
-  if (name !== "get_live_binpacking") {
-    return {
-      content: [ { type: "text", text: `Erro: ferramenta desconhecida: ${name}` } ],
-      isError: true,
-    };
-  }
-  const resourceRaw = typeof args.resource === 'string' ? args.resource : 'cpu';
-  const resource = resourceRaw === 'memory' ? 'memory' : 'cpu';
-  const ns = typeof args.ns === 'string' ? args.ns : '';
+  
   try {
-    const data = await buildLiveData({ resource, ns });
-    const qs = new URLSearchParams({ resource, ns }).toString();
-    return {
-      content: [ {
-        type: "resource",
-        resource: {
-          uri: `mcp://binpacking/live?${qs}`,
-          mimeType: "application/json",
-          text: JSON.stringify(data)
-        }
-      } ]
-    };
+    switch (name) {
+      case "get_live_binpacking": {
+        const resourceRaw = typeof args.resource === 'string' ? args.resource : 'cpu';
+        const resource = resourceRaw === 'memory' ? 'memory' : 'cpu';
+        const ns = typeof args.ns === 'string' ? args.ns : '';
+        const data = await buildLiveData({ resource, ns });
+        const qs = new URLSearchParams({ resource, ns }).toString();
+        return {
+          content: [{
+            type: "resource",
+            resource: {
+              uri: `mcp://binpacking/live?${qs}`,
+              mimeType: "application/json",
+              text: JSON.stringify(data)
+            }
+          }]
+        };
+      }
+      
+      case "get_deployments": {
+        const ns = typeof args.ns === 'string' ? args.ns : '';
+        const data = await getDeploymentsMetrics(ns);
+        return {
+          content: [{
+            type: "resource",
+            resource: {
+              uri: `mcp://cluster/deployments?ns=${ns}`,
+              mimeType: "application/json",
+              text: JSON.stringify({ deployments: data, total: data.length })
+            }
+          }]
+        };
+      }
+      
+      case "get_services": {
+        const ns = typeof args.ns === 'string' ? args.ns : '';
+        const data = await getServicesMetrics(ns);
+        return {
+          content: [{
+            type: "resource",
+            resource: {
+              uri: `mcp://cluster/services?ns=${ns}`,
+              mimeType: "application/json",
+              text: JSON.stringify({ services: data, total: data.length })
+            }
+          }]
+        };
+      }
+      
+      case "get_storage": {
+        const ns = typeof args.ns === 'string' ? args.ns : '';
+        const data = await getStorageMetrics(ns);
+        return {
+          content: [{
+            type: "resource",
+            resource: {
+              uri: `mcp://cluster/storage?ns=${ns}`,
+              mimeType: "application/json",
+              text: JSON.stringify(data)
+            }
+          }]
+        };
+      }
+      
+      case "get_events": {
+        const ns = typeof args.ns === 'string' ? args.ns : '';
+        const limit = typeof args.limit === 'number' ? args.limit : 50;
+        const data = await getEventsMetrics(ns, limit);
+        return {
+          content: [{
+            type: "resource",
+            resource: {
+              uri: `mcp://cluster/events?ns=${ns}&limit=${limit}`,
+              mimeType: "application/json",
+              text: JSON.stringify({ events: data, total: data.length })
+            }
+          }]
+        };
+      }
+      
+      case "get_cluster_overview": {
+        const data = await getClusterOverview();
+        return {
+          content: [{
+            type: "resource",
+            resource: {
+              uri: `mcp://cluster/overview`,
+              mimeType: "application/json",
+              text: JSON.stringify(data)
+            }
+          }]
+        };
+      }
+      
+      default:
+        return {
+          content: [{ type: "text", text: `Erro: ferramenta desconhecida: ${name}` }],
+          isError: true,
+        };
+    }
   } catch (e) {
     const status = e?.statusCode || 500;
     const message = e?.message || "Erro desconhecido";
     return {
-      content: [ { type: "text", text: `Erro (${status}): ${message}` } ],
+      content: [{ type: "text", text: `Erro (${status}): ${message}` }],
       isError: true,
     };
   }
