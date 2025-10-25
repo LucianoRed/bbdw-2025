@@ -788,6 +788,7 @@ function sendJson(res, status, data) {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
     'Access-Control-Allow-Origin': '*',
+    'Access-Control-Expose-Headers': 'mcp-protocol-version, mcp-session-id',
   });
   res.end(body);
 }
@@ -814,12 +815,13 @@ const httpServer = http.createServer(async (req, res) => {
     if (!req.url) return sendJson(res, 400, { error: 'Bad request' });
     const u = new URL(req.url, 'http://localhost');
     const pathname = u.pathname;
-    // CORS básico
+    // CORS completo para MCP
     if (req.method === 'OPTIONS') {
       res.writeHead(204, {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, mcp-protocol-version, mcp-session-id, Authorization',
+        'Access-Control-Expose-Headers': 'mcp-protocol-version, mcp-session-id',
       });
       return res.end();
     }
@@ -830,6 +832,7 @@ const httpServer = http.createServer(async (req, res) => {
     // Streamable HTTP endpoint para MCP (JSON-RPC sobre HTTP)
     if (req.method === 'POST' && pathname === '/mcp') {
       res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Expose-Headers', 'mcp-protocol-version, mcp-session-id');
       res.setHeader('Content-Type', 'application/json');
       
       try {
@@ -898,6 +901,7 @@ const httpServer = http.createServer(async (req, res) => {
       const endpoint = '/mcp/messages';
       // CORS para EventSource cross-origin
       res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Expose-Headers', 'mcp-protocol-version, mcp-session-id');
       const sse = new SSEServerTransport(endpoint, res);
       await sse.start();
       sseSessions.set(sse.sessionId, sse);
@@ -910,11 +914,15 @@ const httpServer = http.createServer(async (req, res) => {
       const sessionId = u.searchParams.get('sessionId') || '';
       const sse = sseSessions.get(sessionId);
       if (!sse) {
-        res.writeHead(404, { 'Access-Control-Allow-Origin': '*' });
+        res.writeHead(404, { 
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Expose-Headers': 'mcp-protocol-version, mcp-session-id'
+        });
         return res.end('Unknown session');
       }
       // Garante cabeçalhos CORS na resposta do handler
       res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Expose-Headers', 'mcp-protocol-version, mcp-session-id');
       return sse.handlePostMessage(req, res);
     }
     if (req.method !== 'GET') {
