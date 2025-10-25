@@ -13,7 +13,7 @@ import jakarta.inject.Inject;
  * para evitar timeouts durante streaming.
  */
 @ApplicationScoped
-public class McpStartup {
+public class MCPStartup {
 
     @Inject
     @McpClientName("k8s-server")
