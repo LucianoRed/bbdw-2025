@@ -656,15 +656,10 @@ async function executeToolCall(name, args) {
         const resource = resourceRaw === 'memory' ? 'memory' : 'cpu';
         const ns = typeof args.ns === 'string' ? args.ns : '';
         const data = await buildLiveData({ resource, ns });
-        const qs = new URLSearchParams({ resource, ns }).toString();
         return {
           content: [{
-            type: "resource",
-            resource: {
-              uri: `mcp://binpacking/live?${qs}`,
-              mimeType: "application/json",
-              text: JSON.stringify(data)
-            }
+            type: "text",
+            text: JSON.stringify(data, null, 2)
           }]
         };
       }
@@ -674,12 +669,8 @@ async function executeToolCall(name, args) {
         const data = await getDeploymentsMetrics(ns);
         return {
           content: [{
-            type: "resource",
-            resource: {
-              uri: `mcp://cluster/deployments?ns=${ns}`,
-              mimeType: "application/json",
-              text: JSON.stringify({ deployments: data, total: data.length })
-            }
+            type: "text",
+            text: JSON.stringify({ deployments: data, total: data.length }, null, 2)
           }]
         };
       }
@@ -689,12 +680,8 @@ async function executeToolCall(name, args) {
         const data = await getServicesMetrics(ns);
         return {
           content: [{
-            type: "resource",
-            resource: {
-              uri: `mcp://cluster/services?ns=${ns}`,
-              mimeType: "application/json",
-              text: JSON.stringify({ services: data, total: data.length })
-            }
+            type: "text",
+            text: JSON.stringify({ services: data, total: data.length }, null, 2)
           }]
         };
       }
@@ -704,12 +691,8 @@ async function executeToolCall(name, args) {
         const data = await getStorageMetrics(ns);
         return {
           content: [{
-            type: "resource",
-            resource: {
-              uri: `mcp://cluster/storage?ns=${ns}`,
-              mimeType: "application/json",
-              text: JSON.stringify(data)
-            }
+            type: "text",
+            text: JSON.stringify(data, null, 2)
           }]
         };
       }
@@ -720,12 +703,8 @@ async function executeToolCall(name, args) {
         const data = await getEventsMetrics(ns, limit);
         return {
           content: [{
-            type: "resource",
-            resource: {
-              uri: `mcp://cluster/events?ns=${ns}&limit=${limit}`,
-              mimeType: "application/json",
-              text: JSON.stringify({ events: data, total: data.length })
-            }
+            type: "text",
+            text: JSON.stringify({ events: data, total: data.length }, null, 2)
           }]
         };
       }
@@ -734,12 +713,8 @@ async function executeToolCall(name, args) {
         const data = await getClusterOverview();
         return {
           content: [{
-            type: "resource",
-            resource: {
-              uri: `mcp://cluster/overview`,
-              mimeType: "application/json",
-              text: JSON.stringify(data)
-            }
+            type: "text",
+            text: JSON.stringify(data, null, 2)
           }]
         };
       }
