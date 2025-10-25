@@ -613,7 +613,7 @@ function getToolsList() {
       },
       {
         name: "get_storage",
-        description: "Obtém métricas de armazenamento do cluster, incluindo PersistentVolumes e PersistentVolumeClaims com capacidades e status.",
+        description: "Obtém dados de armazenamento do cluster, incluindo PersistentVolumes e PersistentVolumeClaims com capacidades e status.",
         inputSchema: {
           type: "object",
           properties: {
