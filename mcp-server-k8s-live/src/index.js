@@ -848,6 +848,9 @@ const httpServer = http.createServer(async (req, res) => {
         const body = await readBody(req);
         const request = JSON.parse(body);
         
+        // Log para debug
+        console.error('[MCP] Received request:', JSON.stringify(request));
+        
         // Processar requisição MCP
         let response;
         if (request.method === 'initialize') {
@@ -868,6 +871,21 @@ const httpServer = http.createServer(async (req, res) => {
               instructions: 'Servidor MCP para obter métricas e dados ao vivo de clusters Kubernetes/OpenShift. Fornece 6 ferramentas para consultar binpacking, deployments, services, storage, eventos e visão geral do cluster.',
             },
           };
+        } else if (request.method === 'notifications/initialized') {
+          // Cliente enviou notificação de inicialização completa
+          // Não precisa responder a notificações
+          res.writeHead(204, {
+            'Access-Control-Allow-Origin': '*',
+          });
+          console.error('[MCP] Received initialized notification');
+          return res.end();
+        } else if (request.method && request.method.startsWith('notifications/')) {
+          // Outras notificações do cliente
+          res.writeHead(204, {
+            'Access-Control-Allow-Origin': '*',
+          });
+          console.error('[MCP] Received notification:', request.method);
+          return res.end();
         } else if (request.method === 'ping') {
           response = {
             jsonrpc: '2.0',
@@ -904,8 +922,10 @@ const httpServer = http.createServer(async (req, res) => {
           };
         }
         
+        console.error('[MCP] Sending response:', JSON.stringify(response));
         return sendJson(res, 200, response);
       } catch (e) {
+        console.error('[MCP] Error processing request:', e);
         const errorResponse = {
           jsonrpc: '2.0',
           id: null,
