@@ -105,6 +105,56 @@ async function k8sGet(path, { optional = false } = {}) {
   });
 }
 
+// Helper para POST/CREATE na API Kubernetes
+async function k8sPost(path, body) {
+  if (!K8S_API_URL || !K8S_BEARER_TOKEN) {
+    const msg = "Defina K8S_API_URL e K8S_BEARER_TOKEN no ambiente do servidor MCP.";
+    const err = new Error(msg);
+    err.statusCode = 500;
+    throw err;
+  }
+  const url = `${K8S_API_URL.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+  const headers = {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${K8S_BEARER_TOKEN}`,
+  };
+  const agent = new https.Agent({ rejectUnauthorized: !K8S_SKIP_TLS_VERIFY });
+  return await new Promise((resolve, reject) => {
+    const req = https.request(url, {
+      method: 'POST',
+      headers,
+      agent,
+    }, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          const err = new Error(`Falha HTTP ${res.statusCode} em ${path}: ${data}`);
+          err.statusCode = res.statusCode;
+          return reject(err);
+        }
+        try {
+          const json = data ? JSON.parse(data) : {};
+          resolve(json);
+        } catch (e) {
+          const err = new Error("Resposta inválida da API Kubernetes.");
+          err.statusCode = 500;
+          reject(err);
+        }
+      });
+    });
+    req.on('error', (e) => {
+      const err = new Error(`Erro ao consultar API: ${e.message}`);
+      err.statusCode = 502;
+      reject(err);
+    });
+    req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+
 // Constrói JSON idêntico ao binpacking-live/liveData.php
 async function buildLiveData({ resource = "cpu", ns = "" }) {
   const nsFilter = ns
@@ -643,6 +693,22 @@ function getToolsList() {
           additionalProperties: false,
         },
       },
+      {
+        name: "create_vpa",
+        description: "Cria um VerticalPodAutoscaler (VPA) para um Deployment específico. Requer confirmação explícita (confirm: true).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            namespace: { type: "string", description: "Namespace do Deployment." },
+            deployment: { type: "string", description: "Nome do Deployment alvo." },
+            name: { type: "string", description: "(Opcional) Nome do VPA a criar. Se omitido, será <deployment>-vpa." },
+            confirm: { type: "boolean", description: "Confirmação obrigatória para operações de escrita. Deve ser true para criar o VPA." },
+            updateMode: { type: "string", enum: ["Off","Initial","Auto"], default: "Auto", description: "Modo de update do VPA. 'Auto' aplicará recomendações automaticamente." },
+          },
+          required: ["namespace","deployment","confirm"],
+          additionalProperties: false,
+        },
+      },
     ],
   };
 }
@@ -717,6 +783,54 @@ async function executeToolCall(name, args) {
             text: JSON.stringify(data, null, 2)
           }]
         };
+      }
+      
+      case "create_vpa": {
+        const ns = typeof args.namespace === 'string' ? args.namespace : '';
+        const deployment = typeof args.deployment === 'string' ? args.deployment : '';
+        const confirm = !!args.confirm;
+        const vpaName = typeof args.name === 'string' && args.name ? args.name : `${deployment}-vpa`;
+        const updateModeRaw = typeof args.updateMode === 'string' ? args.updateMode : 'Auto';
+        const updateMode = ['Off','Initial','Auto'].includes(updateModeRaw) ? updateModeRaw : 'Auto';
+
+        if (!ns) {
+          return { content: [{ type: 'text', text: 'Erro: parâmetro "namespace" obrigatório.' }], isError: true };
+        }
+        if (!deployment) {
+          return { content: [{ type: 'text', text: 'Erro: parâmetro "deployment" obrigatório.' }], isError: true };
+        }
+        if (!confirm) {
+          return { content: [{ type: 'text', text: 'Confirmação de escrita necessária: defina "confirm": true para criar o VPA.' }], isError: true };
+        }
+
+        // Construir manifest básico do VPA
+        const manifest = {
+          apiVersion: 'autoscaling.k8s.io/v1',
+          kind: 'VerticalPodAutoscaler',
+          metadata: {
+            name: vpaName,
+            namespace: ns,
+          },
+          spec: {
+            targetRef: {
+              apiVersion: 'apps/v1',
+              kind: 'Deployment',
+              name: deployment,
+            },
+            updatePolicy: {
+              updateMode: updateMode,
+            },
+          },
+        };
+
+        try {
+          const path = `/apis/autoscaling.k8s.io/v1/namespaces/${ns}/verticalpodautoscalers`;
+          const result = await k8sPost(path, manifest);
+          return { content: [{ type: 'text', text: JSON.stringify({ created: true, result }, null, 2) }] };
+        } catch (e) {
+          const status = e?.statusCode || 500;
+          return { content: [{ type: 'text', text: `Erro (${status}): ${e.message}` }], isError: true };
+        }
       }
       
       default:
