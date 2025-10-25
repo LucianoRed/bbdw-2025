@@ -695,7 +695,7 @@ function getToolsList() {
       },
       {
         name: "create_vpa",
-        description: "Cria um VerticalPodAutoscaler (VPA) para um Deployment específico. Requer confirmação explícita (confirm: true).",
+        description: "Cria um VerticalPodAutoscaler (VPA) para um Deployment específico. Requer confirmação explícita (confirm: true). Suporta dryRun para testes.",
         inputSchema: {
           type: "object",
           properties: {
@@ -704,6 +704,7 @@ function getToolsList() {
             name: { type: "string", description: "(Opcional) Nome do VPA a criar. Se omitido, será <deployment>-vpa." },
             confirm: { type: "boolean", description: "Confirmação obrigatória para operações de escrita. Deve ser true para criar o VPA." },
             updateMode: { type: "string", enum: ["Off","Initial","Auto"], default: "Auto", description: "Modo de update do VPA. 'Auto' aplicará recomendações automaticamente." },
+            dryRun: { type: "boolean", description: "Se true, faz uma criação em dry-run (server-side) usando ?dryRun=All." },
           },
           required: ["namespace","deployment","confirm"],
           additionalProperties: false,
@@ -792,6 +793,7 @@ async function executeToolCall(name, args) {
         const vpaName = typeof args.name === 'string' && args.name ? args.name : `${deployment}-vpa`;
         const updateModeRaw = typeof args.updateMode === 'string' ? args.updateMode : 'Auto';
         const updateMode = ['Off','Initial','Auto'].includes(updateModeRaw) ? updateModeRaw : 'Auto';
+        const dryRun = !!args.dryRun;
 
         if (!ns) {
           return { content: [{ type: 'text', text: 'Erro: parâmetro "namespace" obrigatório.' }], isError: true };
@@ -801,6 +803,20 @@ async function executeToolCall(name, args) {
         }
         if (!confirm) {
           return { content: [{ type: 'text', text: 'Confirmação de escrita necessária: defina "confirm": true para criar o VPA.' }], isError: true };
+        }
+
+        // Checar se o grupo/autoscaling VPA está disponível (CRD/API)
+        try {
+          const apiCheck = await k8sGet('/apis/autoscaling.k8s.io', { optional: true });
+          if (!apiCheck) {
+            return {
+              content: [{ type: 'text', text: 'Erro: o grupo API autoscaling.k8s.io (VPA) não está disponível no cluster. Verifique se o CRD VerticalPodAutoscaler está instalado.' }],
+              isError: true,
+            };
+          }
+        } catch (e) {
+          // Se a checagem falhar, propagar mensagem amigável
+          return { content: [{ type: 'text', text: `Erro ao verificar API VPA: ${e.message}` }], isError: true };
         }
 
         // Construir manifest básico do VPA
@@ -824,9 +840,10 @@ async function executeToolCall(name, args) {
         };
 
         try {
-          const path = `/apis/autoscaling.k8s.io/v1/namespaces/${ns}/verticalpodautoscalers`;
+          let path = `/apis/autoscaling.k8s.io/v1/namespaces/${ns}/verticalpodautoscalers`;
+          if (dryRun) path += '?dryRun=All';
           const result = await k8sPost(path, manifest);
-          return { content: [{ type: 'text', text: JSON.stringify({ created: true, result }, null, 2) }] };
+          return { content: [{ type: 'text', text: JSON.stringify({ created: !dryRun, dryRun, result }, null, 2) }] };
         } catch (e) {
           const status = e?.statusCode || 500;
           return { content: [{ type: 'text', text: `Erro (${status}): ${e.message}` }], isError: true };
