@@ -824,7 +824,7 @@
 
         async function loadHistory() {
             try {
-                const response = await fetch(`http://localhost:8080/chat/history/${sessionId}`);
+                const response = await fetch(`/chat/history/${sessionId}`);
                 if (!response.ok) return;
                 
                 const history = await response.json();
@@ -897,7 +897,7 @@
 
             try {
                 // Limpa a memória no backend
-                await fetch(`http://localhost:8080/chat/memory/${sessionId}`, {
+                await fetch(`/chat/memory/${sessionId}`, {
                     method: 'DELETE'
                 });
 
@@ -968,7 +968,7 @@
                 
                 if (useStreaming) {
                     // Envia requisição com SSE
-                    const response = await fetch(`http://localhost:8080${endpoint}`, {
+                    const response = await fetch(`${endpoint}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1007,7 +1007,7 @@
                     }
                 } else {
                     // Modo não-streaming
-                    const response = await fetch(`http://localhost:8080${endpoint}`, {
+                    const response = await fetch(`${endpoint}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
