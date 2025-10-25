@@ -624,7 +624,7 @@ function getToolsList() {
       },
       {
         name: "get_events",
-        description: "Obtém eventos recentes do cluster, incluindo tipo, razão, mensagem e objeto envolvido.",
+        description: "Obtém eventos recentes do cluster, incluindo tipo, razao, mensagem e objeto envolvido.",
         inputSchema: {
           type: "object",
           properties: {
