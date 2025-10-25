@@ -573,8 +573,8 @@ async function getClusterOverview() {
   };
 }
 
-// Handler: tools/list
-server.setRequestHandler(ListToolsRequestSchema, async () => {
+// Função auxiliar para obter a lista de tools
+function getToolsList() {
   return {
     tools: [
       {
@@ -645,13 +645,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
     ],
   };
-});
+}
 
-// Handler: tools/call
-server.setRequestHandler(CallToolRequestSchema, async (req) => {
-  const name = req.params?.name;
-  const args = (req.params?.arguments || {});
-  
+// Função auxiliar para executar tools
+async function executeToolCall(name, args) {
   try {
     switch (name) {
       case "get_live_binpacking": {
@@ -761,6 +758,18 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       isError: true,
     };
   }
+}
+
+// Handler: tools/list
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return getToolsList();
+});
+
+// Handler: tools/call
+server.setRequestHandler(CallToolRequestSchema, async (req) => {
+  const name = req.params?.name;
+  const args = (req.params?.arguments || {});
+  return await executeToolCall(name, args);
 });
 
 // ============================================================================
@@ -855,20 +864,23 @@ const httpServer = http.createServer(async (req, res) => {
             },
           };
         } else if (request.method === 'tools/list') {
-          // Chamar o handler diretamente
-          const result = await server._requestHandlers.get(ListToolsRequestSchema)?.(request);
+          // Usar a função auxiliar que retorna a lista de tools
+          const result = getToolsList();
           response = {
             jsonrpc: '2.0',
             id: request.id,
-            result: result || { tools: [] },
+            result,
           };
         } else if (request.method === 'tools/call') {
-          // Chamar o handler diretamente
-          const result = await server._requestHandlers.get(CallToolRequestSchema)?.(request);
+          // Usar a função auxiliar que executa as tools
+          const result = await executeToolCall(
+            request.params?.name,
+            request.params?.arguments || {}
+          );
           response = {
             jsonrpc: '2.0',
             id: request.id,
-            result: result || { content: [] },
+            result,
           };
         } else {
           response = {
