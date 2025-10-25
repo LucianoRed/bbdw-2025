@@ -856,11 +856,16 @@ const httpServer = http.createServer(async (req, res) => {
             id: request.id,
             result: {
               protocolVersion: '2024-11-05',
-              capabilities: { tools: {} },
+              capabilities: { 
+                tools: {
+                  listChanged: true
+                },
+              },
               serverInfo: {
                 name: 'mcp-server-k8s-live',
                 version: '0.1.0',
               },
+              instructions: 'Servidor MCP para obter métricas e dados ao vivo de clusters Kubernetes/OpenShift. Fornece 6 ferramentas para consultar binpacking, deployments, services, storage, eventos e visão geral do cluster.',
             },
           };
         } else if (request.method === 'ping') {
