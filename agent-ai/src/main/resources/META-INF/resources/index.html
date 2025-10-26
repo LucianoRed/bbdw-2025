@@ -726,6 +726,10 @@
             // Salva no localStorage
             localStorage.setItem(`feature-${featureName}`, features[featureName]);
             
+            // Log para debug
+            console.log(`Feature ${featureName}: ${features[featureName]}`);
+            console.log('Estado atual das features:', features);
+            
             // Feedback visual
             const featureLabels = {
                 memory: '🧠 Memória',
@@ -742,6 +746,7 @@
                 sessionId = 'user-' + Math.random().toString(36).substr(2, 9);
                 localStorage.setItem('chatSessionId', sessionId);
                 sessionDisplay.textContent = sessionId.substring(0, 10) + '...';
+                console.log('Novo sessionId gerado:', sessionId);
             }
         }
 
@@ -947,6 +952,12 @@
             const useMemory = features.memory;
             const useMcp = features.mcp;
             const currentSessionId = useMemory ? sessionId : null;
+            
+            // Log para debug
+            console.log('Enviando mensagem com configurações:');
+            console.log('- Streaming:', useStreaming);
+            console.log('- Memória:', useMemory, '| SessionId:', currentSessionId);
+            console.log('- MCP:', useMcp);
 
             // Cria div para a resposta com streaming
             const messageDiv = document.createElement('div');
