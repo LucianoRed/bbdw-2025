@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Multi;
 import jakarta.inject.Inject;
@@ -31,6 +32,9 @@ public class ChatResource {
 
     @Inject
     ChatMemoryProvider chatMemoryProvider;
+
+    @Inject
+    ChatMemoryStore chatMemoryStore;
 
     /**
      * Endpoint tradicional que retorna a resposta completa
@@ -57,11 +61,16 @@ public class ChatResource {
 
     /**
      * Endpoint para limpar a memória de uma sessão
+     * Limpa tanto a memória em cache quanto os dados persistidos no Redis
      */
     @DELETE
     @Path("/memory/{sessionId}")
     public void clearMemory(@PathParam("sessionId") String sessionId) {
+        // Limpa a memória em cache
         chatMemoryProvider.get(sessionId).clear();
+        
+        // Limpa os dados do Redis explicitamente
+        chatMemoryStore.deleteMessages(sessionId);
     }
 
     /**
