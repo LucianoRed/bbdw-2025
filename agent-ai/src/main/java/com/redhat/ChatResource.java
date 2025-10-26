@@ -43,7 +43,12 @@ public class ChatResource {
     @Path("/message")
     @RunOnVirtualThread
     public String sendMessage(ChatRequest request) {
-        String memoryId = request.sessionId() != null ? request.sessionId() : "default";
+        // Se sessionId for null, gera um ID único para esta requisição (sem memória)
+        // Se sessionId existir, usa ele para manter o histórico
+        String memoryId = request.sessionId() != null 
+            ? request.sessionId() 
+            : "temp-" + System.currentTimeMillis() + "-" + Math.random();
+        
         boolean useMcp = request.useMcp() != null ? request.useMcp() : false;
         
         if (useMcp) {
@@ -61,7 +66,12 @@ public class ChatResource {
     @Produces(MediaType.SERVER_SENT_EVENTS)
     @RestStreamElementType(MediaType.TEXT_PLAIN)
     public Multi<String> streamMessage(ChatRequest request) {
-        String memoryId = request.sessionId() != null ? request.sessionId() : "default";
+        // Se sessionId for null, gera um ID único para esta requisição (sem memória)
+        // Se sessionId existir, usa ele para manter o histórico
+        String memoryId = request.sessionId() != null 
+            ? request.sessionId() 
+            : "temp-" + System.currentTimeMillis() + "-" + Math.random();
+        
         boolean useMcp = request.useMcp() != null ? request.useMcp() : false;
         
         if (useMcp) {
