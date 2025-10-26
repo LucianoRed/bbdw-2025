@@ -41,6 +41,7 @@ Exemplo de requisição:
 - `K8S_API_URL` (obrigatório): URL base da API do Kubernetes. Ex.: `https://$CLUSTER:6443`
 - `K8S_BEARER_TOKEN` (obrigatório): Token Bearer para autenticação.
 - `K8S_SKIP_TLS_VERIFY` (opcional): `true` para ignorar verificação de TLS (self-signed etc.).
+- `K8S_CLUSTER_NAME` (opcional): Nome amigável do cluster para identificação nas mensagens do servidor MCP. Se ausente, usa o host de `K8S_API_URL`.
 - `PORT` (opcional): Porta HTTP (padrão: 3000)
 - `ENABLE_STDIO` (opcional): `true` (padrão) para habilitar transporte stdio
 

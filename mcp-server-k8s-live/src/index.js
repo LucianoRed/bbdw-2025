@@ -6,6 +6,7 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 
 import { buildLiveData } from "./tools/live.js";
 import { toolsRegistry } from "./tools/registry.js";
+import { K8S_API_URL } from "./utils/k8s.js";
 
 // Inicializa o servidor MCP (apenas wiring)
 const server = new Server({
@@ -14,6 +15,9 @@ const server = new Server({
 }, {
   capabilities: { tools: {} }
 });
+
+// Identidade do cluster (via env var ou fallback ao host do K8S_API_URL)
+const K8S_CLUSTER_NAME = process.env.K8S_CLUSTER_NAME || (K8S_API_URL ? (() => { try { return new URL(K8S_API_URL).hostname; } catch { return 'desconhecido'; } })() : 'desconhecido');
 
 // Helpers
 function getToolsList() {
@@ -116,7 +120,7 @@ const httpServer = http.createServer(async (req, res) => {
               protocolVersion: '2024-11-05',
               capabilities: { tools: { listChanged: true } },
               serverInfo: { name: 'mcp-server-k8s-live', version: '0.1.0' },
-              instructions: 'Servidor MCP para obter métricas e dados ao vivo de clusters Kubernetes/OpenShift. Ferramentas modularizadas.',
+              instructions: `Servidor MCP para obter métricas e dados ao vivo de clusters Kubernetes/OpenShift (cluster: ${K8S_CLUSTER_NAME}). Ferramentas modularizadas.`,
             },
           };
         } else if (request.method === 'notifications/initialized') {
@@ -194,6 +198,7 @@ const httpServer = http.createServer(async (req, res) => {
 
 httpServer.listen(PORT, () => {
   console.error(`[MCP] HTTP server listening on :${PORT}`);
+  console.error(`[MCP] Cluster alvo: ${K8S_CLUSTER_NAME}`);
   console.error(`[MCP] Available endpoints:`);
   console.error(`[MCP]   - POST http://localhost:${PORT}/mcp (Streamable HTTP/JSON-RPC)`);
   console.error(`[MCP]   - GET  http://localhost:${PORT}/mcp/sse (SSE transport)`);
