@@ -44,7 +44,13 @@ public class ChatResource {
     @RunOnVirtualThread
     public String sendMessage(ChatRequest request) {
         String memoryId = request.sessionId() != null ? request.sessionId() : "default";
-        return agent.sendMessage(memoryId, request.message());
+        boolean useMcp = request.useMcp() != null ? request.useMcp() : false;
+        
+        if (useMcp) {
+            return agent.sendMessageWithMcp(memoryId, request.message());
+        } else {
+            return agent.sendMessage(memoryId, request.message());
+        }
     }
 
     /**
@@ -56,7 +62,13 @@ public class ChatResource {
     @RestStreamElementType(MediaType.TEXT_PLAIN)
     public Multi<String> streamMessage(ChatRequest request) {
         String memoryId = request.sessionId() != null ? request.sessionId() : "default";
-        return agent.sendMessageStreaming(memoryId, request.message());
+        boolean useMcp = request.useMcp() != null ? request.useMcp() : false;
+        
+        if (useMcp) {
+            return agent.sendMessageStreamingWithMcp(memoryId, request.message());
+        } else {
+            return agent.sendMessageStreaming(memoryId, request.message());
+        }
     }
 
     /**
@@ -99,7 +111,8 @@ public class ChatResource {
      */
     public record ChatRequest(
         String message,
-        String sessionId
+        String sessionId,
+        Boolean useMcp
     ) {}
 
     /**

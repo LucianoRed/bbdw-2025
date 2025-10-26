@@ -945,6 +945,7 @@
             // Determina qual endpoint usar baseado nas features
             const useStreaming = features.streaming;
             const useMemory = features.memory;
+            const useMcp = features.mcp;
             const currentSessionId = useMemory ? sessionId : null;
 
             // Cria div para a resposta com streaming
@@ -975,7 +976,8 @@
                         },
                         body: JSON.stringify({
                             message: message,
-                            sessionId: currentSessionId
+                            sessionId: currentSessionId,
+                            useMcp: useMcp
                         })
                     });
 
@@ -1014,7 +1016,8 @@
                         },
                         body: JSON.stringify({
                             message: message,
-                            sessionId: currentSessionId
+                            sessionId: currentSessionId,
+                            useMcp: useMcp
                         })
                     });
                     
