@@ -159,3 +159,30 @@ Visão geral do cluster com estatísticas agregadas.
 
 **Retorno:** Estatísticas de nós, pods, namespaces, deployments e services
 
+### 7. delete_pod
+Remove (mata) um Pod específico por nome e namespace. Útil após resolver issues de alocação/agendamento, para forçar realocação.
+
+**Parâmetros:**
+- `namespace` (string, obrigatório)
+- `name` (string, obrigatório)
+- `confirm` (boolean, obrigatório): deve ser `true` para executar a deleção
+- `dryRun` (boolean, opcional): se `true`, simula sem aplicar
+- `gracePeriodSeconds` (integer, opcional): `0` para matar imediatamente
+- `propagationPolicy` (string, opcional): `Foreground` | `Background` | `Orphan`
+
+**Retorno:** Detalhes da deleção.
+
+### 8. delete_pods_by_selector
+Remove (mata) todos os Pods de um namespace que correspondem a um `labelSelector`. Ideal para reiniciar rapidamente todos os pods de um Deployment/DaemonSet/StatefulSet.
+
+**Parâmetros:**
+- `namespace` (string, obrigatório)
+- `labelSelector` (string, obrigatório), ex.: `app=myapp,component=api`
+- `confirm` (boolean, obrigatório): deve ser `true`
+- `dryRun` (boolean, opcional)
+- `gracePeriodSeconds` (integer, opcional)
+- `propagationPolicy` (string, opcional): `Foreground` | `Background` | `Orphan`
+- `previewOnly` (boolean, opcional): se `true`, apenas lista os pods correspondentes
+
+**Retorno:** Lista de pods afetados e resultado da deleção (ou preview).
+

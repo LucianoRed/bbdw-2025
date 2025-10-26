@@ -6,6 +6,7 @@ import { tool as events } from './events.js';
 import { tool as overview } from './overview.js';
 import { createVpaTool, deleteVpaTool, createVpasForNamespaceTool } from './vpa.js';
 import { tool as setMachineSetReplicas } from './machinesets.js';
+import { deletePodTool, deletePodsBySelectorTool } from './pods.js';
 
 export const toolsRegistry = [
   live,
@@ -18,4 +19,6 @@ export const toolsRegistry = [
   deleteVpaTool,
   createVpasForNamespaceTool,
   setMachineSetReplicas,
+  deletePodTool,
+  deletePodsBySelectorTool,
 ];
