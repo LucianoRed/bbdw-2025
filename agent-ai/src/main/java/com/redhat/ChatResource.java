@@ -12,6 +12,7 @@ import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -29,6 +30,9 @@ public class ChatResource {
 
     @Inject
     AgentBBDW agent;
+    
+    @Inject
+    AgentBBDWWithRAG agentWithRAG;
 
     @Inject
     ChatMemoryProvider chatMemoryProvider;
@@ -50,8 +54,14 @@ public class ChatResource {
             : "temp-" + System.currentTimeMillis() + "-" + Math.random();
         
         boolean useMcp = request.useMcp() != null ? request.useMcp() : false;
+        boolean useRag = request.useRag() != null ? request.useRag() : false;
         
-        if (useMcp) {
+        // Routing: RAG + MCP > RAG > MCP > Basic
+        if (useRag && useMcp) {
+            return agentWithRAG.sendMessageWithMcpAndRAG(memoryId, request.message());
+        } else if (useRag) {
+            return agentWithRAG.sendMessageWithRAG(memoryId, request.message());
+        } else if (useMcp) {
             return agent.sendMessageWithMcp(memoryId, request.message());
         } else {
             return agent.sendMessage(memoryId, request.message());
@@ -73,12 +83,36 @@ public class ChatResource {
             : "temp-" + System.currentTimeMillis() + "-" + Math.random();
         
         boolean useMcp = request.useMcp() != null ? request.useMcp() : false;
+        boolean useRag = request.useRag() != null ? request.useRag() : false;
         
-        if (useMcp) {
-            return agent.sendMessageStreamingWithMcp(memoryId, request.message());
-        } else {
-            return agent.sendMessageStreaming(memoryId, request.message());
-        }
+        // Executa a chamada inicial (que acessa Redis) em uma thread virtual
+        // para evitar bloquear o event loop do Vert.x
+        return Multi.createFrom().emitter(emitter -> {
+            Infrastructure.getDefaultWorkerPool().execute(() -> {
+                try {
+                    Multi<String> stream;
+                    
+                    // Routing: RAG + MCP > RAG > MCP > Basic
+                    if (useRag && useMcp) {
+                        stream = agentWithRAG.sendMessageStreamingWithMcpAndRAG(memoryId, request.message());
+                    } else if (useRag) {
+                        stream = agentWithRAG.sendMessageStreamingWithRAG(memoryId, request.message());
+                    } else if (useMcp) {
+                        stream = agent.sendMessageStreamingWithMcp(memoryId, request.message());
+                    } else {
+                        stream = agent.sendMessageStreaming(memoryId, request.message());
+                    }
+                    
+                    stream.subscribe().with(
+                        emitter::emit,
+                        emitter::fail,
+                        emitter::complete
+                    );
+                } catch (Exception e) {
+                    emitter.fail(e);
+                }
+            });
+        });
     }
 
     /**
@@ -122,7 +156,8 @@ public class ChatResource {
     public record ChatRequest(
         String message,
         String sessionId,
-        Boolean useMcp
+        Boolean useMcp,
+        Boolean useRag
     ) {}
 
     /**
