@@ -138,3 +138,44 @@ export async function k8sPost(path, body) {
     req.end();
   });
 }
+
+export async function k8sDelete(path) {
+  if (!K8S_API_URL || !K8S_BEARER_TOKEN) {
+    const err = new Error('Defina K8S_API_URL e K8S_BEARER_TOKEN no ambiente do servidor MCP.');
+    err.statusCode = 500;
+    throw err;
+  }
+  const url = `${K8S_API_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
+  const headers = {
+    'Accept': 'application/json',
+    'Authorization': `Bearer ${K8S_BEARER_TOKEN}`,
+  };
+  const agent = new https.Agent({ rejectUnauthorized: !K8S_SKIP_TLS_VERIFY });
+  return await new Promise((resolve, reject) => {
+    const req = https.request(url, { method: 'DELETE', headers, agent }, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          const err = new Error(`Falha HTTP ${res.statusCode} em ${path}: ${data}`);
+          err.statusCode = res.statusCode;
+          return reject(err);
+        }
+        try {
+          const json = data ? JSON.parse(data) : {};
+          resolve(json);
+        } catch (e) {
+          // Alguns deletes podem não retornar JSON
+          resolve({});
+        }
+      });
+    });
+    req.on('error', (e) => {
+      const err = new Error(`Erro ao consultar API: ${e.message}`);
+      err.statusCode = 502;
+      reject(err);
+    });
+    req.end();
+  });
+}

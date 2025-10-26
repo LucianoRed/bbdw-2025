@@ -4,7 +4,7 @@ import { tool as services } from './services.js';
 import { tool as storage } from './storage.js';
 import { tool as events } from './events.js';
 import { tool as overview } from './overview.js';
-import { tool as vpa } from './vpa.js';
+import { createVpaTool, deleteVpaTool } from './vpa.js';
 
 export const toolsRegistry = [
   live,
@@ -13,5 +13,6 @@ export const toolsRegistry = [
   storage,
   events,
   overview,
-  vpa,
+  createVpaTool,
+  deleteVpaTool,
 ];

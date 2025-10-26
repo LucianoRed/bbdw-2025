@@ -1,8 +1,11 @@
-import { k8sGet, k8sPost } from '../utils/k8s.js';
+import { k8sGet, k8sPost, k8sDelete } from '../utils/k8s.js';
 
-export const tool = {
+const RESERVED_NS_RE = /^openshift/i; // bloquear namespaces openshift*
+function isReservedNamespace(ns) { return RESERVED_NS_RE.test(ns || ''); }
+
+export const createVpaTool = {
   name: 'create_vpa',
-  description: 'Cria um VerticalPodAutoscaler (VPA) para um Deployment específico. Requer confirmação explícita (confirm: true). Suporta dryRun para testes.',
+  description: 'Cria um VerticalPodAutoscaler (VPA) para um Deployment específico. Requer confirmação explícita (confirm: true). Suporta dryRun para testes. Bloqueado em namespaces openshift*.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -26,6 +29,7 @@ export const tool = {
     const dryRun = !!args.dryRun;
 
     if (!ns) return { content: [{ type: 'text', text: 'Erro: parâmetro "namespace" obrigatório.' }], isError: true };
+    if (isReservedNamespace(ns)) return { content: [{ type: 'text', text: 'Criação de VPA bloqueada em namespaces reservados (openshift*).' }], isError: true };
     if (!deployment) return { content: [{ type: 'text', text: 'Erro: parâmetro "deployment" obrigatório.' }], isError: true };
     if (!confirm) return { content: [{ type: 'text', text: 'Confirmação de escrita necessária: defina "confirm": true para criar o VPA.' }], isError: true };
 
@@ -56,6 +60,59 @@ export const tool = {
       return { content: [{ type: 'text', text: JSON.stringify({ created: !dryRun, dryRun, result }, null, 2) }] };
     } catch (e) {
       const status = e?.statusCode || 500;
+      return { content: [{ type: 'text', text: `Erro (${status}): ${e.message}` }], isError: true };
+    }
+  },
+};
+
+export const deleteVpaTool = {
+  name: 'delete_vpa',
+  description: 'Remove um VerticalPodAutoscaler (VPA) por nome (ou derivado de deployment). Requer confirmação explícita (confirm: true). Suporta dryRun.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      namespace: { type: 'string', description: 'Namespace do VPA.' },
+      name: { type: 'string', description: 'Nome do VPA a remover. Opcional se deployment for informado.' },
+      deployment: { type: 'string', description: 'Se informado e name ausente, assume <deployment>-vpa.' },
+      confirm: { type: 'boolean', description: 'Confirmação obrigatória para operações de escrita.' },
+      dryRun: { type: 'boolean', description: 'Se true, faz deleção em dry-run (?dryRun=All).' },
+    },
+    required: ['namespace','confirm'],
+    additionalProperties: false,
+  },
+  handler: async (args) => {
+    const ns = typeof args.namespace === 'string' ? args.namespace : '';
+    const nameArg = typeof args.name === 'string' ? args.name : '';
+    const deployment = typeof args.deployment === 'string' ? args.deployment : '';
+    const confirm = !!args.confirm;
+    const dryRun = !!args.dryRun;
+
+  if (!ns) return { content: [{ type: 'text', text: 'Erro: parâmetro "namespace" obrigatório.' }], isError: true };
+    if (!confirm) return { content: [{ type: 'text', text: 'Confirmação de escrita necessária: defina "confirm": true para remover o VPA.' }], isError: true };
+
+    const vpaName = nameArg || (deployment ? `${deployment}-vpa` : '');
+    if (!vpaName) return { content: [{ type: 'text', text: 'Informe "name" do VPA ou "deployment" para derivar o nome (<deployment>-vpa).' }], isError: true };
+
+    try {
+      // Checar grupo API VPA
+      const apiCheck = await k8sGet('/apis/autoscaling.k8s.io', { optional: true });
+      if (!apiCheck) {
+        return { content: [{ type: 'text', text: 'Erro: o grupo API autoscaling.k8s.io (VPA) não está disponível no cluster.' }], isError: true };
+      }
+    } catch (e) {
+      return { content: [{ type: 'text', text: `Erro ao verificar API VPA: ${e.message}` }], isError: true };
+    }
+
+    try {
+      let path = `/apis/autoscaling.k8s.io/v1/namespaces/${ns}/verticalpodautoscalers/${encodeURIComponent(vpaName)}`;
+      if (dryRun) path += '?dryRun=All';
+      const result = await k8sDelete(path);
+      return { content: [{ type: 'text', text: JSON.stringify({ deleted: !dryRun, dryRun, name: vpaName, result }, null, 2) }] };
+    } catch (e) {
+      const status = e?.statusCode || 500;
+      if (status === 404) {
+        return { content: [{ type: 'text', text: `VPA "${vpaName}" não encontrado no namespace "${ns}".` }], isError: true };
+      }
       return { content: [{ type: 'text', text: `Erro (${status}): ${e.message}` }], isError: true };
     }
   },
