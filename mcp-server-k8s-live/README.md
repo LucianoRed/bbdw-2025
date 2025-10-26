@@ -159,7 +159,28 @@ Visão geral do cluster com estatísticas agregadas.
 
 **Retorno:** Estatísticas de nós, pods, namespaces, deployments e services
 
-### 7. delete_pod
+### 7. list_machinesets
+Lista os MachineSets (OpenShift Machine API) com réplicas desejadas e status, para escolher qual escalar.
+
+**Parâmetros:**
+- `namespace` (string, opcional, padrão: `openshift-machine-api`)
+- `labelSelector` (string, opcional)
+
+**Retorno:** Lista com `name`, `namespace`, `labels`, `replicas`, `readyReplicas`, `availableReplicas`.
+
+### 8. set_machineset_replicas
+Atualiza o número de réplicas de um MachineSet.
+
+**Parâmetros:**
+- `namespace` (string, obrigatório; tipicamente `openshift-machine-api`)
+- `name` (string, obrigatório)
+- `replicas` (integer, obrigatório)
+- `confirm` (boolean, obrigatório)
+- `dryRun` (boolean, opcional)
+
+**Retorno:** Detalhes da alteração (ou dry-run).
+
+### 9. delete_pod
 Remove (mata) um Pod específico por nome e namespace. Útil após resolver issues de alocação/agendamento, para forçar realocação.
 
 **Parâmetros:**
@@ -172,7 +193,7 @@ Remove (mata) um Pod específico por nome e namespace. Útil após resolver issu
 
 **Retorno:** Detalhes da deleção.
 
-### 8. delete_pods_by_selector
+### 10. delete_pods_by_selector
 Remove (mata) todos os Pods de um namespace que correspondem a um `labelSelector`. Ideal para reiniciar rapidamente todos os pods de um Deployment/DaemonSet/StatefulSet.
 
 **Parâmetros:**

@@ -1,6 +1,6 @@
 import { k8sGet, k8sPatch } from '../utils/k8s.js';
 
-export const tool = {
+export const setMachineSetReplicasTool = {
   name: 'set_machineset_replicas',
   description: 'Atualiza o número de réplicas de um MachineSet (OpenShift Machine API). Requer confirmação explícita (confirm: true). Suporta dryRun.',
   inputSchema: {
@@ -48,6 +48,53 @@ export const tool = {
       if (status === 404) {
         return { content: [{ type: 'text', text: `MachineSet "${name}" não encontrado no namespace "${ns}".` }], isError: true };
       }
+      return { content: [{ type: 'text', text: `Erro (${status}): ${e.message}` }], isError: true };
+    }
+  }
+};
+
+export const listMachineSetsTool = {
+  name: 'list_machinesets',
+  description: 'Lista MachineSets (OpenShift Machine API) com nome, namespace, réplicas desejadas/atuais e labels. Útil para escolher qual escalar.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      namespace: { type: 'string', description: 'Namespace para filtrar (padrão: openshift-machine-api).', default: 'openshift-machine-api' },
+      labelSelector: { type: 'string', description: 'Label selector opcional para filtrar MachineSets.' }
+    },
+    required: [],
+    additionalProperties: false,
+  },
+  handler: async (args) => {
+    const ns = (typeof args.namespace === 'string' && args.namespace) ? args.namespace : 'openshift-machine-api';
+    const labelSelector = typeof args.labelSelector === 'string' ? args.labelSelector : '';
+
+    // Verificar API
+    try {
+      const apiCheck = await k8sGet('/apis/machine.openshift.io', { optional: true });
+      if (!apiCheck) {
+        return { content: [{ type: 'text', text: 'Erro: o grupo API machine.openshift.io não está disponível no cluster.' }], isError: true };
+      }
+    } catch (e) {
+      return { content: [{ type: 'text', text: `Erro ao verificar API MachineSets: ${e.message}` }], isError: true };
+    }
+
+    try {
+      const base = `/apis/machine.openshift.io/v1beta1/namespaces/${ns}/machinesets`;
+      const path = labelSelector ? `${base}?labelSelector=${encodeURIComponent(labelSelector)}` : base;
+      const list = await k8sGet(path, { optional: false });
+      const items = Array.isArray(list?.items) ? list.items : [];
+      const result = items.map(ms => ({
+        name: ms?.metadata?.name,
+        namespace: ms?.metadata?.namespace,
+        labels: ms?.metadata?.labels || {},
+        replicas: ms?.spec?.replicas ?? null,
+        readyReplicas: ms?.status?.readyReplicas ?? null,
+        availableReplicas: ms?.status?.availableReplicas ?? null,
+      }));
+      return { content: [{ type: 'text', text: JSON.stringify({ namespace: ns, count: result.length, items: result }, null, 2) }] };
+    } catch (e) {
+      const status = e?.statusCode || 500;
       return { content: [{ type: 'text', text: `Erro (${status}): ${e.message}` }], isError: true };
     }
   }
