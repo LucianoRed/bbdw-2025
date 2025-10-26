@@ -86,7 +86,8 @@ public class RedisChatMemoryStore implements ChatMemoryStore {
      */
     @Override
     public void deleteMessages(Object memoryId) {
-        // redisService.deleteKey(toMemoryIdString(memoryId));
+        redisService.deleteKey(toMemoryIdString(memoryId));
+        Log.infof("Mensagens deletadas do Redis para memoryId: %s", toMemoryIdString(memoryId));
     }
 
     private String serializeStoredChatMessage(StoredChatMessage storedMessage) {

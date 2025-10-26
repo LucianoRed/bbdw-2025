@@ -544,9 +544,9 @@
         }
 
         #clearButton:hover {
-            background: var(--danger);
-            color: white;
-            border-color: var(--danger);
+            background: var(--danger) !important;
+            color: white !important;
+            border-color: var(--danger) !important;
         }
 
         .empty-state {
@@ -591,6 +591,238 @@
             70% { opacity: 1; }
             100% { opacity: 0; }
         }
+
+        /* Tabs Navigation */
+        .tabs-container {
+            display: flex;
+            gap: 2px;
+            background: var(--bg-tertiary);
+            padding: 4px;
+            border-radius: 12px 12px 0 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tab-button:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .tab-button.active {
+            background: var(--bg-secondary);
+            color: var(--accent);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .tab-content {
+            display: none !important;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .tab-content.active {
+            display: flex !important;
+            flex-direction: column;
+        }
+
+        /* Debug Panel */
+        .debug-panel {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: var(--bg-chat);
+        }
+
+        .debug-controls {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .debug-button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .debug-button.primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .debug-button.primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .debug-button.secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .debug-button.secondary:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .debug-button.danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .debug-button.danger:hover {
+            background: var(--danger-hover);
+        }
+
+        .debug-info {
+            background: var(--bg-ai);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .debug-info-header {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .debug-info-content {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        .debug-info-content.scrollable {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .debug-info-content.scrollable::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .debug-info-content.scrollable::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+        }
+
+        .debug-info-content.scrollable::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 10px;
+        }
+
+        .debug-info-content.scrollable::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        .redis-message {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .redis-message-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .redis-message-index {
+            background: var(--accent);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 11px;
+        }
+
+        .redis-message-role {
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 11px;
+        }
+
+        .redis-message-role.user {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .redis-message-role.ai {
+            background: var(--accent);
+            color: white;
+        }
+
+        .redis-message-role.system {
+            background: #fbbf24;
+            color: #000;
+        }
+
+        .redis-message-content {
+            color: var(--text-primary);
+            line-height: 1.5;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .compaction-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .compaction-status.enabled {
+            background: #10b981;
+            color: white;
+        }
+
+        .compaction-status.disabled {
+            background: var(--border-color);
+            color: var(--text-secondary);
+        }
     </style>
 </head>
 <body>
@@ -618,12 +850,24 @@
                     <div class="toggle-switch" id="toggle-mcp"></div>
                 </div>
 
-                <div class="feature-item" onclick="toggleFeature('streaming')">
+                <div class="feature-item" onclick="toggleFeature('rag')">
                     <div class="feature-info">
-                        <span class="feature-icon">⚡</span>
-                        <span class="feature-label">Streaming</span>
+                        <span class="feature-icon">📚</span>
+                        <span class="feature-label">RAG</span>
                     </div>
-                    <div class="toggle-switch active" id="toggle-streaming"></div>
+                    <div class="toggle-switch" id="toggle-rag"></div>
+                </div>
+            </div>
+
+            <div class="feature-section">
+                <div class="feature-title">Sistema</div>
+                
+                <div class="feature-item" onclick="toggleCompactionJob()">
+                    <div class="feature-info">
+                        <span class="feature-icon">🗜️</span>
+                        <span class="feature-label">Job Compactação</span>
+                    </div>
+                    <div class="toggle-switch active" id="toggle-compaction"></div>
                 </div>
             </div>
 
@@ -632,7 +876,7 @@
                 <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 10px; font-size: 13px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                         <span style="color: var(--text-secondary);">Session ID:</span>
-                        <span id="session-display" style="font-family: monospace; font-size: 11px;">-</span>
+                        <span id="session-display" style="font-family: monospace; font-size: 10px; word-break: break-all;">-</span>
                     </div>
                     <div style="display: flex; justify-content: space-between;">
                         <span style="color: var(--text-secondary);">Mensagens:</span>
@@ -640,9 +884,15 @@
                     </div>
                 </div>
             </div>
+
+            <div class="feature-section">
+                <button id="clearButton" style="width: 100%; padding: 12px; background: var(--bg-tertiary); color: var(--danger); border: 1px solid var(--border-color); border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <span>🗑️</span>
+                    <span>Limpar Conversa</span>
+                </button>
+            </div>
         </div>
 
-        <!-- Chat Container -->
         <!-- Chat Container -->
         <div class="chat-container">
         <div class="header">
@@ -658,6 +908,21 @@
                 <span>Light Mode</span>
             </button>
         </div>
+        
+        <!-- Tabs Navigation -->
+        <div class="tabs-container">
+            <button class="tab-button active" onclick="switchTab('chat')">
+                <span>💬</span>
+                <span>Chat</span>
+            </button>
+            <button class="tab-button" onclick="switchTab('debug')">
+                <span>🔍</span>
+                <span>Storage e RAG</span>
+            </button>
+        </div>
+        
+        <!-- Chat Tab -->
+        <div id="chat-tab" class="tab-content active">
         <div id="chatMessages">
             <div class="empty-state">
                 <div class="empty-state-icon">💬</div>
@@ -670,10 +935,120 @@
                 <input type="text" id="messageInput" placeholder="Digite sua mensagem..." autocomplete="off">
                 <button id="sendButton">Enviar</button>
             </div>
-            <button id="clearButton">
-                <span>🗑️</span>
-                <span>Limpar Conversa</span>
-            </button>
+        </div>
+        </div>
+        
+        <!-- Debug Tab -->
+        <div id="debug-tab" class="tab-content">
+            <div class="debug-panel">
+                <div class="debug-controls" style="display: none;">
+                    <button class="debug-button primary" onclick="loadRedisMessages()">
+                        <span>🔄</span>
+                        <span>Atualizar Mensagens</span>
+                    </button>
+                    <button class="debug-button secondary" onclick="forceCompaction()">
+                        <span>🗜️</span>
+                        <span>Forçar Compactação</span>
+                    </button>
+                </div>
+                
+                <div class="debug-info">
+                    <div class="debug-info-header">
+                        <span>�</span>
+                        <span>RAG - Gerenciamento de Documentos</span>
+                    </div>
+                    <div class="debug-info-content">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                            <span><strong>Status:</strong></span>
+                            <span class="compaction-status" id="rag-status" style="background: var(--border-color);">
+                                <span>⏳</span>
+                                <span>Carregando...</span>
+                            </span>
+                        </div>
+                        
+                        <!-- Upload de Documentos -->
+                        <div style="margin-bottom: 12px;">
+                            <input type="file" id="doc-upload-input" accept=".md,.txt,.pdf,.html" style="display: none;" onchange="uploadDocument()">
+                            <button class="debug-button primary" onclick="document.getElementById('doc-upload-input').click()" style="width: 100%; font-size: 12px; padding: 8px;">
+                                <span>📤</span>
+                                <span>Upload Documento</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Documentos Indexados -->
+                        <div style="margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">
+                                    DOCUMENTOS (<span id="doc-count">0</span>)
+                                </span>
+                                <button onclick="loadDocuments()" style="background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px;">
+                                    🔄
+                                </button>
+                            </div>
+                            <div id="documents-list" style="max-height: 150px; overflow-y: auto; font-size: 12px;">
+                                <div style="text-align: center; padding: 10px; color: var(--text-secondary);">
+                                    Carregando...
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 8px;">
+                            <button class="debug-button primary" onclick="ingestDocuments()" style="flex: 1; font-size: 12px; padding: 8px;">
+                                <span>📥</span>
+                                <span>Indexar Docs</span>
+                            </button>
+                            <button class="debug-button secondary" onclick="reingestDocuments()" style="flex: 1; font-size: 12px; padding: 8px;">
+                                <span>🔄</span>
+                                <span>Re-indexar</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="debug-info">
+                    <div class="debug-info-header">
+                        <span>�📊</span>
+                        <span>Informações da Sessão</span>
+                    </div>
+                    <div class="debug-info-content" style="display: none;">
+                        <div style="margin-bottom: 8px; display: none;">
+                            <strong>Session ID Atual:</strong> <span id="debug-session-id-backup" style="font-family: monospace; display: none;">-</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px; display: none;">
+                            <span><strong>Job de Compactação:</strong></span>
+                            <span class="compaction-status enabled" id="compaction-status">
+                                <span>✅</span>
+                                <span>Habilitado</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="debug-info">
+                    <div class="debug-info-header">
+                        <span>�</span>
+                        <span>Mensagens no Redis</span>
+                        <span style="margin-left: auto; font-weight: normal; color: var(--text-secondary);">
+                            Total: <span id="redis-message-count">0</span>
+                        </span>
+                    </div>
+                    <div class="debug-info-content scrollable" id="redis-messages-container">
+                        <div class="debug-controls" style="margin-bottom: 15px;">
+                            <button class="debug-button primary" onclick="loadRedisMessages()">
+                                <span>�</span>
+                                <span>Atualizar Mensagens</span>
+                            </button>
+                            <button class="debug-button secondary" onclick="forceCompaction()">
+                                <span>🗜️</span>
+                                <span>Forçar Compactação</span>
+                            </button>
+                        </div>
+                        <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                            Clique em "Atualizar Mensagens" para carregar os dados do Redis
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     </div>
@@ -691,7 +1066,7 @@
         const features = {
             memory: localStorage.getItem('feature-memory') === 'true',
             mcp: localStorage.getItem('feature-mcp') === 'true',
-            streaming: localStorage.getItem('feature-streaming') !== 'false' // Default true
+            rag: localStorage.getItem('feature-rag') === 'true'
         };
 
         let messageCount = 0;
@@ -710,12 +1085,12 @@
         if (features.mcp) {
             document.getElementById('toggle-mcp').classList.add('active');
         }
-        if (!features.streaming) {
-            document.getElementById('toggle-streaming').classList.remove('active');
+        if (features.rag) {
+            document.getElementById('toggle-rag').classList.add('active');
         }
         
-        // Exibe sessionId truncado
-        sessionDisplay.textContent = sessionId.substring(0, 10) + '...';
+        // Exibe sessionId completo
+        sessionDisplay.textContent = sessionId;
 
         // Função para toggle de features
         function toggleFeature(featureName) {
@@ -726,11 +1101,15 @@
             // Salva no localStorage
             localStorage.setItem(`feature-${featureName}`, features[featureName]);
             
+            // Log para debug
+            console.log(`Feature ${featureName}: ${features[featureName]}`);
+            console.log('Estado atual das features:', features);
+            
             // Feedback visual
             const featureLabels = {
                 memory: '🧠 Memória',
-                mcp: '🔌 MCP Tools', 
-                streaming: '⚡ Streaming'
+                mcp: '🔌 MCP Tools',
+                rag: '📚 RAG'
             };
             
             const status = features[featureName] ? 'ativada' : 'desativada';
@@ -741,7 +1120,8 @@
                 // Se desativar memória, gera novo sessionId
                 sessionId = 'user-' + Math.random().toString(36).substr(2, 9);
                 localStorage.setItem('chatSessionId', sessionId);
-                sessionDisplay.textContent = sessionId.substring(0, 10) + '...';
+                sessionDisplay.textContent = sessionId;
+                console.log('Novo sessionId gerado:', sessionId);
             }
         }
 
@@ -823,11 +1203,22 @@
         }
 
         async function loadHistory() {
+            // Só carrega histórico se a memória estiver ativa
+            if (!features.memory) {
+                console.log('Memória desativada - histórico não será carregado');
+                return;
+            }
+            
             try {
+                console.log('Carregando histórico para sessionId:', sessionId);
                 const response = await fetch(`/chat/history/${sessionId}`);
-                if (!response.ok) return;
+                if (!response.ok) {
+                    console.log('Erro ao carregar histórico:', response.status);
+                    return;
+                }
                 
                 const history = await response.json();
+                console.log('Histórico carregado:', history.length, 'mensagens');
                 
                 if (history && history.length > 0) {
                     removeEmptyState();
@@ -852,6 +1243,9 @@
                         messageDiv.appendChild(avatar);
                         messageDiv.appendChild(contentDiv);
                         chatMessages.appendChild(messageDiv);
+                        
+                        // Atualiza o contador de mensagens
+                        updateMessageCount();
                     }
                     
                     chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -942,10 +1336,17 @@
             messageInput.value = '';
             sendButton.disabled = true;
 
-            // Determina qual endpoint usar baseado nas features
-            const useStreaming = features.streaming;
+            // Determina configurações baseado nas features
             const useMemory = features.memory;
+            const useMcp = features.mcp;
+            const useRag = features.rag;
             const currentSessionId = useMemory ? sessionId : null;
+            
+            // Log para debug
+            console.log('Enviando mensagem com configurações:');
+            console.log('- Memória:', useMemory, '| SessionId:', currentSessionId);
+            console.log('- MCP:', useMcp);
+            console.log('- RAG:', useRag);
 
             // Cria div para a resposta com streaming
             const messageDiv = document.createElement('div');
@@ -964,62 +1365,45 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
             try {
-                const endpoint = useStreaming ? '/chat/stream' : '/chat/message';
-                
-                if (useStreaming) {
-                    // Envia requisição com SSE
-                    const response = await fetch(`${endpoint}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            message: message,
-                            sessionId: currentSessionId
-                        })
-                    });
+                // Sempre usa streaming (SSE)
+                const response = await fetch('/chat/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        sessionId: currentSessionId,
+                        useMcp: useMcp,
+                        useRag: useRag
+                    })
+                });
 
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-                    let accumulatedText = '';
-                    let buffer = '';
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let accumulatedText = '';
+                let buffer = '';
 
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
 
-                        buffer += decoder.decode(value, { stream: true });
-                        
-                        // Processa eventos SSE do buffer
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-                        
-                        for (const line of lines) {
-                            if (line.startsWith('data:')) {
-                                const data = line.substring(5);
-                                if (data) {
-                                    accumulatedText += data;
-                                    aiMessageDiv.innerHTML = parseMarkdown(accumulatedText);
-                                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                                }
+                    buffer += decoder.decode(value, { stream: true });
+                    
+                    // Processa eventos SSE do buffer
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data:')) {
+                            const data = line.substring(5);
+                            if (data) {
+                                accumulatedText += data;
+                                aiMessageDiv.innerHTML = parseMarkdown(accumulatedText);
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
                             }
                         }
                     }
-                } else {
-                    // Modo não-streaming
-                    const response = await fetch(`${endpoint}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            message: message,
-                            sessionId: currentSessionId
-                        })
-                    });
-                    
-                    const text = await response.text();
-                    aiMessageDiv.innerHTML = parseMarkdown(text);
                 }
 
                 aiMessageDiv.classList.remove('streaming');
@@ -1043,8 +1427,388 @@
             }
         });
 
+        // ====================================================================
+        // Funções para Tabs e Debug
+        // ====================================================================
+        
+        /**
+         * Alterna entre as abas Chat e Debug
+         */
+        function switchTab(tabName) {
+            // Remove active de todos os botões e conteúdos
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Adiciona active ao botão e conteúdo selecionados
+            event.target.closest('.tab-button').classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            
+            // Se mudou para debug, carrega o status da compactação e RAG
+            if (tabName === 'debug') {
+                loadCompactionStatus();
+                loadRagStatus();
+                loadDocuments();
+            }
+        }
+        
+        /**
+         * Carrega o status do job de compactação
+         */
+        async function loadCompactionStatus() {
+            try {
+                const response = await fetch('/admin/compaction/status');
+                const data = await response.json();
+                
+                const statusEl = document.getElementById('compaction-status');
+                const toggleEl = document.getElementById('toggle-compaction');
+                
+                if (data.enabled) {
+                    statusEl.className = 'compaction-status enabled';
+                    statusEl.innerHTML = '<span>✅</span><span>Habilitado</span>';
+                    toggleEl.classList.add('active');
+                } else {
+                    statusEl.className = 'compaction-status disabled';
+                    statusEl.innerHTML = '<span>⏸️</span><span>Desabilitado</span>';
+                    toggleEl.classList.remove('active');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar status:', error);
+            }
+        }
+        
+        /**
+         * Alterna o estado do job de compactação
+         */
+        async function toggleCompactionJob() {
+            try {
+                const statusResponse = await fetch('/admin/compaction/status');
+                const statusData = await statusResponse.json();
+                const isEnabled = statusData.enabled;
+                
+                // Chama o endpoint oposto
+                const endpoint = isEnabled ? '/admin/compaction/disable' : '/admin/compaction/enable';
+                const response = await fetch(endpoint, { method: 'POST' });
+                const data = await response.json();
+                
+                showNotification(data.message);
+                loadCompactionStatus();
+                
+            } catch (error) {
+                console.error('Erro ao alternar job:', error);
+                alert('Erro ao alternar job de compactação');
+            }
+        }
+        
+        /**
+         * Força a execução da compactação manualmente
+         */
+        async function forceCompaction() {
+            if (!confirm('Deseja forçar a compactação de todas as sessões agora?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/compact-memories', { method: 'POST' });
+                const data = await response.json();
+                
+                showNotification('🗜️ ' + data.message);
+                
+                // Aguarda 2 segundos e recarrega as mensagens
+                setTimeout(() => {
+                    loadRedisMessages();
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Erro ao forçar compactação:', error);
+                alert('Erro ao forçar compactação');
+            }
+        }
+        
+        /**
+         * Indexa documentos no vector store
+         */
+        async function ingestDocuments() {
+            const statusEl = document.getElementById('rag-status');
+            statusEl.className = 'compaction-status';
+            statusEl.style.background = 'var(--border-color)';
+            statusEl.innerHTML = '<span>⏳</span><span>Indexando...</span>';
+            
+            try {
+                const response = await fetch('/admin/rag/ingest', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusEl.className = 'compaction-status enabled';
+                    statusEl.innerHTML = '<span>✅</span><span>Indexado</span>';
+                    showNotification(`📚 ${data.message} (${data.durationMs}ms)`);
+                } else {
+                    statusEl.className = 'compaction-status disabled';
+                    statusEl.innerHTML = '<span>❌</span><span>Erro</span>';
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error('Erro ao indexar documentos:', error);
+                statusEl.className = 'compaction-status disabled';
+                statusEl.innerHTML = '<span>❌</span><span>Erro</span>';
+                alert('Erro ao indexar documentos');
+            }
+        }
+        
+        /**
+         * Re-indexa documentos no vector store
+         */
+        async function reingestDocuments() {
+            if (!confirm('Deseja re-indexar todos os documentos? Isso pode levar alguns minutos.')) {
+                return;
+            }
+            
+            const statusEl = document.getElementById('rag-status');
+            statusEl.className = 'compaction-status';
+            statusEl.style.background = 'var(--border-color)';
+            statusEl.innerHTML = '<span>⏳</span><span>Re-indexando...</span>';
+            
+            try {
+                const response = await fetch('/admin/rag/reingest', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusEl.className = 'compaction-status enabled';
+                    statusEl.innerHTML = '<span>✅</span><span>Indexado</span>';
+                    showNotification(`📚 ${data.message} (${data.durationMs}ms)`);
+                } else {
+                    statusEl.className = 'compaction-status disabled';
+                    statusEl.innerHTML = '<span>❌</span><span>Erro</span>';
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error('Erro ao re-indexar documentos:', error);
+                statusEl.className = 'compaction-status disabled';
+                statusEl.innerHTML = '<span>❌</span><span>Erro</span>';
+                alert('Erro ao re-indexar documentos');
+            }
+        }
+        
+        /**
+         * Carrega o status do RAG
+         */
+        async function loadRagStatus() {
+            try {
+                const response = await fetch('/admin/rag/status');
+                const data = await response.json();
+                
+                const statusEl = document.getElementById('rag-status');
+                if (data.ingested) {
+                    statusEl.className = 'compaction-status enabled';
+                    statusEl.innerHTML = '<span>✅</span><span>Indexado</span>';
+                } else {
+                    statusEl.className = 'compaction-status disabled';
+                    statusEl.innerHTML = '<span>⚠️</span><span>Não indexado</span>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar status do RAG:', error);
+            }
+        }
+        
+        /**
+         * Carrega a lista de documentos
+         */
+        async function loadDocuments() {
+            const listEl = document.getElementById('documents-list');
+            const countEl = document.getElementById('doc-count');
+            
+            listEl.innerHTML = '<div style="text-align: center; padding: 10px;"><span>⏳</span> Carregando...</div>';
+            
+            try {
+                const response = await fetch('/admin/rag/documents');
+                const data = await response.json();
+                
+                countEl.textContent = data.count;
+                
+                if (data.count === 0) {
+                    listEl.innerHTML = `
+                        <div style="text-align: center; padding: 10px; color: var(--text-secondary);">
+                            Nenhum documento encontrado
+                        </div>
+                    `;
+                    return;
+                }
+                
+                listEl.innerHTML = data.documents.map(doc => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--bg-tertiary); border-radius: 8px; margin-bottom: 6px;">
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${doc.name}">
+                                ${doc.name}
+                            </div>
+                            <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">
+                                ${doc.type} • ${formatFileSize(doc.size)}
+                            </div>
+                        </div>
+                        <button onclick="deleteDocument('${doc.name}')" style="background: var(--danger); color: white; border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 11px; margin-left: 8px;">
+                            🗑️
+                        </button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Erro ao carregar documentos:', error);
+                listEl.innerHTML = '<div style="text-align: center; padding: 10px; color: var(--danger);">Erro ao carregar</div>';
+            }
+        }
+        
+        /**
+         * Faz upload de um documento
+         */
+        async function uploadDocument() {
+            const input = document.getElementById('doc-upload-input');
+            const file = input.files[0];
+            
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                showNotification('📤 Enviando arquivo...');
+                
+                const response = await fetch('/admin/rag/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification(`✅ ${data.message}`);
+                    input.value = ''; // Limpa o input
+                    loadDocuments(); // Recarrega a lista
+                    
+                    // Atualiza o status do RAG para "não indexado"
+                    const statusEl = document.getElementById('rag-status');
+                    statusEl.className = 'compaction-status disabled';
+                    statusEl.innerHTML = '<span>⚠️</span><span>Não indexado</span>';
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error('Erro ao fazer upload:', error);
+                alert('Erro ao fazer upload do documento');
+            }
+        }
+        
+        /**
+         * Deleta um documento
+         */
+        async function deleteDocument(filename) {
+            if (!confirm(`Deseja deletar o documento "${filename}"?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/admin/rag/documents/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification(`🗑️ ${data.message}`);
+                    loadDocuments(); // Recarrega a lista
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error('Erro ao deletar documento:', error);
+                alert('Erro ao deletar documento');
+            }
+        }
+        
+        /**
+         * Formata tamanho de arquivo
+         */
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+        
+        /**
+         * Carrega as mensagens do Redis para a sessão atual
+         */
+        async function loadRedisMessages() {
+            const container = document.getElementById('redis-messages-container');
+            const countEl = document.getElementById('redis-message-count');
+            
+            // Preserva os botões e atualiza apenas a área de mensagens
+            const buttonsHtml = `
+                <div class="debug-controls" style="margin-bottom: 15px;">
+                    <button class="debug-button primary" onclick="loadRedisMessages()">
+                        <span>🔄</span>
+                        <span>Atualizar Mensagens</span>
+                    </button>
+                    <button class="debug-button secondary" onclick="forceCompaction()">
+                        <span>🗜️</span>
+                        <span>Forçar Compactação</span>
+                    </button>
+                </div>
+            `;
+            
+            // Mostra loading
+            container.innerHTML = buttonsHtml + '<div style="text-align: center; padding: 20px;"><span>⏳</span> Carregando...</div>';
+            
+            try {
+                const response = await fetch(`/admin/redis/messages/${sessionId}`);
+                const data = await response.json();
+                
+                countEl.textContent = data.messageCount;
+                
+                if (data.messageCount === 0) {
+                    container.innerHTML = buttonsHtml + `
+                        <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                            <div style="font-size: 32px; margin-bottom: 10px;">📭</div>
+                            <div>Nenhuma mensagem encontrada no Redis para esta sessão</div>
+                            <div style="font-size: 12px; margin-top: 8px;">Session ID: ${sessionId}</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Renderiza as mensagens
+                let html = buttonsHtml;
+                for (const msg of data.messages) {
+                    // Trunca conteúdo muito longo
+                    let content = msg.content;
+                    if (content.length > 500) {
+                        content = content.substring(0, 500) + '...';
+                    }
+                    
+                    html += `
+                        <div class="redis-message">
+                            <div class="redis-message-header">
+                                <span class="redis-message-index">#${msg.index}</span>
+                                <span class="redis-message-role ${msg.role}">${msg.role.toUpperCase()}</span>
+                            </div>
+                            <div class="redis-message-content">${content}</div>
+                        </div>
+                    `;
+                }
+                
+                container.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Erro ao carregar mensagens do Redis:', error);
+                container.innerHTML = buttonsHtml + `
+                    <div style="text-align: center; padding: 20px; color: var(--danger);">
+                        <div>❌ Erro ao carregar mensagens</div>
+                        <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
         // Carregar histórico ao iniciar
         loadHistory();
+        
+        // Carregar status do job de compactação ao iniciar
+        loadCompactionStatus();
 
         // Foca no input ao carregar
         messageInput.focus();
