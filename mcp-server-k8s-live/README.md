@@ -172,10 +172,14 @@ Lista os MachineSets (OpenShift Machine API) com réplicas desejadas e status, p
 ### 8. set_machineset_replicas
 Atualiza o número de réplicas de um MachineSet.
 
+Salvaguardas de segurança:
+- Não permite definir `replicas = 0` (mínimo é 1)
+- Bloqueia alterações em MachineSets rotulados com `machine-type=infra-node`
+
 **Parâmetros:**
 - `namespace` (string, obrigatório; tipicamente `openshift-machine-api`)
 - `name` (string, obrigatório)
-- `replicas` (integer, obrigatório)
+- `replicas` (integer, obrigatório; mínimo: 1)
 - `confirm` (boolean, obrigatório)
 - `dryRun` (boolean, opcional)
 

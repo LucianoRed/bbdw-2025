@@ -2,13 +2,13 @@ import { k8sGet, k8sPatch } from '../utils/k8s.js';
 
 export const setMachineSetReplicasTool = {
   name: 'set_machineset_replicas',
-  description: 'Atualiza o número de réplicas de um MachineSet (OpenShift Machine API). Requer confirmação explícita (confirm: true). Suporta dryRun.',
+  description: 'Atualiza o número de réplicas de um MachineSet (OpenShift Machine API). Requer confirmação explícita (confirm: true). Suporta dryRun. Salvaguardas: não permite replicas=0 e bloqueia MachineSets com label machine-type=infra-node.',
   inputSchema: {
     type: 'object',
     properties: {
       namespace: { type: 'string', description: 'Namespace do MachineSet (geralmente openshift-machine-api).' },
       name: { type: 'string', description: 'Nome do MachineSet a alterar.' },
-      replicas: { type: 'integer', minimum: 0, description: 'Novo número de réplicas.' },
+      replicas: { type: 'integer', minimum: 1, description: 'Novo número de réplicas (mínimo: 1).'} ,
       confirm: { type: 'boolean', description: 'Confirmação obrigatória para operações de escrita.' },
       dryRun: { type: 'boolean', description: 'Se true, aplica em modo dry-run (?dryRun=All).' },
     },
@@ -24,7 +24,7 @@ export const setMachineSetReplicasTool = {
 
     if (!ns) return { content: [{ type: 'text', text: 'Erro: parâmetro "namespace" obrigatório.' }], isError: true };
     if (!name) return { content: [{ type: 'text', text: 'Erro: parâmetro "name" obrigatório.' }], isError: true };
-    if (!Number.isInteger(replicas) || replicas < 0) return { content: [{ type: 'text', text: 'Erro: "replicas" deve ser um inteiro >= 0.' }], isError: true };
+    if (!Number.isInteger(replicas) || replicas < 1) return { content: [{ type: 'text', text: 'Erro: "replicas" deve ser um inteiro >= 1 (não é permitido reduzir para 0).' }], isError: true };
     if (!confirm) return { content: [{ type: 'text', text: 'Confirmação de escrita necessária: defina "confirm": true para alterar replicas.' }], isError: true };
 
     // Checar grupo API MachineSet
@@ -35,6 +35,20 @@ export const setMachineSetReplicasTool = {
       }
     } catch (e) {
       return { content: [{ type: 'text', text: `Erro ao verificar API MachineSets: ${e.message}` }], isError: true };
+    }
+    // Obter MachineSet para validar labels e existência
+    let ms;
+    const getPath = `/apis/machine.openshift.io/v1beta1/namespaces/${ns}/machinesets/${encodeURIComponent(name)}`;
+    try {
+      ms = await k8sGet(getPath, { optional: false });
+    } catch (e) {
+      const status = e?.statusCode || 500;
+      if (status === 404) return { content: [{ type: 'text', text: `MachineSet "${name}" não encontrado no namespace "${ns}".` }], isError: true };
+      return { content: [{ type: 'text', text: `Erro (${status}) ao buscar MachineSet: ${e.message}` }], isError: true };
+    }
+    const labels = ms?.metadata?.labels || {};
+    if (labels['machine-type'] === 'infra-node') {
+      return { content: [{ type: 'text', text: 'Operação bloqueada: MachineSet com label "machine-type=infra-node" não pode ser alterado por esta ferramenta.' }], isError: true };
     }
 
     const body = { spec: { replicas } };
