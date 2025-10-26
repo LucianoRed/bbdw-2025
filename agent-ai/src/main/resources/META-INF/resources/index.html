@@ -876,7 +876,7 @@
                 <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 10px; font-size: 13px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                         <span style="color: var(--text-secondary);">Session ID:</span>
-                        <span id="session-display" style="font-family: monospace; font-size: 11px;">-</span>
+                        <span id="session-display" style="font-family: monospace; font-size: 10px; word-break: break-all;">-</span>
                     </div>
                     <div style="display: flex; justify-content: space-between;">
                         <span style="color: var(--text-secondary);">Mensagens:</span>
@@ -917,7 +917,7 @@
             </button>
             <button class="tab-button" onclick="switchTab('debug')">
                 <span>🔍</span>
-                <span>Debug Redis</span>
+                <span>Storage e RAG</span>
             </button>
         </div>
         
@@ -941,7 +941,7 @@
         <!-- Debug Tab -->
         <div id="debug-tab" class="tab-content">
             <div class="debug-panel">
-                <div class="debug-controls">
+                <div class="debug-controls" style="display: none;">
                     <button class="debug-button primary" onclick="loadRedisMessages()">
                         <span>🔄</span>
                         <span>Atualizar Mensagens</span>
@@ -1010,11 +1010,11 @@
                         <span>�📊</span>
                         <span>Informações da Sessão</span>
                     </div>
-                    <div class="debug-info-content">
-                        <div style="margin-bottom: 8px;">
-                            <strong>Session ID Atual:</strong> <span id="debug-session-id" style="font-family: monospace;">-</span>
+                    <div class="debug-info-content" style="display: none;">
+                        <div style="margin-bottom: 8px; display: none;">
+                            <strong>Session ID Atual:</strong> <span id="debug-session-id-backup" style="font-family: monospace; display: none;">-</span>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px; display: none;">
                             <span><strong>Job de Compactação:</strong></span>
                             <span class="compaction-status enabled" id="compaction-status">
                                 <span>✅</span>
@@ -1026,13 +1026,23 @@
                 
                 <div class="debug-info">
                     <div class="debug-info-header">
-                        <span>💾</span>
+                        <span>�</span>
                         <span>Mensagens no Redis</span>
                         <span style="margin-left: auto; font-weight: normal; color: var(--text-secondary);">
                             Total: <span id="redis-message-count">0</span>
                         </span>
                     </div>
                     <div class="debug-info-content scrollable" id="redis-messages-container">
+                        <div class="debug-controls" style="margin-bottom: 15px;">
+                            <button class="debug-button primary" onclick="loadRedisMessages()">
+                                <span>�</span>
+                                <span>Atualizar Mensagens</span>
+                            </button>
+                            <button class="debug-button secondary" onclick="forceCompaction()">
+                                <span>🗜️</span>
+                                <span>Forçar Compactação</span>
+                            </button>
+                        </div>
                         <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
                             Clique em "Atualizar Mensagens" para carregar os dados do Redis
                         </div>
@@ -1079,8 +1089,8 @@
             document.getElementById('toggle-rag').classList.add('active');
         }
         
-        // Exibe sessionId truncado
-        sessionDisplay.textContent = sessionId.substring(0, 10) + '...';
+        // Exibe sessionId completo
+        sessionDisplay.textContent = sessionId;
 
         // Função para toggle de features
         function toggleFeature(featureName) {
@@ -1110,7 +1120,7 @@
                 // Se desativar memória, gera novo sessionId
                 sessionId = 'user-' + Math.random().toString(36).substr(2, 9);
                 localStorage.setItem('chatSessionId', sessionId);
-                sessionDisplay.textContent = sessionId.substring(0, 10) + '...';
+                sessionDisplay.textContent = sessionId;
                 console.log('Novo sessionId gerado:', sessionId);
             }
         }
@@ -1438,7 +1448,6 @@
                 loadCompactionStatus();
                 loadRagStatus();
                 loadDocuments();
-                document.getElementById('debug-session-id').textContent = sessionId;
             }
         }
         
@@ -1728,8 +1737,22 @@
             const container = document.getElementById('redis-messages-container');
             const countEl = document.getElementById('redis-message-count');
             
+            // Preserva os botões e atualiza apenas a área de mensagens
+            const buttonsHtml = `
+                <div class="debug-controls" style="margin-bottom: 15px;">
+                    <button class="debug-button primary" onclick="loadRedisMessages()">
+                        <span>🔄</span>
+                        <span>Atualizar Mensagens</span>
+                    </button>
+                    <button class="debug-button secondary" onclick="forceCompaction()">
+                        <span>🗜️</span>
+                        <span>Forçar Compactação</span>
+                    </button>
+                </div>
+            `;
+            
             // Mostra loading
-            container.innerHTML = '<div style="text-align: center; padding: 20px;"><span>⏳</span> Carregando...</div>';
+            container.innerHTML = buttonsHtml + '<div style="text-align: center; padding: 20px;"><span>⏳</span> Carregando...</div>';
             
             try {
                 const response = await fetch(`/admin/redis/messages/${sessionId}`);
@@ -1738,7 +1761,7 @@
                 countEl.textContent = data.messageCount;
                 
                 if (data.messageCount === 0) {
-                    container.innerHTML = `
+                    container.innerHTML = buttonsHtml + `
                         <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
                             <div style="font-size: 32px; margin-bottom: 10px;">📭</div>
                             <div>Nenhuma mensagem encontrada no Redis para esta sessão</div>
@@ -1749,7 +1772,7 @@
                 }
                 
                 // Renderiza as mensagens
-                let html = '';
+                let html = buttonsHtml;
                 for (const msg of data.messages) {
                     // Trunca conteúdo muito longo
                     let content = msg.content;
@@ -1772,7 +1795,7 @@
                 
             } catch (error) {
                 console.error('Erro ao carregar mensagens do Redis:', error);
-                container.innerHTML = `
+                container.innerHTML = buttonsHtml + `
                     <div style="text-align: center; padding: 20px; color: var(--danger);">
                         <div>❌ Erro ao carregar mensagens</div>
                         <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
