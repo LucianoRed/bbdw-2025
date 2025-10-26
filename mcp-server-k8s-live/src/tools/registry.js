@@ -5,6 +5,7 @@ import { tool as storage } from './storage.js';
 import { tool as events } from './events.js';
 import { tool as overview } from './overview.js';
 import { createVpaTool, deleteVpaTool } from './vpa.js';
+import { tool as setMachineSetReplicas } from './machinesets.js';
 
 export const toolsRegistry = [
   live,
@@ -15,4 +16,5 @@ export const toolsRegistry = [
   overview,
   createVpaTool,
   deleteVpaTool,
+  setMachineSetReplicas,
 ];
