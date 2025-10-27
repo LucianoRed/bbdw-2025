@@ -1,4 +1,4 @@
-package com.redhat;
+package com.redhat.rag;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;

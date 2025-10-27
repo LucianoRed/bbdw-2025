@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback da Apresentação</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0f1419;
+            --bg-secondary: #1a1f2e;
+            --bg-tertiary: #252d3d;
+            --text-primary: #e4e6eb;
+            --text-secondary: #a8adb7;
+            --border-color: #2d3748;
+            --shadow: rgba(0, 0, 0, 0.4);
+            --accent: #667eea;
+            --accent-hover: #5568d3;
+            --success: #10b981;
+            --success-hover: #059669;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px var(--shadow);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            border: 1px solid var(--border-color);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            background: var(--accent);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 20px;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 180px;
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 15px;
+            color: var(--text-primary);
+            font-family: inherit;
+            resize: vertical;
+            transition: all 0.2s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .char-count {
+            text-align: right;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        button {
+            width: 100%;
+            padding: 16px 24px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        button:hover:not(:disabled) {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            background: var(--border-color);
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .success-message {
+            text-align: center;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .success-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .success-message h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .success-message p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .already-submitted {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .already-submitted-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .already-submitted h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .already-submitted p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #ef4444;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+            animation: shake 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">💭</div>
+            <h1>Feedback da Apresentação</h1>
+            <p class="subtitle">Sua opinião é muito importante! Compartilhe o que achou da apresentação sobre Agent AI.</p>
+        </div>
+
+        <div id="form-container">
+            <form id="feedback-form">
+                <div class="form-group">
+                    <label for="feedback">O que você achou da apresentação?</label>
+                    <textarea 
+                        id="feedback" 
+                        name="feedback" 
+                        placeholder="Compartilhe sua opinião sobre o conteúdo, apresentação, exemplos demonstrados..."
+                        maxlength="1000"
+                        required
+                    ></textarea>
+                    <div class="char-count">
+                        <span id="char-count">0</span> / 1000 caracteres
+                    </div>
+                </div>
+
+                <button type="submit" id="submit-button">
+                    <span>📤</span>
+                    <span>Enviar Feedback</span>
+                </button>
+
+                <div class="error-message" id="error-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'bbdw2025-feedback-submitted';
+        const textarea = document.getElementById('feedback');
+        const charCount = document.getElementById('char-count');
+        const form = document.getElementById('feedback-form');
+        const submitButton = document.getElementById('submit-button');
+        const errorMessage = document.getElementById('error-message');
+        const formContainer = document.getElementById('form-container');
+
+        // Verifica se já enviou feedback
+        // if (localStorage.getItem(STORAGE_KEY) === 'true') {
+        //     showAlreadySubmitted();
+        // }
+
+        // Contador de caracteres
+        textarea.addEventListener('input', () => {
+            const length = textarea.value.length;
+            charCount.textContent = length;
+            
+            if (length > 0) {
+                hideError();
+            }
+        });
+
+        // Submit do formulário
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const feedbackText = textarea.value.trim();
+            
+            // Validação
+            if (!feedbackText) {
+                showError('Por favor, escreva seu feedback antes de enviar.');
+                textarea.focus();
+                return;
+            }
+
+            if (feedbackText.length < 10) {
+                showError('O feedback deve ter pelo menos 10 caracteres.');
+                textarea.focus();
+                return;
+            }
+
+            // Desabilita o botão e mostra loading
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="loading"></span><span>Enviando...</span>';
+
+            try {
+                const response = await fetch('/feedback/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        feedback: feedbackText,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Marca como enviado no localStorage
+                    localStorage.setItem(STORAGE_KEY, 'true');
+                    
+                    // Mostra mensagem de sucesso
+                    showSuccess();
+                } else {
+                    showError(data.message || 'Erro ao enviar feedback. Tente novamente.');
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '<span>📤</span><span>Enviar Feedback</span>';
+                }
+            } catch (error) {
+                console.error('Erro ao enviar feedback:', error);
+                showError('Erro de conexão. Verifique sua internet e tente novamente.');
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<span>📤</span><span>Enviar Feedback</span>';
+            }
+        });
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+        }
+
+        function hideError() {
+            errorMessage.classList.remove('show');
+        }
+
+        function showSuccess() {
+            formContainer.innerHTML = `
+                <div class="success-message">
+                    <div class="success-icon">✅</div>
+                    <h2>Feedback Enviado!</h2>
+                    <p>Obrigado por compartilhar sua opinião. Seu feedback está sendo analisado e ajudará a melhorar futuras apresentações.</p>
+                </div>
+            `;
+        }
+
+        function showAlreadySubmitted() {
+            formContainer.innerHTML = `
+                <div class="already-submitted">
+                    <div class="already-submitted-icon">✓</div>
+                    <h2>Você já enviou seu feedback</h2>
+                    <p>Obrigado pela sua participação! Seu feedback já foi registrado.</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

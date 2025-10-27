@@ -250,7 +250,8 @@
             gap: 8px;
         }
 
-        #darkModeToggle:hover {
+        #darkModeToggle:hover,
+        .header a button:hover {
             background: var(--bg-tertiary);
             transform: translateY(-1px);
         }
@@ -678,6 +679,12 @@
             color: white;
         }
 
+        .debug-button[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
         .debug-button.primary:hover {
             background: var(--accent-hover);
         }
@@ -797,6 +804,11 @@
             color: #000;
         }
 
+        .redis-message-role.toolexecutionresult {
+            background: #8b5cf6;
+            color: white;
+        }
+
         .redis-message-content {
             color: var(--text-primary);
             line-height: 1.5;
@@ -860,18 +872,6 @@
             </div>
 
             <div class="feature-section">
-                <div class="feature-title">Sistema</div>
-                
-                <div class="feature-item" onclick="toggleCompactionJob()">
-                    <div class="feature-info">
-                        <span class="feature-icon">🗜️</span>
-                        <span class="feature-label">Job Compactação</span>
-                    </div>
-                    <div class="toggle-switch active" id="toggle-compaction"></div>
-                </div>
-            </div>
-
-            <div class="feature-section">
                 <div class="feature-title">Status</div>
                 <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 10px; font-size: 13px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
@@ -903,10 +903,24 @@
                     <div class="header-subtitle">Monitore e gerencie seu cluster</div>
                 </div>
             </div>
-            <button id="darkModeToggle">
-                <span>☀️</span>
-                <span>Light Mode</span>
-            </button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <a href="/feedback.html" style="text-decoration: none;">
+                    <button style="padding: 10px 18px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;">
+                        <span>💭</span>
+                        <span>Feedback</span>
+                    </button>
+                </a>
+                <a href="/dashboard.html" style="text-decoration: none;">
+                    <button style="padding: 10px 18px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;">
+                        <span>📊</span>
+                        <span>Dashboard</span>
+                    </button>
+                </a>
+                <button id="darkModeToggle">
+                    <span>☀️</span>
+                    <span>Light Mode</span>
+                </button>
+            </div>
         </div>
         
         <!-- Tabs Navigation -->
@@ -915,9 +929,13 @@
                 <span>💬</span>
                 <span>Chat</span>
             </button>
-            <button class="tab-button" onclick="switchTab('debug')">
-                <span>🔍</span>
-                <span>Storage e RAG</span>
+            <button class="tab-button" onclick="switchTab('rag')">
+                <span>�</span>
+                <span>RAG</span>
+            </button>
+            <button class="tab-button" onclick="switchTab('messages')">
+                <span>💾</span>
+                <span>Mensagens</span>
             </button>
         </div>
         
@@ -938,23 +956,12 @@
         </div>
         </div>
         
-        <!-- Debug Tab -->
-        <div id="debug-tab" class="tab-content">
+        <!-- RAG Tab -->
+        <div id="rag-tab" class="tab-content">
             <div class="debug-panel">
-                <div class="debug-controls" style="display: none;">
-                    <button class="debug-button primary" onclick="loadRedisMessages()">
-                        <span>🔄</span>
-                        <span>Atualizar Mensagens</span>
-                    </button>
-                    <button class="debug-button secondary" onclick="forceCompaction()">
-                        <span>🗜️</span>
-                        <span>Forçar Compactação</span>
-                    </button>
-                </div>
-                
                 <div class="debug-info">
                     <div class="debug-info-header">
-                        <span>�</span>
+                        <span>📚</span>
                         <span>RAG - Gerenciamento de Documentos</span>
                     </div>
                     <div class="debug-info-content">
@@ -993,40 +1000,26 @@
                         </div>
                         
                         <div style="display: flex; gap: 8px;">
-                            <button class="debug-button primary" onclick="ingestDocuments()" style="flex: 1; font-size: 12px; padding: 8px;">
+                            <button id="btn-ingest" class="debug-button primary" onclick="ingestDocuments()" style="flex: 1; font-size: 12px; padding: 8px;">
                                 <span>📥</span>
                                 <span>Indexar Docs</span>
                             </button>
-                            <button class="debug-button secondary" onclick="reingestDocuments()" style="flex: 1; font-size: 12px; padding: 8px;">
+                            <button id="btn-reingest" class="debug-button secondary" onclick="reingestDocuments()" style="flex: 1; font-size: 12px; padding: 8px;">
                                 <span>🔄</span>
                                 <span>Re-indexar</span>
                             </button>
                         </div>
                     </div>
                 </div>
-                
+            </div>
+        </div>
+        
+        <!-- Messages Tab -->
+        <div id="messages-tab" class="tab-content">
+            <div class="debug-panel">
                 <div class="debug-info">
                     <div class="debug-info-header">
-                        <span>�📊</span>
-                        <span>Informações da Sessão</span>
-                    </div>
-                    <div class="debug-info-content" style="display: none;">
-                        <div style="margin-bottom: 8px; display: none;">
-                            <strong>Session ID Atual:</strong> <span id="debug-session-id-backup" style="font-family: monospace; display: none;">-</span>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 10px; display: none;">
-                            <span><strong>Job de Compactação:</strong></span>
-                            <span class="compaction-status enabled" id="compaction-status">
-                                <span>✅</span>
-                                <span>Habilitado</span>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="debug-info">
-                    <div class="debug-info-header">
-                        <span>�</span>
+                        <span>💾</span>
                         <span>Mensagens no Redis</span>
                         <span style="margin-left: auto; font-weight: normal; color: var(--text-secondary);">
                             Total: <span id="redis-message-count">0</span>
@@ -1035,12 +1028,12 @@
                     <div class="debug-info-content scrollable" id="redis-messages-container">
                         <div class="debug-controls" style="margin-bottom: 15px;">
                             <button class="debug-button primary" onclick="loadRedisMessages()">
-                                <span>�</span>
+                                <span>🔄</span>
                                 <span>Atualizar Mensagens</span>
                             </button>
                             <button class="debug-button secondary" onclick="forceCompaction()">
                                 <span>🗜️</span>
-                                <span>Forçar Compactação</span>
+                                <span>Compactar</span>
                             </button>
                         </div>
                         <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
@@ -1298,9 +1291,14 @@
                 // Limpa a interface
                 chatMessages.innerHTML = '';
                 
+                // Reseta o contador de mensagens
+                messageCount = 0;
+                messageCountDisplay.textContent = '0';
+                
                 // Gera novo sessionId
                 sessionId = 'user-' + Math.random().toString(36).substr(2, 9);
                 localStorage.setItem('chatSessionId', sessionId);
+                sessionDisplay.textContent = sessionId;
                 
                 // Adiciona mensagem de confirmação
                 const confirmDiv = document.createElement('div');
@@ -1348,7 +1346,9 @@
             console.log('- MCP:', useMcp);
             console.log('- RAG:', useRag);
 
-            // Cria div para a resposta com streaming
+            // Cria div para a resposta
+            removeEmptyState();
+            
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message ai-message';
             
@@ -1365,8 +1365,8 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
             try {
-                // Sempre usa streaming (SSE)
-                const response = await fetch('/chat/stream', {
+                // Usa o endpoint tradicional (não-streaming) com @RunOnVirtualThread
+                const response = await fetch('/chat/message', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1379,33 +1379,12 @@
                     })
                 });
 
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let accumulatedText = '';
-                let buffer = '';
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
-                    
-                    // Processa eventos SSE do buffer
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || '';
-                    
-                    for (const line of lines) {
-                        if (line.startsWith('data:')) {
-                            const data = line.substring(5);
-                            if (data) {
-                                accumulatedText += data;
-                                aiMessageDiv.innerHTML = parseMarkdown(accumulatedText);
-                                chatMessages.scrollTop = chatMessages.scrollHeight;
-                            }
-                        }
-                    }
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
+                const text = await response.text();
+                aiMessageDiv.innerHTML = parseMarkdown(text);
                 aiMessageDiv.classList.remove('streaming');
                 updateMessageCount();
             } catch (error) {
@@ -1432,7 +1411,7 @@
         // ====================================================================
         
         /**
-         * Alterna entre as abas Chat e Debug
+         * Alterna entre as abas Chat, RAG e Mensagens
          */
         function switchTab(tabName) {
             // Remove active de todos os botões e conteúdos
@@ -1443,72 +1422,25 @@
             event.target.closest('.tab-button').classList.add('active');
             document.getElementById(`${tabName}-tab`).classList.add('active');
             
-            // Se mudou para debug, carrega o status da compactação e RAG
-            if (tabName === 'debug') {
-                loadCompactionStatus();
+            // Carrega dados específicos da aba
+            if (tabName === 'rag') {
                 loadRagStatus();
                 loadDocuments();
+            } else if (tabName === 'messages') {
+                loadRedisMessages();
             }
         }
         
         /**
-         * Carrega o status do job de compactação
+         * Executa a compactação de memórias manualmente
          */
-        async function loadCompactionStatus() {
-            try {
-                const response = await fetch('/admin/compaction/status');
-                const data = await response.json();
-                
-                const statusEl = document.getElementById('compaction-status');
-                const toggleEl = document.getElementById('toggle-compaction');
-                
-                if (data.enabled) {
-                    statusEl.className = 'compaction-status enabled';
-                    statusEl.innerHTML = '<span>✅</span><span>Habilitado</span>';
-                    toggleEl.classList.add('active');
-                } else {
-                    statusEl.className = 'compaction-status disabled';
-                    statusEl.innerHTML = '<span>⏸️</span><span>Desabilitado</span>';
-                    toggleEl.classList.remove('active');
-                }
-            } catch (error) {
-                console.error('Erro ao carregar status:', error);
-            }
-        }
-        
-        /**
-         * Alterna o estado do job de compactação
-         */
-        async function toggleCompactionJob() {
-            try {
-                const statusResponse = await fetch('/admin/compaction/status');
-                const statusData = await statusResponse.json();
-                const isEnabled = statusData.enabled;
-                
-                // Chama o endpoint oposto
-                const endpoint = isEnabled ? '/admin/compaction/disable' : '/admin/compaction/enable';
-                const response = await fetch(endpoint, { method: 'POST' });
-                const data = await response.json();
-                
-                showNotification(data.message);
-                loadCompactionStatus();
-                
-            } catch (error) {
-                console.error('Erro ao alternar job:', error);
-                alert('Erro ao alternar job de compactação');
-            }
-        }
-        
-        /**
-         * Força a execução da compactação manualmente
-         */
-        async function forceCompaction() {
-            if (!confirm('Deseja forçar a compactação de todas as sessões agora?')) {
+        async function compactMemories() {
+            if (!confirm('Deseja compactar as sessões de chat agora?')) {
                 return;
             }
             
             try {
-                const response = await fetch('/admin/compact-memories', { method: 'POST' });
+                const response = await fetch('/admin/compaction', { method: 'POST' });
                 const data = await response.json();
                 
                 showNotification('🗜️ ' + data.message);
@@ -1519,8 +1451,29 @@
                 }, 2000);
                 
             } catch (error) {
-                console.error('Erro ao forçar compactação:', error);
-                alert('Erro ao forçar compactação');
+                console.error('Erro ao compactar:', error);
+                alert('Erro ao compactar memórias');
+            }
+        }
+        
+        /**
+         * Força a compactação sem confirmação (chamada pelo botão na aba Debug)
+         */
+        async function forceCompaction() {
+            try {
+                const response = await fetch('/admin/compaction', { method: 'POST' });
+                const data = await response.json();
+                
+                showNotification('🗜️ ' + data.message);
+                
+                // Aguarda 2 segundos e recarrega as mensagens
+                setTimeout(() => {
+                    loadRedisMessages();
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Erro ao compactar:', error);
+                alert('Erro ao compactar memórias');
             }
         }
         
@@ -1615,6 +1568,8 @@
         async function loadDocuments() {
             const listEl = document.getElementById('documents-list');
             const countEl = document.getElementById('doc-count');
+            const btnIngest = document.getElementById('btn-ingest');
+            const btnReingest = document.getElementById('btn-reingest');
             
             listEl.innerHTML = '<div style="text-align: center; padding: 10px;"><span>⏳</span> Carregando...</div>';
             
@@ -1623,7 +1578,11 @@
                 const data = await response.json();
                 
                 countEl.textContent = data.count;
-                
+
+                // Habilita ou desabilita os botões de indexação conforme a existência de documentos
+                if (btnIngest) btnIngest.disabled = (data.count === 0);
+                if (btnReingest) btnReingest.disabled = (data.count === 0);
+
                 if (data.count === 0) {
                     listEl.innerHTML = `
                         <div style="text-align: center; padding: 10px; color: var(--text-secondary);">
@@ -1651,6 +1610,8 @@
             } catch (error) {
                 console.error('Erro ao carregar documentos:', error);
                 listEl.innerHTML = '<div style="text-align: center; padding: 10px; color: var(--danger);">Erro ao carregar</div>';
+                if (btnIngest) btnIngest.disabled = true;
+                if (btnReingest) btnReingest.disabled = true;
             }
         }
         
@@ -1746,7 +1707,7 @@
                     </button>
                     <button class="debug-button secondary" onclick="forceCompaction()">
                         <span>🗜️</span>
-                        <span>Forçar Compactação</span>
+                        <span>Compactar</span>
                     </button>
                 </div>
             `;
@@ -1755,7 +1716,7 @@
             container.innerHTML = buttonsHtml + '<div style="text-align: center; padding: 20px;"><span>⏳</span> Carregando...</div>';
             
             try {
-                const response = await fetch(`/admin/redis/messages/${sessionId}`);
+                const response = await fetch(`/admin/compaction/redis/messages/${sessionId}`);
                 const data = await response.json();
                 
                 countEl.textContent = data.messageCount;
@@ -1775,8 +1736,8 @@
                 let html = buttonsHtml;
                 for (const msg of data.messages) {
                     // Trunca conteúdo muito longo
-                    let content = msg.content;
-                    if (content.length > 500) {
+                    let content = msg.content || '(vazio)';
+                    if (content && content.length > 500) {
                         content = content.substring(0, 500) + '...';
                     }
                     
@@ -1806,9 +1767,6 @@
 
         // Carregar histórico ao iniciar
         loadHistory();
-        
-        // Carregar status do job de compactação ao iniciar
-        loadCompactionStatus();
 
         // Foca no input ao carregar
         messageInput.focus();

@@ -1,15 +1,17 @@
-package com.redhat;
+package com.redhat.chat;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.redhat.redis.RedisChatMemoryStore;
+import com.redhat.redis.RedisService;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import io.quarkus.logging.Log;
-import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -30,19 +32,10 @@ public class ChatMemoryCompactionService {
     private static final int MESSAGES_TO_KEEP_RECENT = 6;   // Últimas N mensagens a manter intactas
     private static final String CHAT_MEMORY_PATTERN = "chat-memory:*";
     
-    // Controle de habilitação do job
-    private volatile boolean enabled = true;
-    
     /**
-     * Job agendado que roda a cada 5 minutos para compactar memórias antigas
+     * Compacta todas as memórias de chat (chamado manualmente)
      */
-    @Scheduled(every = "5m", delayed = "1m") // Roda a cada 5 minutos, com delay inicial de 1 minuto
     public void compactChatMemories() {
-        if (!enabled) {
-            Log.debug("⏸️ Job de compactação está desabilitado - pulando execução");
-            return;
-        }
-        
         Log.info("🔄 Iniciando compactação de memórias de chat...");
         
         try {
@@ -81,7 +74,7 @@ public class ChatMemoryCompactionService {
             }
             
         } catch (Exception e) {
-            Log.error("❌ Erro ao executar job de compactação", e);
+            Log.error("❌ Erro ao executar compactação", e);
         }
     }
     
@@ -162,9 +155,15 @@ public class ChatMemoryCompactionService {
         int totalChars = 0;
         for (ChatMessage msg : messages) {
             if (msg instanceof UserMessage userMsg) {
-                totalChars += userMsg.singleText().length();
+                String text = userMsg.singleText();
+                if (text != null) {
+                    totalChars += text.length();
+                }
             } else if (msg instanceof AiMessage aiMsg) {
-                totalChars += aiMsg.text().length();
+                String text = aiMsg.text();
+                if (text != null) {
+                    totalChars += text.length();
+                }
             }
         }
         return totalChars / 4;
@@ -175,28 +174,5 @@ public class ChatMemoryCompactionService {
      */
     private int estimateTokens(String text) {
         return text.length() / 4;
-    }
-    
-    /**
-     * Método manual para forçar compactação (útil para testes)
-     */
-    public void forceCompaction() {
-        Log.info("🔧 Compactação manual iniciada");
-        compactChatMemories();
-    }
-    
-    /**
-     * Habilita o job de compactação
-     */
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-        Log.infof("⚙️ Job de compactação %s", enabled ? "habilitado" : "desabilitado");
-    }
-    
-    /**
-     * Verifica se o job está habilitado
-     */
-    public boolean isEnabled() {
-        return enabled;
     }
 }
