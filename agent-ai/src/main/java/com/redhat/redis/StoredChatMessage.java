@@ -1,4 +1,4 @@
-package com.redhat;
+package com.redhat.redis;
 
 import java.time.LocalDateTime;
 

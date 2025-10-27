@@ -1,4 +1,4 @@
-package com.redhat;
+package com.redhat.redis;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -46,20 +46,6 @@ public class RedisChatMemoryStore implements ChatMemoryStore {
         return messages;
     }
 
-    public List<StoredChatMessage> getStoredChatMessages(String memoryId) {
-        memoryId = memoryId + "_orchestrator";
-        List<String> jsonList = redisService.getList(memoryId);
-        List<StoredChatMessage> messages = new ArrayList<>();
-        for (String json : jsonList) {
-            // Log.info("json: " + json);
-            StoredChatMessage storedMessage = deserializeStoredChatMessage(json);
-            if (storedMessage != null && storedMessage.getMessage() != null) {
-                messages.add(storedMessage);
-            }
-        }
-        return messages;
-    }
-
     /**
      * Updates the chat messages associated with the given memory ID.
      *
@@ -74,9 +60,6 @@ public class RedisChatMemoryStore implements ChatMemoryStore {
             String json = serializeStoredChatMessage(storedMessage);
             redisService.pushToList(toMemoryIdString(memoryId), json);
         }
-        if (toMemoryIdString(memoryId).endsWith("_agent-memory")) {
-            redisService.trimList(toMemoryIdString(memoryId), -15, -1);
-        }
     }
 
     /**
@@ -87,7 +70,7 @@ public class RedisChatMemoryStore implements ChatMemoryStore {
     @Override
     public void deleteMessages(Object memoryId) {
         redisService.deleteKey(toMemoryIdString(memoryId));
-        Log.infof("Mensagens deletadas do Redis para memoryId: %s", toMemoryIdString(memoryId));
+        Log.debugf("Mensagens deletadas do Redis para memoryId: %s", toMemoryIdString(memoryId));
     }
 
     private String serializeStoredChatMessage(StoredChatMessage storedMessage) {
@@ -135,6 +118,12 @@ public class RedisChatMemoryStore implements ChatMemoryStore {
         if (isNullOrEmpty) {
             throw new IllegalArgumentException("memoryId cannot be null or empty");
         }
-        return memoryId.toString();
+        String id = memoryId.toString();
+        // Normalize keys to use the chat-memory prefix so other components can reliably
+        // discover keys using the pattern "chat-memory:*" (used by the compaction service).
+        if (id.startsWith("chat-memory:")) {
+            return id;
+        }
+        return "chat-memory:" + id;
     }
 }

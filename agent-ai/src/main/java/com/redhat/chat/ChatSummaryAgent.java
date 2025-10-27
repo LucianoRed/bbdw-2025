@@ -1,4 +1,4 @@
-package com.redhat;
+package com.redhat.chat;
 
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
