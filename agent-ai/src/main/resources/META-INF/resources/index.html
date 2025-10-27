@@ -1172,31 +1172,29 @@
                 <div class="debug-info">
                     <div class="debug-info-header">
                         <span>🔌</span>
-                        <span>Gerenciamento de MCP Servers</span>
+                        <span>Configuração MCP Server</span>
                     </div>
                     <div class="debug-info-content">
-                        <!-- Botão Adicionar -->
+                        <!-- MCP Server Configuration (Read-Only) -->
                         <div style="margin-bottom: 20px;">
-                            <button class="debug-button primary" onclick="showMcpServerForm()" style="width: 100%;">
-                                <span>➕</span>
-                                <span>Adicionar MCP Server</span>
-                            </button>
-                        </div>
-
-                        <!-- Lista de Servers -->
-                        <div style="margin-bottom: 12px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                                 <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">
-                                    SERVIDORES MCP (<span id="mcp-server-count">0</span>)
+                                    SERVIDOR K8S MCP
                                 </span>
-                                <button onclick="loadMcpServers()" style="background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px;">
+                                <button onclick="loadMcpConfig()" style="background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px;">
                                     🔄
                                 </button>
                             </div>
-                            <div id="mcp-servers-list" style="max-height: 400px; overflow-y: auto;">
+                            
+                            <div id="mcp-config-container" class="mcp-server-card" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
                                 <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
-                                    Clique em "Adicionar MCP Server" para começar
+                                    <div style="font-size: 32px; margin-bottom: 10px;">⏳</div>
+                                    <div>Carregando configurações...</div>
                                 </div>
+                            </div>
+                            
+                            <div style="padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; font-size: 12px; color: var(--text-secondary);">
+                                ℹ️ Configurações em tempo real do <code style="background: var(--bg-chat); padding: 2px 6px; border-radius: 4px;">application.properties</code>
                             </div>
                         </div>
                     </div>
@@ -1641,7 +1639,7 @@
         // ====================================================================
         
         /**
-         * Alterna entre as abas Chat, RAG e Mensagens
+         * Alterna entre as abas Chat, RAG, MCP e Mensagens
          */
         function switchTab(tabName) {
             // Remove active de todos os botões e conteúdos
@@ -1657,7 +1655,7 @@
                 loadRagStatus();
                 loadDocuments();
             } else if (tabName === 'mcp') {
-                loadMcpServers();
+                loadMcpConfig();
             } else if (tabName === 'messages') {
                 loadRedisMessages();
             }
@@ -1999,184 +1997,73 @@
             }
         }
 
+        /**
+         * Carrega configuração MCP do backend
+         */
+        async function loadMcpConfig() {
+            const container = document.getElementById('mcp-config-container');
+            
+            try {
+                const response = await fetch('/admin/mcp/config');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const config = await response.json();
+                
+                container.innerHTML = `
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">MCP Server URL</div>
+                        <div style="font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-primary); background: var(--bg-chat); padding: 8px; border-radius: 6px; word-break: break-all;">
+                            ${config.url || 'N/A'}
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Transport Type</div>
+                        <div style="font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-primary); background: var(--bg-chat); padding: 8px; border-radius: 6px;">
+                            ${config.transportType || 'N/A'}
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Log Requests</div>
+                        <div style="font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-primary); background: var(--bg-chat); padding: 8px; border-radius: 6px;">
+                            ${config.logRequests}
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Log Responses</div>
+                        <div style="font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-primary); background: var(--bg-chat); padding: 8px; border-radius: 6px;">
+                            ${config.logResponses}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Tool Execution Timeout</div>
+                        <div style="font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-primary); background: var(--bg-chat); padding: 8px; border-radius: 6px;">
+                            ${config.toolExecutionTimeout || 'N/A'}
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Erro ao carregar configuração MCP:', error);
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--danger);">
+                        <div>❌ Erro ao carregar configuração</div>
+                        <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
         // Carregar histórico ao iniciar
         loadHistory();
 
         // Foca no input ao carregar
         messageInput.focus();
-
-        // ====================================================================
-        // Funções para gerenciamento de MCP Servers
-        // ====================================================================
-
-        // Simulação de storage local (em produção isso seria uma API backend)
-        function getMcpServers() {
-            const servers = localStorage.getItem('mcp-servers');
-            return servers ? JSON.parse(servers) : [];
-        }
-
-        function saveMcpServers(servers) {
-            localStorage.setItem('mcp-servers', JSON.stringify(servers));
-        }
-
-        function loadMcpServers() {
-            const servers = getMcpServers();
-            const listEl = document.getElementById('mcp-servers-list');
-            const countEl = document.getElementById('mcp-server-count');
-
-            countEl.textContent = servers.length;
-
-            if (servers.length === 0) {
-                listEl.innerHTML = `
-                    <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
-                        <div style="font-size: 32px; margin-bottom: 10px;">🔌</div>
-                        <div>Nenhum MCP Server configurado</div>
-                        <div style="font-size: 12px; margin-top: 8px;">Clique em "Adicionar MCP Server" para começar</div>
-                    </div>
-                `;
-                return;
-            }
-
-            listEl.innerHTML = servers.map((server, index) => `
-                <div class="mcp-server-card">
-                    <div class="mcp-server-header">
-                        <div>
-                            <div class="mcp-server-name">${server.name}</div>
-                            <div class="mcp-server-url">${server.url}</div>
-                            ${server.transportType ? `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">Transport: ${server.transportType}</div>` : ''}
-                        </div>
-                        <div class="mcp-server-actions">
-                            <button class="debug-button secondary" onclick="editMcpServer(${index})">
-                                ✏️
-                            </button>
-                            <button class="debug-button danger" onclick="deleteMcpServer(${index})">
-                                🗑️
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function showMcpServerForm(editIndex = null) {
-            const servers = getMcpServers();
-            const server = editIndex !== null ? servers[editIndex] : null;
-
-            const modal = document.getElementById('mcp-server-modal');
-            const modalTitle = document.getElementById('mcp-modal-title');
-            const nameInput = document.getElementById('mcp-server-name');
-            const urlInput = document.getElementById('mcp-server-url');
-            const transportInput = document.getElementById('mcp-server-transport');
-
-            modalTitle.textContent = server ? 'Editar MCP Server' : 'Adicionar MCP Server';
-            nameInput.value = server ? server.name : '';
-            urlInput.value = server ? server.url : '';
-            transportInput.value = server ? server.transportType : 'streamable-http';
-
-            modal.classList.add('show');
-            nameInput.focus();
-
-            // Store edit index for save function
-            window.currentMcpEditIndex = editIndex;
-        }
-
-        function closeMcpServerForm() {
-            const modal = document.getElementById('mcp-server-modal');
-            modal.classList.remove('show');
-            window.currentMcpEditIndex = null;
-        }
-
-        function saveMcpServer() {
-            const nameInput = document.getElementById('mcp-server-name');
-            const urlInput = document.getElementById('mcp-server-url');
-            const transportInput = document.getElementById('mcp-server-transport');
-
-            const name = nameInput.value.trim();
-            const url = urlInput.value.trim();
-            const transportType = transportInput.value;
-
-            if (!name) {
-                alert('Nome é obrigatório');
-                nameInput.focus();
-                return;
-            }
-
-            if (!url) {
-                alert('URL é obrigatória');
-                urlInput.focus();
-                return;
-            }
-
-            const servers = getMcpServers();
-            const serverData = { name, url, transportType };
-
-            if (window.currentMcpEditIndex !== null) {
-                // Editando
-                servers[window.currentMcpEditIndex] = serverData;
-                showNotification('✏️ MCP Server atualizado com sucesso');
-            } else {
-                // Adicionando
-                servers.push(serverData);
-                showNotification('✅ MCP Server adicionado com sucesso');
-            }
-
-            saveMcpServers(servers);
-            loadMcpServers();
-            closeMcpServerForm();
-        }
-
-        function editMcpServer(index) {
-            showMcpServerForm(index);
-        }
-
-        function deleteMcpServer(index) {
-            const servers = getMcpServers();
-            const server = servers[index];
-
-            if (!confirm(`Deseja realmente deletar o server "${server.name}"?`)) {
-                return;
-            }
-
-            servers.splice(index, 1);
-            saveMcpServers(servers);
-            loadMcpServers();
-            showNotification('🗑️ MCP Server removido com sucesso');
-        }
     </script>
-
-    <!-- Modal para adicionar/editar MCP Server -->
-    <div id="mcp-server-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header" id="mcp-modal-title">Adicionar MCP Server</div>
-            
-            <div class="form-group">
-                <label class="form-label">Nome do Server</label>
-                <input type="text" id="mcp-server-name" class="form-input" placeholder="Ex: k8s-server, github-server">
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">URL</label>
-                <input type="text" id="mcp-server-url" class="form-input" placeholder="Ex: https://mcp-server.example.com/mcp">
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Transport Type</label>
-                <select id="mcp-server-transport" class="form-input">
-                    <option value="streamable-http">Streamable HTTP</option>
-                    <option value="stdio">STDIO</option>
-                    <option value="sse">SSE</option>
-                </select>
-            </div>
-
-            <div class="form-actions">
-                <button class="debug-button secondary" onclick="closeMcpServerForm()" style="flex: 1;">
-                    Cancelar
-                </button>
-                <button class="debug-button primary" onclick="saveMcpServer()" style="flex: 1;">
-                    Salvar
-                </button>
-            </div>
-        </div>
-    </div>
 </body>
 </html>

@@ -1,5 +1,8 @@
 package com.redhat;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
+import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -13,10 +16,31 @@ import jakarta.ws.rs.core.MediaType;
  * 
  * - /admin/rag/* - Gerenciamento RAG (ver RagResource.java)
  * - /admin/compaction/* - Gerenciamento de compactação de memória (ver CompactionResource.java)
+ * - /admin/mcp/config - Configuração MCP Server
  */
 @Path("/admin")
 @Produces(MediaType.APPLICATION_JSON)
 public class AdminResource {
+    
+    @Inject
+    @ConfigProperty(name = "quarkus.langchain4j.mcp.k8s-server.url")
+    String mcpServerUrl;
+    
+    @Inject
+    @ConfigProperty(name = "quarkus.langchain4j.mcp.k8s-server.transport-type")
+    String mcpTransportType;
+    
+    @Inject
+    @ConfigProperty(name = "quarkus.langchain4j.mcp.k8s-server.log-requests")
+    boolean mcpLogRequests;
+    
+    @Inject
+    @ConfigProperty(name = "quarkus.langchain4j.mcp.k8s-server.log-responses")
+    boolean mcpLogResponses;
+    
+    @Inject
+    @ConfigProperty(name = "quarkus.langchain4j.mcp.k8s-server.tool-execution-timeout")
+    String mcpToolTimeout;
     
     /**
      * Retorna informações sobre os endpoints administrativos disponíveis
@@ -28,6 +52,7 @@ public class AdminResource {
             "v1.0",
             new String[] {
                 "GET /admin - Esta página",
+                "GET /admin/mcp/config - Configuração MCP Server",
                 "POST /admin/rag/ingest - Ingere documentos no vector store",
                 "POST /admin/rag/reingest - Re-ingere todos os documentos",
                 "GET /admin/rag/status - Status da ingestão",
@@ -44,6 +69,29 @@ public class AdminResource {
         );
     }
     
+    /**
+     * Retorna a configuração atual do MCP Server
+     */
+    @GET
+    @Path("/mcp/config")
+    public McpConfigResult getMcpConfig() {
+        return new McpConfigResult(
+            mcpServerUrl,
+            mcpTransportType,
+            mcpLogRequests,
+            mcpLogResponses,
+            mcpToolTimeout
+        );
+    }
+    
     public record AdminInfoResult(String name, String version, String[] endpoints) {}
+    
+    public record McpConfigResult(
+        String url,
+        String transportType,
+        boolean logRequests,
+        boolean logResponses,
+        String toolExecutionTimeout
+    ) {}
 }
 
