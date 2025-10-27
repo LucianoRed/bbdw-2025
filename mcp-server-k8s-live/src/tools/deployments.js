@@ -74,15 +74,20 @@ export const setDeploymentReplicasTool = {
 
     const replicas = Math.floor(replicasRaw);
 
-    // GET-before-PATCH (opcional) para fornecer contexto ao usuário
+    // GET-before-PATCH para obter o valor atual e aplicar guarda de aumento +3
     let current = null;
     try {
-      if (getCurrent) {
-        const scale = await k8sGet(`/apis/apps/v1/namespaces/${ns}/deployments/${encodeURIComponent(deployment)}/scale`, { optional: true });
-        current = scale?.spec?.replicas;
-      }
+      const scale = await k8sGet(`/apis/apps/v1/namespaces/${ns}/deployments/${encodeURIComponent(deployment)}/scale`, { optional: false });
+      current = Number.isFinite(scale?.spec?.replicas) ? scale.spec.replicas : 0;
     } catch (e) {
-      // não é bloqueante para a operação principal
+      const status = e?.statusCode || 500;
+      if (status === 404) return { content: [{ type: 'text', text: `Deployment "${deployment}" não encontrado em "${ns}".` }], isError: true };
+      return { content: [{ type: 'text', text: `Erro (${status}) ao obter escala atual: ${e.message}` }], isError: true };
+    }
+
+    // Bloquear aumento maior que +3 sobre o atual; reduções e aumentos até +3 são permitidos
+    if (replicas > current && (replicas - current) > 3) {
+      return { content: [{ type: 'text', text: `Operação bloqueada: aumento solicitado (${replicas}) excede o limite de +3 sobre o atual (${current}).` }], isError: true };
     }
 
     try {
@@ -90,8 +95,7 @@ export const setDeploymentReplicasTool = {
       if (dryRun) path += '?dryRun=All';
       const body = { spec: { replicas } };
       const result = await k8sPatch(path, body, 'application/merge-patch+json');
-      const response = { namespace: ns, deployment, replicasRequested: replicas, dryRun, result };
-      if (getCurrent) response.previousReplicas = current;
+  const response = { namespace: ns, deployment, replicasRequested: replicas, previousReplicas: current, dryRun, result };
       return { content: [{ type: 'text', text: JSON.stringify(response, null, 2) }] };
     } catch (e) {
       const status = e?.statusCode || 500;

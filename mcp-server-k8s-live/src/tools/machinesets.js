@@ -51,6 +51,12 @@ export const setMachineSetReplicasTool = {
       return { content: [{ type: 'text', text: 'Operação bloqueada: MachineSet com label "machine-type=infra-node" não pode ser alterado por esta ferramenta.' }], isError: true };
     }
 
+    // Limite de aumento: não permitir subir mais do que +3 em relação ao atual
+    const currentReplicas = Number.isInteger(ms?.spec?.replicas) ? ms.spec.replicas : 0;
+    if (replicas > currentReplicas && (replicas - currentReplicas) > 3) {
+      return { content: [{ type: 'text', text: `Operação bloqueada: aumento solicitado (${replicas}) excede o limite de +3 sobre o atual (${currentReplicas}).` }], isError: true };
+    }
+
     const body = { spec: { replicas } };
     try {
       let path = `/apis/machine.openshift.io/v1beta1/namespaces/${ns}/machinesets/${encodeURIComponent(name)}`;
