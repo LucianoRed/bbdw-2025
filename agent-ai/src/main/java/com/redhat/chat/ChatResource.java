@@ -3,16 +3,12 @@ package com.redhat.chat;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.jboss.resteasy.reactive.RestStreamElementType;
-
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import io.smallrye.common.annotation.RunOnVirtualThread;
-import io.smallrye.mutiny.Multi;
-import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -33,6 +29,21 @@ public class ChatResource {
     
     @Inject
     AgentBBDWWithRAG agentWithRAG;
+    
+    @Inject
+    AgentGemini agentGemini;
+    
+    @Inject
+    AgentGPT35 agentGPT35;
+    
+    @Inject
+    AgentGPT4oNano agentGPT4oNano;
+    
+    @Inject
+    AgentGPT4oMini agentGPT4oMini;
+    
+    @Inject
+    AgentGPT41Nano agentGPT41Nano;
 
     @Inject
     ChatMemoryProvider chatMemoryProvider;
@@ -55,65 +66,119 @@ public class ChatResource {
         
         boolean useMcp = request.useMcp() != null ? request.useMcp() : false;
         boolean useRag = request.useRag() != null ? request.useRag() : false;
+        String modelName = request.model() != null ? request.model() : "gpt4o-mini";
         
+        // Seleciona o agente baseado no modelo
+        return routeMessage(modelName, memoryId, request.message(), useMcp, useRag);
+    }
+    
+    /**
+     * Método auxiliar para rotear mensagens para o agente correto
+     */
+    private String routeMessage(String modelName, String memoryId, String message, boolean useMcp, boolean useRag) {
         // Routing: RAG + MCP > RAG > MCP > Basic
-        if (useRag && useMcp) {
-            return agentWithRAG.sendMessageWithMcpAndRAG(memoryId, request.message());
-        } else if (useRag) {
-            return agentWithRAG.sendMessageWithRAG(memoryId, request.message());
-        } else if (useMcp) {
-            return agent.sendMessageWithMcp(memoryId, request.message());
-        } else {
-            return agent.sendMessage(memoryId, request.message());
-        }
+        return switch (modelName.toLowerCase()) {
+            case "gemini-2.5-flash", "gemini" -> {
+                if (useMcp) yield agentGemini.sendMessageWithMcp(memoryId, message);
+                else yield agentGemini.sendMessage(memoryId, message);
+            }
+            case "gpt-3.5-turbo", "gpt35" -> {
+                if (useMcp) yield agentGPT35.sendMessageWithMcp(memoryId, message);
+                else yield agentGPT35.sendMessage(memoryId, message);
+            }
+            case "gpt-4o-nano", "gpt4o-nano" -> {
+                if (useMcp) yield agentGPT4oNano.sendMessageWithMcp(memoryId, message);
+                else yield agentGPT4oNano.sendMessage(memoryId, message);
+            }
+            case "gpt-4o-mini", "gpt4o-mini" -> {
+                if (useMcp) yield agentGPT4oMini.sendMessageWithMcp(memoryId, message);
+                else yield agentGPT4oMini.sendMessage(memoryId, message);
+            }
+            case "gpt-4.1-nano", "gpt41-nano" -> {
+                if (useMcp) yield agentGPT41Nano.sendMessageWithMcp(memoryId, message);
+                else yield agentGPT41Nano.sendMessage(memoryId, message);
+            }
+            default -> {
+                // Fallback para o agente padrão com RAG support
+                if (useRag && useMcp) yield agentWithRAG.sendMessageWithMcpAndRAG(memoryId, message);
+                else if (useRag) yield agentWithRAG.sendMessageWithRAG(memoryId, message);
+                else if (useMcp) yield agent.sendMessageWithMcp(memoryId, message);
+                else yield agent.sendMessage(memoryId, message);
+            }
+        };
     }
 
-    /**
-     * Endpoint com streaming usando SSE (Server-Sent Events)
-     */
-    @POST
-    @Path("/stream")
-    @Produces(MediaType.SERVER_SENT_EVENTS)
-    @RestStreamElementType(MediaType.TEXT_PLAIN)
-    public Multi<String> streamMessage(ChatRequest request) {
-        // Se sessionId for null, gera um ID único para esta requisição (sem memória)
-        // Se sessionId existir, usa ele para manter o histórico
-        String memoryId = request.sessionId() != null 
-            ? request.sessionId() 
-            : "temp-" + System.currentTimeMillis() + "-" + Math.random();
+    // /**
+    //  * Endpoint com streaming usando SSE (Server-Sent Events)
+    //  */
+    // @POST
+    // @Path("/stream")
+    // @Produces(MediaType.SERVER_SENT_EVENTS)
+    // @RestStreamElementType(MediaType.TEXT_PLAIN)
+    // public Multi<String> streamMessage(ChatRequest request) {
+    //     // Se sessionId for null, gera um ID único para esta requisição (sem memória)
+    //     // Se sessionId existir, usa ele para manter o histórico
+    //     String memoryId = request.sessionId() != null 
+    //         ? request.sessionId() 
+    //         : "temp-" + System.currentTimeMillis() + "-" + Math.random();
         
-        boolean useMcp = request.useMcp() != null ? request.useMcp() : false;
-        boolean useRag = request.useRag() != null ? request.useRag() : false;
+    //     boolean useMcp = request.useMcp() != null ? request.useMcp() : false;
+    //     boolean useRag = request.useRag() != null ? request.useRag() : false;
+    //     String modelName = request.model() != null ? request.model() : "gpt4o-mini";
         
-        // Executa a chamada inicial (que acessa Redis) em uma thread virtual
-        // para evitar bloquear o event loop do Vert.x
-        return Multi.createFrom().emitter(emitter -> {
-            Infrastructure.getDefaultWorkerPool().execute(() -> {
-                try {
-                    Multi<String> stream;
+    //     // Executa a chamada inicial (que acessa Redis) em uma thread virtual
+    //     // para evitar bloquear o event loop do Vert.x
+    //     return Multi.createFrom().emitter(emitter -> {
+    //         Infrastructure.getDefaultWorkerPool().execute(() -> {
+    //             try {
+    //                 Multi<String> stream = routeMessageStreaming(modelName, memoryId, request.message(), useMcp, useRag);
                     
-                    // Routing: RAG + MCP > RAG > MCP > Basic
-                    if (useRag && useMcp) {
-                        stream = agentWithRAG.sendMessageStreamingWithMcpAndRAG(memoryId, request.message());
-                    } else if (useRag) {
-                        stream = agentWithRAG.sendMessageStreamingWithRAG(memoryId, request.message());
-                    } else if (useMcp) {
-                        stream = agent.sendMessageStreamingWithMcp(memoryId, request.message());
-                    } else {
-                        stream = agent.sendMessageStreaming(memoryId, request.message());
-                    }
-                    
-                    stream.subscribe().with(
-                        emitter::emit,
-                        emitter::fail,
-                        emitter::complete
-                    );
-                } catch (Exception e) {
-                    emitter.fail(e);
-                }
-            });
-        });
-    }
+    //                 stream.subscribe().with(
+    //                     emitter::emit,
+    //                     emitter::fail,
+    //                     emitter::complete
+    //                 );
+    //             } catch (Exception e) {
+    //                 emitter.fail(e);
+    //             }
+    //         });
+    //     });
+    // }
+    
+    // /**
+    //  * Método auxiliar para rotear mensagens streaming para o agente correto
+    //  */
+    // private Multi<String> routeMessageStreaming(String modelName, String memoryId, String message, boolean useMcp, boolean useRag) {
+    //     return switch (modelName.toLowerCase()) {
+    //         case "gemini-2.5-flash", "gemini" -> {
+    //             if (useMcp) yield agentGemini.sendMessageStreamingWithMcp(memoryId, message);
+    //             else yield agentGemini.sendMessageStreaming(memoryId, message);
+    //         }
+    //         case "gpt-3.5-turbo", "gpt35" -> {
+    //             if (useMcp) yield agentGPT35.sendMessageStreamingWithMcp(memoryId, message);
+    //             else yield agentGPT35.sendMessageStreaming(memoryId, message);
+    //         }
+    //         case "gpt-4o-nano", "gpt4o-nano" -> {
+    //             if (useMcp) yield agentGPT4oNano.sendMessageStreamingWithMcp(memoryId, message);
+    //             else yield agentGPT4oNano.sendMessageStreaming(memoryId, message);
+    //         }
+    //         case "gpt-4o-mini", "gpt4o-mini" -> {
+    //             if (useMcp) yield agentGPT4oMini.sendMessageStreamingWithMcp(memoryId, message);
+    //             else yield agentGPT4oMini.sendMessageStreaming(memoryId, message);
+    //         }
+    //         case "gpt-4.1-nano", "gpt41-nano" -> {
+    //             if (useMcp) yield agentGPT41Nano.sendMessageStreamingWithMcp(memoryId, message);
+    //             else yield agentGPT41Nano.sendMessageStreaming(memoryId, message);
+    //         }
+    //         default -> {
+    //             // Fallback para o agente padrão com RAG support
+    //             if (useRag && useMcp) yield agentWithRAG.sendMessageStreamingWithMcpAndRAG(memoryId, message);
+    //             else if (useRag) yield agentWithRAG.sendMessageStreamingWithRAG(memoryId, message);
+    //             else if (useMcp) yield agent.sendMessageStreamingWithMcp(memoryId, message);
+    //             else yield agent.sendMessageStreaming(memoryId, message);
+    //         }
+    //     };
+    // }
 
     /**
      * Endpoint para limpar a memória de uma sessão
@@ -157,7 +222,8 @@ public class ChatResource {
         String message,
         String sessionId,
         Boolean useMcp,
-        Boolean useRag
+        Boolean useRag,
+        String model
     ) {}
 
     /**

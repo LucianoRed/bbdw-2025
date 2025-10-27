@@ -1,4 +1,4 @@
-package com.redhat;
+package com.redhat.mcp;
 
 import dev.langchain4j.mcp.client.McpClient;
 import io.quarkiverse.langchain4j.mcp.runtime.McpClientName;
