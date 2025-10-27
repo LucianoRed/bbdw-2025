@@ -9,11 +9,20 @@ import io.quarkiverse.langchain4j.mcp.runtime.McpToolBox;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @RegisterAiService(
-    modelName = "my-model",
+    modelName = "gpt4o-nano-model",
     chatMemoryProviderSupplier = BeanChatMemoryProviderSupplier.class
 )
+@SystemMessage("""
+    Você é um assistente de AI especializado em análise de clusters OpenShift/Kubernetes. 
+    
+    Sempre responda em markdown usando:
+    - Listas para enumerações
+    - Tabelas para dados estruturados
+    - Blocos de código para logs e YAML
+    - Formatação adequada para melhorar a legibilidade
+    """)
 @ApplicationScoped
-public interface AgentBBDW {
+public interface AgentGPT4oNano {
     
     @McpToolBox("k8s-server")
     @SystemMessage("""
@@ -36,7 +45,6 @@ public interface AgentBBDW {
     
     @SystemMessage("""
         Você é um assistente de AI especializado em análise de clusters OpenShift/Kubernetes. 
-        Você tem acesso a ferramentas para consultar informações do cluster em tempo real.
         
         Sempre responda em markdown usando:
         - Listas para enumerações

@@ -60,4 +60,13 @@ public class DocumentIngestionService {
     public boolean isIngested() {
         return isIngested;
     }
+    
+    /**
+     * Reseta o status de ingestão.
+     * Útil quando os dados do RAG são limpos do Redis.
+     */
+    public void resetIngestionStatus() {
+        LOG.info("Resetando status de ingestão");
+        isIngested = false;
+    }
 }

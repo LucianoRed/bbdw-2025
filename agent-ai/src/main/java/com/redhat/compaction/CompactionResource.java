@@ -1,4 +1,4 @@
-package com.redhat;
+package com.redhat.compaction;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,7 +11,6 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
-import com.redhat.chat.ChatMemoryCompactionService;
 import com.redhat.redis.RedisChatMemoryStore;
 import com.redhat.redis.RedisService;
 

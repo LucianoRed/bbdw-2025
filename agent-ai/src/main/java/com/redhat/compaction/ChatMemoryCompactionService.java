@@ -1,4 +1,4 @@
-package com.redhat.chat;
+package com.redhat.compaction;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

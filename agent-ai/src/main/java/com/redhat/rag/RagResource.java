@@ -1,4 +1,4 @@
-package com.redhat;
+package com.redhat.rag;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -6,6 +6,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import com.redhat.redis.RedisService;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -17,10 +19,9 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
+import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.jboss.resteasy.reactive.RestForm;
-
-import com.redhat.rag.DocumentIngestionService;
 
 /**
  * Endpoints de gerenciamento do RAG (Retrieval Augmented Generation)
@@ -29,8 +30,13 @@ import com.redhat.rag.DocumentIngestionService;
 @Produces(MediaType.APPLICATION_JSON)
 public class RagResource {
     
+    private static final Logger LOG = Logger.getLogger(RagResource.class);
+    
     @Inject
     DocumentIngestionService documentIngestionService;
+    
+    @Inject
+    RedisService redisService;
     
     /**
      * Ingere documentos no vector store
@@ -157,6 +163,39 @@ public class RagResource {
         }
     }
     
+    /**
+     * Limpa todos os dados do RAG armazenados no Redis.
+     * Remove todas as chaves que começam com o prefixo "doc:" (embeddings do RAG).
+     */
+    @DELETE
+    @Path("/clear")
+    public RagClearResult clearRagData() {
+        try {
+            LOG.info("Iniciando limpeza dos dados do RAG no Redis...");
+            
+            // Busca todas as chaves com o prefixo do RAG (doc:)
+            List<String> ragKeys = redisService.getKeysByPattern("doc:*");
+            
+            if (ragKeys.isEmpty()) {
+                LOG.info("Nenhum dado do RAG encontrado no Redis");
+                return new RagClearResult(true, "Nenhum dado do RAG encontrado", 0);
+            }
+            
+            // Deleta as chaves
+            long deletedCount = redisService.deleteKeys(ragKeys);
+            
+            // Reseta o status de ingestão
+            documentIngestionService.resetIngestionStatus();
+            
+            LOG.info("Limpeza concluída. " + deletedCount + " chaves deletadas");
+            return new RagClearResult(true, "Dados do RAG limpos com sucesso", deletedCount);
+            
+        } catch (Exception e) {
+            LOG.error("Erro ao limpar dados do RAG", e);
+            return new RagClearResult(false, "Erro ao limpar dados: " + e.getMessage(), 0);
+        }
+    }
+    
     private String getFileType(String filename) {
         if (filename.endsWith(".md")) return "Markdown";
         if (filename.endsWith(".txt")) return "Text";
@@ -171,5 +210,6 @@ public class RagResource {
     public record RagUploadResult(boolean success, String message, String filename) {}
     public record RagDocumentsResult(int count, List<DocumentInfo> documents) {}
     public record RagDeleteResult(boolean success, String message) {}
+    public record RagClearResult(boolean success, String message, long deletedCount) {}
     public record DocumentInfo(String name, long size, String type) {}
 }
