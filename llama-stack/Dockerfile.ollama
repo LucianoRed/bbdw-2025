@@ -1,0 +1,10 @@
+# Alternativa CPU usando Ollama (OpenAI API compatível)
+FROM ollama/ollama:latest
+
+ENV OLLAMA_HOST=0.0.0.0 \
+    OLLAMA_KEEP_ALIVE=24h
+
+# Porta padrão do Ollama
+EXPOSE 11434
+
+# Entry padrão da imagem já é `ollama serve`
