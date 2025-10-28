@@ -287,9 +287,9 @@
         const formContainer = document.getElementById('form-container');
 
         // Verifica se já enviou feedback
-        // if (localStorage.getItem(STORAGE_KEY) === 'true') {
-        //     showAlreadySubmitted();
-        // }
+        if (localStorage.getItem(STORAGE_KEY) === 'true') {
+            showAlreadySubmitted();
+        }
 
         // Contador de caracteres
         textarea.addEventListener('input', () => {

@@ -2,12 +2,16 @@ package com.redhat.chat;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import com.redhat.mcp.McpCallEvent;
+import com.redhat.mcp.McpEventService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -17,7 +21,10 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
 @Path("/chat")
 @Produces(MediaType.APPLICATION_JSON)
@@ -57,13 +64,19 @@ public class ChatResource {
     @Inject
     ChatMemoryStore chatMemoryStore;
 
+    @Inject
+    McpEventService mcpEventService;
+
     /**
      * Endpoint tradicional que retorna a resposta completa
      */
     @POST
     @Path("/message")
     @RunOnVirtualThread
-    public String sendMessage(ChatRequest request) {
+    public Response sendMessage(ChatRequest request) {
+        // Gera um requestId único para rastrear esta requisição
+        String requestId = "req-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 10000);
+        
         // Se sessionId for null, gera um ID único para esta requisição (sem memória)
         // Se sessionId existir, usa ele para manter o histórico
         String memoryId = request.sessionId() != null 
@@ -74,8 +87,26 @@ public class ChatResource {
         boolean useRag = request.useRag() != null ? request.useRag() : false;
         String modelName = request.model() != null ? request.model() : "gpt4o-mini";
         
-        // Seleciona o agente baseado no modelo
-        return routeMessage(modelName, memoryId, request.message(), useMcp, useRag);
+        // Se MCP está ativo, registra o requestId no serviço de eventos
+        if (useMcp) {
+            mcpEventService.setCurrentRequestId(requestId);
+            Log.infof("Iniciando requisição com MCP ativo - RequestId: %s", requestId);
+        }
+        
+        try {
+            // Seleciona o agente baseado no modelo
+            String result = routeMessage(modelName, memoryId, request.message(), useMcp, useRag);
+            
+            // Retorna com o requestId no header
+            return Response.ok(result)
+                    .header("X-Request-Id", requestId)
+                    .build();
+        } finally {
+            // Limpa o requestId do thread
+            if (useMcp) {
+                mcpEventService.clearCurrentRequestId();
+            }
+        }
     }
     
     /**
@@ -230,6 +261,24 @@ public class ChatResource {
     }
 
     /**
+     * Endpoint para buscar chamadas MCP recentes de uma requisição
+     * Retorna as chamadas MCP que foram feitas nos últimos segundos
+     */
+    @GET
+    @Path("/mcp-calls/{requestId}")
+    public List<McpCallDTO> getMcpCalls(@PathParam("requestId") String requestId) {
+        List<McpCallEvent> events = mcpEventService.getEvents(requestId);
+        
+        return events.stream()
+                .map(event -> new McpCallDTO(
+                        event.getToolName(),
+                        event.getStatus(),
+                        event.getTimestamp().toEpochMilli()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Record para receber a requisição do chat
      */
     public record ChatRequest(
@@ -246,5 +295,14 @@ public class ChatResource {
     public record MessageDTO(
         String role,
         String content
+    ) {}
+
+    /**
+     * Record para retornar chamadas MCP
+     */
+    public record McpCallDTO(
+        String name,
+        String status,
+        Long timestamp
     ) {}
 }

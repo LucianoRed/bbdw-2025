@@ -1115,6 +1115,79 @@
             font-weight: 600;
             color: var(--text-primary);
         }
+
+        /* Indicador de MCP Tools */
+        .mcp-tools-indicator {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin: 10px 0;
+            font-size: 13px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .mcp-tools-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .mcp-tools-spinner {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        .mcp-tool-call {
+            background: var(--bg-secondary);
+            border-left: 3px solid var(--accent);
+            padding: 8px 12px;
+            margin: 6px 0;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .mcp-tool-name {
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .mcp-tool-status {
+            margin-left: auto;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+
+        .mcp-tool-status.executing {
+            background: #fbbf24;
+            color: #000;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .mcp-tool-status.completed {
+            background: #10b981;
+            color: white;
+        }
+
+        .mcp-tool-status.error {
+            background: var(--danger);
+            color: white;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
     </style>
 </head>
 <body>
@@ -1759,6 +1832,25 @@
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
+            // Cria indicador de MCP tools se MCP estiver ativo
+            let mcpIndicator = null;
+            let mcpToolsMap = new Map(); // Mapa para rastrear status das tools
+            let pollingInterval = null;
+            let requestId = null;
+            
+            if (useMcp) {
+                mcpIndicator = document.createElement('div');
+                mcpIndicator.className = 'mcp-tools-indicator';
+                mcpIndicator.innerHTML = `
+                    <div class="mcp-tools-header">
+                        <span class="mcp-tools-spinner">🔌</span>
+                        <span>MCP Tools Ativas</span>
+                    </div>
+                    <div id="mcp-tools-list"></div>
+                `;
+                aiMessageDiv.parentElement.insertBefore(mcpIndicator, aiMessageDiv);
+            }
+
             try {
                 // Usa o endpoint tradicional (não-streaming) com @RunOnVirtualThread
                 const response = await fetch('/chat/message', {
@@ -1779,17 +1871,105 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
+                // Obtém o requestId do header
+                requestId = response.headers.get('X-Request-Id');
+                console.log('RequestId recebido:', requestId);
+                
+                // Se MCP está ativo e temos requestId, inicia polling
+                if (useMcp && requestId && mcpIndicator) {
+                    pollingInterval = setInterval(() => pollMcpCalls(requestId, mcpToolsMap), 500);
+                }
+
                 const text = await response.text();
                 aiMessageDiv.innerHTML = parseMarkdown(text);
                 aiMessageDiv.classList.remove('streaming');
                 updateMessageCount();
+                
+                // Para o polling e remove indicador MCP após conclusão
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                }
+                if (mcpIndicator && mcpToolsMap.size === 0) {
+                    mcpIndicator.remove();
+                }
+                
             } catch (error) {
                 console.error('Erro ao enviar mensagem:', error);
                 aiMessageDiv.innerHTML = '<p>❌ Erro ao comunicar com o servidor</p>';
                 aiMessageDiv.classList.remove('streaming');
+                
+                // Para o polling e remove indicador MCP em caso de erro
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                }
+                if (mcpIndicator) {
+                    mcpIndicator.remove();
+                }
             } finally {
                 sendButton.disabled = false;
                 messageInput.focus();
+            }
+        }
+
+        /**
+         * Faz polling das chamadas MCP para um requestId
+         */
+        async function pollMcpCalls(requestId, toolsMap) {
+            try {
+                const response = await fetch(`/chat/mcp-calls/${requestId}`);
+                if (!response.ok) return;
+                
+                const events = await response.json();
+                const toolList = document.getElementById('mcp-tools-list');
+                if (!toolList) return;
+                
+                // Processa cada evento
+                for (const event of events) {
+                    const toolName = event.name;
+                    const status = event.status;
+                    
+                    // Se é uma nova tool ou status mudou
+                    const currentStatus = toolsMap.get(toolName);
+                    if (!currentStatus || currentStatus !== status) {
+                        toolsMap.set(toolName, status);
+                        
+                        // Atualiza ou cria o elemento da tool
+                        let toolDiv = document.getElementById(`mcp-tool-${toolName.replace(/[^a-zA-Z0-9]/g, '_')}`);
+                        
+                        if (!toolDiv) {
+                            // Cria novo elemento
+                            toolDiv = document.createElement('div');
+                            toolDiv.className = 'mcp-tool-call';
+                            toolDiv.id = `mcp-tool-${toolName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                            toolList.appendChild(toolDiv);
+                        }
+                        
+                        // Atualiza conteúdo baseado no status
+                        if (status === 'calling') {
+                            toolDiv.innerHTML = `
+                                <span>🔧</span>
+                                <span class="mcp-tool-name">${toolName}</span>
+                                <span class="mcp-tool-status executing">Executando...</span>
+                            `;
+                        } else if (status === 'completed') {
+                            toolDiv.innerHTML = `
+                                <span>🔧</span>
+                                <span class="mcp-tool-name">${toolName}</span>
+                                <span class="mcp-tool-status completed">✓ Concluído</span>
+                            `;
+                        } else if (status === 'error') {
+                            toolDiv.innerHTML = `
+                                <span>🔧</span>
+                                <span class="mcp-tool-name">${toolName}</span>
+                                <span class="mcp-tool-status error">✗ Erro</span>
+                            `;
+                        }
+                        
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao fazer polling de MCP calls:', error);
             }
         }
 
