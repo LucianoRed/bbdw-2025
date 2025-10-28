@@ -103,3 +103,81 @@ export const setDeploymentReplicasTool = {
     }
   },
 };
+
+export const addDeploymentEnvVarTool = {
+  name: 'add_deployment_env_var',
+  description: 'Adiciona (ou atualiza) uma variável de ambiente em um Deployment. Usa strategic-merge-patch. Requer confirmação explícita (confirm: true).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      namespace: { type: 'string', description: 'Namespace do Deployment.' },
+      deployment: { type: 'string', description: 'Nome do Deployment.' },
+      container: { type: 'string', description: 'Nome do container. Se omitido, será inferido se houver apenas um container.' },
+      name: { type: 'string', description: 'Nome da variável de ambiente.' },
+      value: { type: 'string', description: 'Valor da variável de ambiente.' },
+      confirm: { type: 'boolean', description: 'Confirmação obrigatória para operações de escrita.' },
+      dryRun: { type: 'boolean', description: 'Se true, aplica em dry-run (?dryRun=All).' },
+    },
+    required: ['namespace','deployment','name','value','confirm'],
+    additionalProperties: false,
+  },
+  handler: async (args) => {
+    const ns = typeof args.namespace === 'string' ? args.namespace : '';
+    const deployment = typeof args.deployment === 'string' ? args.deployment : '';
+    const containerInput = typeof args.container === 'string' ? args.container : '';
+    const envName = typeof args.name === 'string' ? args.name : '';
+    const envValue = typeof args.value === 'string' ? args.value : '';
+    const confirm = !!args.confirm;
+    const dryRun = !!args.dryRun;
+
+    if (!ns) return { content: [{ type: 'text', text: 'Erro: parâmetro "namespace" obrigatório.' }], isError: true };
+    if (!deployment) return { content: [{ type: 'text', text: 'Erro: parâmetro "deployment" obrigatório.' }], isError: true };
+    if (!envName) return { content: [{ type: 'text', text: 'Erro: parâmetro "name" da env obrigatório.' }], isError: true };
+    if (!confirm) return { content: [{ type: 'text', text: 'Confirmação de escrita necessária: defina "confirm": true para aplicar o patch.' }], isError: true };
+
+    // Descobrir container se não informado
+    let container = containerInput;
+    try {
+      if (!container) {
+        const dep = await k8sGet(`/apis/apps/v1/namespaces/${ns}/deployments/${encodeURIComponent(deployment)}`, { optional: false });
+        const containers = dep?.spec?.template?.spec?.containers || [];
+        if (containers.length === 1) {
+          container = containers[0]?.name;
+        } else {
+          return { content: [{ type: 'text', text: 'Erro: informe "container" (há 0 ou mais de 1 containers no deployment).' }], isError: true };
+        }
+      }
+    } catch (e) {
+      const status = e?.statusCode || 500;
+      if (status === 404) return { content: [{ type: 'text', text: `Deployment "${deployment}" não encontrado em "${ns}".` }], isError: true };
+      return { content: [{ type: 'text', text: `Erro (${status}) ao obter Deployment: ${e.message}` }], isError: true };
+    }
+
+    // Strategic merge patch para env var
+    const patch = {
+      spec: {
+        template: {
+          spec: {
+            containers: [
+              {
+                name: container,
+                env: [ { name: envName, value: envValue } ],
+              }
+            ]
+          }
+        }
+      }
+    };
+
+    try {
+      let path = `/apis/apps/v1/namespaces/${ns}/deployments/${encodeURIComponent(deployment)}`;
+      if (dryRun) path += '?dryRun=All';
+      const result = await k8sPatch(path, patch, 'application/strategic-merge-patch+json');
+      const response = { namespace: ns, deployment, container, env: { name: envName, value: envValue }, dryRun, result };
+      return { content: [{ type: 'text', text: JSON.stringify(response, null, 2) }] };
+    } catch (e) {
+      const status = e?.statusCode || 500;
+      return { content: [{ type: 'text', text: `Erro (${status}) ao aplicar env no Deployment: ${e.message}` }], isError: true };
+    }
+  },
+};
