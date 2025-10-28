@@ -95,6 +95,45 @@ export async function k8sGet(path, { optional = false } = {}) {
   });
 }
 
+// GET bruto (texto) — útil para endpoints como /log
+export async function k8sGetRaw(path, { optional = false } = {}) {
+  if (!K8S_API_URL || !K8S_BEARER_TOKEN) {
+    if (optional) return '';
+    const err = new Error('Defina K8S_API_URL e K8S_BEARER_TOKEN no ambiente do servidor MCP.');
+    err.statusCode = 500;
+    throw err;
+  }
+  const url = `${K8S_API_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
+  const headers = {
+    'Accept': 'text/plain',
+    'Authorization': `Bearer ${K8S_BEARER_TOKEN}`,
+  };
+  const agent = new https.Agent({ rejectUnauthorized: !K8S_SKIP_TLS_VERIFY });
+  return await new Promise((resolve, reject) => {
+    const req = https.request(url, { method: 'GET', headers, agent }, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          if (optional) return resolve('');
+          const err = new Error(`Falha HTTP ${res.statusCode} em ${path}`);
+          err.statusCode = res.statusCode;
+          return reject(err);
+        }
+        resolve(data);
+      });
+    });
+    req.on('error', (e) => {
+      if (optional) return resolve('');
+      const err = new Error(`Erro ao consultar API: ${e.message}`);
+      err.statusCode = 502;
+      reject(err);
+    });
+    req.end();
+  });
+}
+
 export async function k8sPost(path, body) {
   if (!K8S_API_URL || !K8S_BEARER_TOKEN) {
     const err = new Error('Defina K8S_API_URL e K8S_BEARER_TOKEN no ambiente do servidor MCP.');
