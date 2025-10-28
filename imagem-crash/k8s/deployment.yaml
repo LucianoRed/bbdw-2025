@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: imagem-crash
+  namespace: default
+  labels:
+    app: imagem-crash
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: imagem-crash
+  template:
+    metadata:
+      labels:
+        app: imagem-crash
+    spec:
+      containers:
+        - name: app
+          image: <registry>/<user>/imagem-crash:latest
+          imagePullPolicy: IfNotPresent
+          # Sem a env obrigatória -> o container vai encerrar com código 42
+          # env:
+          #   - name: APP_REQUIRED_TOKEN
+          #     value: "preencha"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          # Opcional: mostrar claramente o motivo no evento de falha
+          # command: ["/entrypoint.sh"]
+      restartPolicy: Always
