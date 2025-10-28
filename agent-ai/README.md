@@ -69,6 +69,30 @@ oc new-app . --name=agent-ai \
   -e QUARKUS_REDIS_HOSTS=redis://redis:6379
 ```
 
+### Configurar Timeout do Router (IMPORTANTE)
+
+Para modelos que demoram mais de 30 segundos (como GPT-5 com MCP), você precisa aumentar o timeout do OpenShift Router:
+
+```bash
+# Anotar a rota para timeout de 10 minutos
+oc annotate route agent-ai haproxy.router.openshift.io/timeout=600s
+```
+
+Ou via YAML da rota:
+
+```yaml
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: agent-ai
+  annotations:
+    haproxy.router.openshift.io/timeout: 600s
+spec:
+  # ... resto da configuração
+```
+
+**Nota**: O timeout padrão do OpenShift Router é 30 segundos. Sem essa configuração, requisições longas retornarão `ERR_EMPTY_RESPONSE`.
+
 ## Endpoints
 
 - `POST /chat/message` - Chat síncrono (com @RunOnVirtualThread)

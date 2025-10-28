@@ -44,6 +44,12 @@ public class ChatResource {
     
     @Inject
     AgentGPT41Nano agentGPT41Nano;
+    
+    @Inject
+    AgentGPT5 agentGPT5;
+    
+    @Inject
+    AgentGPT5Mini agentGPT5Mini;
 
     @Inject
     ChatMemoryProvider chatMemoryProvider;
@@ -97,6 +103,14 @@ public class ChatResource {
             case "gpt-4.1-nano", "gpt41-nano" -> {
                 if (useMcp) yield agentGPT41Nano.sendMessageWithMcp(memoryId, message);
                 else yield agentGPT41Nano.sendMessage(memoryId, message);
+            }
+            case "gpt-5", "gpt5" -> {
+                if (useMcp) yield agentGPT5.sendMessageWithMcp(memoryId, message);
+                else yield agentGPT5.sendMessage(memoryId, message);
+            }
+            case "gpt-5-mini", "gpt5-mini" -> {
+                if (useMcp) yield agentGPT5Mini.sendMessageWithMcp(memoryId, message);
+                else yield agentGPT5Mini.sendMessage(memoryId, message);
             }
             default -> {
                 // Fallback para o agente padrão com RAG support
