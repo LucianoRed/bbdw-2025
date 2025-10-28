@@ -64,22 +64,34 @@ curl -s http://localhost:8000/v1/models | jq
 Se você só precisa validar a API OpenAI compatível em CPU, uma opção simples é usar o Ollama:
 
 ```bash
-# construir (opcional, pode usar a imagem oficial diretamente)
+# construir imagem com Modelfile e entrypoint que cria o modelo customizado
 docker build -f Dockerfile.ollama -t llama-stack:ollama .
 
 # executar mapeando 8000 -> 11434
-docker run --rm -p 8000:11434 --name ollama llama-stack:ollama
-# ou diretamente com a imagem oficial
-# docker run --rm -p 8000:11434 --name ollama ollama/ollama:latest
+docker run -d --rm -p 8000:11434 --name ollama llama-stack:ollama
 
-# (em outro terminal) baixar um modelo leve
-docker exec -it ollama ollama pull tinyllama
-
-# testar endpoint OpenAI compatível
+# listar modelos (deve incluir bbdw-tiny)
 curl -s http://localhost:8000/v1/models | jq
+
+# exemplo de chat completion usando bbdw-tiny
+curl -s http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model":"bbdw-tiny:latest",
+    "messages":[{"role":"user","content":"Diga olá em uma frase."}],
+    "max_tokens":32
+  }' | jq .choices[0].message
 ```
 
 Observações:
 
 - A API do Ollama expõe endpoints OpenAI-compatíveis em `/v1/*`, funcionando com muitas libs cliente existentes.
 - Em produção/GPU, prefira vLLM; para desenvolvimento em macOS sem GPU, Ollama é prático.
+
+### Como personalizar as instruções padrão
+
+- Edite `ollama/Modelfile` (bloco `SYSTEM`) para ajustar o tom, idioma e regras.
+- Rebuild a imagem `Dockerfile.ollama` e reinicie o container.
+- Variáveis úteis (podem ser sobrescritas no `docker run`):
+  - `BASE_MODEL` (padrão: `tinyllama`) — base do modelo.
+  - `OLLAMA_MODEL_TAG` (padrão: `bbdw-tiny`) — nome do modelo customizado.

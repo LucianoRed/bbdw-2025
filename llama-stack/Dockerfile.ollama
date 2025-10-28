@@ -2,9 +2,18 @@
 FROM ollama/ollama:latest
 
 ENV OLLAMA_HOST=0.0.0.0 \
-    OLLAMA_KEEP_ALIVE=24h
+    OLLAMA_KEEP_ALIVE=24h \
+    OLLAMA_MODEL_TAG=bbdw-tiny \
+    BASE_MODEL=tinyllama \
+    MODELFILE_PATH=/etc/ollama/Modelfile
+
+# Copia Modelfile e entrypoint que cria o modelo com instruções básicas
+COPY ollama/Modelfile /etc/ollama/Modelfile
+COPY entrypoint-ollama.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Porta padrão do Ollama
 EXPOSE 11434
 
-# Entry padrão da imagem já é `ollama serve`
+# Inicia o daemon, aguarda readiness e cria o modelo customizado
+ENTRYPOINT ["/entrypoint.sh"]
