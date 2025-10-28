@@ -28,9 +28,13 @@ export const getPodLogsTool = {
     additionalProperties: false,
   },
   handler: async (args) => {
-    const ns = sanitizeLineInput(args.namespace || '');
-    let name = sanitizeLineInput(args.name || '');
-    const container = sanitizeLineInput(args.container || '');
+  let ns = sanitizeLineInput(args.namespace || '');
+  let name = sanitizeLineInput(args.name || '');
+  const container = sanitizeLineInput(args.container || '');
+
+  // Forçar lowercase (DNS-1123)
+  ns = ns.toLowerCase();
+  name = name.toLowerCase();
 
     // Se o nome ainda parecer inválido (ex.: contém espaços), tente extrair um DNS-1123 válido
     if (!/^[a-z0-9]([-a-z0-9\.]*[a-z0-9])?$/.test(name)) {
@@ -63,7 +67,10 @@ export const getPodLogsTool = {
       return { content: [{ type: 'text', text: out }] };
     } catch (e) {
       const status = e?.statusCode || 500;
-      return { content: [{ type: 'text', text: `Erro (${status}) ao obter logs: ${e.message}` }], isError: true };
+      const hint = (status === 406 || status === 415)
+        ? '\nDica: verifique se o nome do Pod está correto (sem quebras de linha) e, se houver múltiplos containers no Pod, informe o parâmetro "container".'
+        : '';
+      return { content: [{ type: 'text', text: `Erro (${status}) ao obter logs: ${e.message}${hint}` }], isError: true };
     }
   },
 };

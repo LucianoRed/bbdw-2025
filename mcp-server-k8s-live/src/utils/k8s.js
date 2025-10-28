@@ -104,34 +104,61 @@ export async function k8sGetRaw(path, { optional = false } = {}) {
     throw err;
   }
   const url = `${K8S_API_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
-  const headers = {
-    'Accept': 'text/plain',
+  // Alguns clusters/proxies retornam 406 Not Acceptable se o header Accept for muito restritivo.
+  // Estratégia: tentar com 'text/plain; charset=utf-8, */*' e, em caso de 406, fazer retries com '*/*' e sem Accept.
+  const baseHeaders = {
     'Authorization': `Bearer ${K8S_BEARER_TOKEN}`,
   };
   const agent = new https.Agent({ rejectUnauthorized: !K8S_SKIP_TLS_VERIFY });
-  return await new Promise((resolve, reject) => {
-    const req = https.request(url, { method: 'GET', headers, agent }, (res) => {
-      let data = '';
-      res.setEncoding('utf8');
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        if (res.statusCode < 200 || res.statusCode >= 300) {
-          if (optional) return resolve('');
-          const err = new Error(`Falha HTTP ${res.statusCode} em ${path}`);
-          err.statusCode = res.statusCode;
-          return reject(err);
-        }
-        resolve(data);
+  async function tryOnce(customHeaders) {
+    return await new Promise((resolve, reject) => {
+      const req = https.request(url, { method: 'GET', headers: customHeaders, agent }, (res) => {
+        let data = '';
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            const err = new Error(`Falha HTTP ${res.statusCode} em ${path}`);
+            err.statusCode = res.statusCode;
+            return reject(err);
+          }
+          resolve(data);
+        });
       });
+      req.on('error', (e) => {
+        const err = new Error(`Erro ao consultar API: ${e.message}`);
+        err.statusCode = 502;
+        reject(err);
+      });
+      req.end();
     });
-    req.on('error', (e) => {
-      if (optional) return resolve('');
-      const err = new Error(`Erro ao consultar API: ${e.message}`);
-      err.statusCode = 502;
-      reject(err);
-    });
-    req.end();
-  });
+  }
+
+  // Tentativas progressivas de Accept
+  const attempts = [
+    { Accept: 'text/plain; charset=utf-8, */*' },
+    { Accept: '*/*' },
+    {}, // sem Accept
+  ];
+
+  let lastErr = null;
+  for (const add of attempts) {
+    const headers = { ...baseHeaders, ...(add.Accept ? { Accept: add.Accept } : {}) };
+    try {
+      return await tryOnce(headers);
+    } catch (e) {
+      // Retry apenas em 406; para outros códigos, respeitar optional
+      if (e?.statusCode !== 406) {
+        if (optional) return '';
+        throw e;
+      }
+      lastErr = e;
+      // tenta próxima variação de Accept
+    }
+  }
+  if (optional) return '';
+  // Se ainda assim falhar, propaga a última
+  throw lastErr || new Error('Falha ao obter logs (negociação de conteúdo).');
 }
 
 export async function k8sPost(path, body) {
