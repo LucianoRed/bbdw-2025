@@ -1,0 +1,16 @@
+{
+  "name": "mcp-server-k8s-security",
+  "version": "0.1.0",
+  "description": "MCP server focado em segurança: NetworkPolicies, logs de pods e namespaces",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.0"
+  }
+}

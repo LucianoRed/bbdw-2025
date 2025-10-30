@@ -1,0 +1,11 @@
+# Dependências locais (usamos npm ci na imagem)
+node_modules
+npm-debug.log
+
+# VCS
+.git
+.gitignore
+
+# SO / editor
+.DS_Store
+*.swp
