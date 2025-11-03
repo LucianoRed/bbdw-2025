@@ -19,6 +19,7 @@ const server = new Server({
 const K8S_CLUSTER_NAME = process.env.K8S_CLUSTER_NAME || (K8S_API_URL ? (() => { try { return new URL(K8S_API_URL).hostname; } catch { return 'desconhecido'; } })() : 'desconhecido');
 
 // Helpers
+const CORS_ALLOW_CREDENTIALS = (process.env.CORS_ALLOW_CREDENTIALS || 'false').toLowerCase() === 'true';
 function getToolsList() {
   return { tools: toolsRegistry.map(t => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })) };
 }
@@ -56,13 +57,17 @@ if (ENABLE_STDIO) {
 
 const PORT = Number(process.env.PORT || 3000);
 
-function sendJson(res, status, data) {
+function sendJson(res, status, data, req) {
   const body = JSON.stringify(data);
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': req?.headers?.origin || '*',
+    'Vary': 'Origin',
+    'Access-Control-Allow-Headers': req?.headers?.['access-control-request-headers'] || 'Content-Type, Authorization, mcp-protocol-version, mcp-session-id',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
     'Access-Control-Expose-Headers': 'mcp-protocol-version, mcp-session-id',
+    ...(CORS_ALLOW_CREDENTIALS ? { 'Access-Control-Allow-Credentials': 'true' } : {}),
   });
   res.end(body);
 }
@@ -86,17 +91,21 @@ const httpServer = http.createServer(async (req, res) => {
     const pathname = u.pathname;
 
     if (req.method === 'OPTIONS') {
+      const allowHeaders = req.headers['access-control-request-headers'] || 'Content-Type, Authorization, mcp-protocol-version, mcp-session-id';
       res.writeHead(204, {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': req.headers.origin || '*',
+        'Vary': 'Origin',
         'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, mcp-protocol-version, mcp-session-id, Authorization',
+        'Access-Control-Allow-Headers': allowHeaders,
+        'Access-Control-Max-Age': '600',
         'Access-Control-Expose-Headers': 'mcp-protocol-version, mcp-session-id',
+        ...(CORS_ALLOW_CREDENTIALS ? { 'Access-Control-Allow-Credentials': 'true' } : {}),
       });
       return res.end();
     }
 
     if (req.method === 'GET' && pathname === '/healthz') {
-      return sendJson(res, 200, { status: 'ok' });
+      return sendJson(res, 200, { status: 'ok' }, req);
     }
 
     // JSON-RPC over HTTP (streamable)
@@ -139,18 +148,20 @@ const httpServer = http.createServer(async (req, res) => {
           response = { jsonrpc: '2.0', id: request.id, error: { code: -32601, message: 'Method not found' } };
         }
         console.error('[MCP] Sending response:', JSON.stringify(response));
-        return sendJson(res, 200, response);
+        return sendJson(res, 200, response, req);
       } catch (e) {
         console.error('[MCP] Error processing request:', e);
         const errorResponse = { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error', data: e.message } };
-        return sendJson(res, 400, errorResponse);
+        return sendJson(res, 400, errorResponse, req);
       }
     }
 
     // SSE endpoint
     if (req.method === 'GET' && pathname === '/mcp/sse') {
       const endpoint = '/mcp/messages';
-      res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+      res.setHeader('Vary', 'Origin');
+  if (CORS_ALLOW_CREDENTIALS) res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Expose-Headers', 'mcp-protocol-version, mcp-session-id');
       const sse = new SSEServerTransport(endpoint, res);
       await sse.start();
@@ -163,17 +174,19 @@ const httpServer = http.createServer(async (req, res) => {
       const sessionId = u.searchParams.get('sessionId') || '';
       const sse = sseSessions.get(sessionId);
       if (!sse) {
-        res.writeHead(404, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'mcp-protocol-version, mcp-session-id' });
+        res.writeHead(404, { 'Access-Control-Allow-Origin': req.headers.origin || '*', 'Vary': 'Origin', 'Access-Control-Expose-Headers': 'mcp-protocol-version, mcp-session-id', ...(CORS_ALLOW_CREDENTIALS ? { 'Access-Control-Allow-Credentials': 'true' } : {}) });
         return res.end('Unknown session');
       }
-      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+      res.setHeader('Vary', 'Origin');
+      if (CORS_ALLOW_CREDENTIALS) res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Expose-Headers', 'mcp-protocol-version, mcp-session-id');
       return sse.handlePostMessage(req, res);
     }
 
-    return sendJson(res, 404, { error: 'Not found' });
+    return sendJson(res, 404, { error: 'Not found' }, req);
   } catch (e) {
-    return sendJson(res, 500, { error: 'Erro interno' });
+    return sendJson(res, 500, { error: 'Erro interno' }, req);
   }
 });
 
