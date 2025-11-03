@@ -44,7 +44,8 @@ export const listNetworkPoliciesTool = {
         egressCount: Array.isArray(np?.spec?.egress) ? np.spec.egress.length : 0,
         creationTimestamp: np?.metadata?.creationTimestamp || null,
       }));
-      return { content: [{ type: 'json', json: limit ? items.slice(0, limit) : items }] };
+      const out = JSON.stringify(limit ? items.slice(0, limit) : items, null, 2);
+      return { content: [{ type: 'text', text: out }] };
     } catch (e) {
       const status = e?.statusCode || 500;
       return { content: [{ type: 'text', text: `Erro (${status}) ao listar NetworkPolicies: ${e.message}` }], isError: true };
@@ -87,8 +88,8 @@ export const createNetworkPolicyTool = {
     };
     const path = `/apis/networking.k8s.io/v1/namespaces/${ns}/networkpolicies${dryRun ? '?dryRun=All' : ''}`;
     try {
-      const created = await k8sPost(path, body);
-      return { content: [{ type: 'json', json: created }] };
+  const created = await k8sPost(path, body);
+  return { content: [{ type: 'text', text: JSON.stringify(created, null, 2) }] };
     } catch (e) {
       const status = e?.statusCode || 500;
       return { content: [{ type: 'text', text: `Erro (${status}) ao criar NetworkPolicy: ${e.message}` }], isError: true };
@@ -122,8 +123,8 @@ export const deleteNetworkPolicyTool = {
 
     const path = `/apis/networking.k8s.io/v1/namespaces/${ns}/networkpolicies/${encodeURIComponent(name)}${dryRun ? '?dryRun=All' : ''}`;
     try {
-      const out = await k8sDelete(path);
-      return { content: [{ type: 'json', json: out }] };
+  const out = await k8sDelete(path);
+  return { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] };
     } catch (e) {
       const status = e?.statusCode || 500;
       return { content: [{ type: 'text', text: `Erro (${status}) ao deletar NetworkPolicy: ${e.message}` }], isError: true };
@@ -150,8 +151,8 @@ export const getNetworkPolicyTool = {
     if (!name) return { content: [{ type: 'text', text: 'Parâmetro "name" obrigatório.' }], isError: true };
     const path = `/apis/networking.k8s.io/v1/namespaces/${ns}/networkpolicies/${encodeURIComponent(name)}`;
     try {
-      const np = await k8sGet(path);
-      return { content: [{ type: 'json', json: np }] };
+  const np = await k8sGet(path);
+  return { content: [{ type: 'text', text: JSON.stringify(np, null, 2) }] };
     } catch (e) {
       const status = e?.statusCode || 500;
       const msg = status === 404 ? 'NetworkPolicy não encontrada.' : `Erro (${status}) ao obter NetworkPolicy: ${e.message}`;
@@ -245,8 +246,8 @@ export const createNetworkPolicyTemplateTool = {
     };
     const path = `/apis/networking.k8s.io/v1/namespaces/${ns}/networkpolicies${dryRun ? '?dryRun=All' : ''}`;
     try {
-      const created = await k8sPost(path, body);
-      return { content: [{ type: 'json', json: created }] };
+  const created = await k8sPost(path, body);
+  return { content: [{ type: 'text', text: JSON.stringify(created, null, 2) }] };
     } catch (e) {
       const status = e?.statusCode || 500;
       return { content: [{ type: 'text', text: `Erro (${status}) ao criar NetworkPolicy (template ${template}): ${e.message}` }], isError: true };

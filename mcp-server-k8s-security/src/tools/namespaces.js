@@ -25,7 +25,8 @@ export const listNamespacesTool = {
         status: ns?.status?.phase || 'Unknown',
         creationTimestamp: ns?.metadata?.creationTimestamp || null,
       }));
-      return { content: [{ type: 'json', json: limit ? items.slice(0, limit) : items }] };
+      const out = JSON.stringify(limit ? items.slice(0, limit) : items, null, 2);
+      return { content: [{ type: 'text', text: out }] };
     } catch (e) {
       const status = e?.statusCode || 500;
       return { content: [{ type: 'text', text: `Erro (${status}) ao listar namespaces: ${e.message}` }], isError: true };
