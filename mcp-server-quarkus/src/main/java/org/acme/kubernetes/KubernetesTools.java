@@ -35,6 +35,9 @@ import io.quarkiverse.mcp.server.ToolCallException;
 import io.smallrye.common.annotation.Blocking;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.Instant;
 import java.lang.reflect.Method;
 import java.time.format.DateTimeParseException;
@@ -76,11 +79,23 @@ public class KubernetesTools {
 
     private final KubernetesClient client;
     private final KubernetesServiceConfig config;
+    private final ObjectMapper objectMapper;
 
     @Inject
     public KubernetesTools(KubernetesClient client, KubernetesServiceConfig config) {
         this.client = client;
         this.config = config;
+        this.objectMapper = new ObjectMapper();
+        this.objectMapper.registerModule(new JavaTimeModule());
+        this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    }
+
+    private String toJson(Object obj) {
+        try {
+            return objectMapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            throw new ToolCallException("Failed to serialize response: " + e.getMessage());
+        }
     }
 
     private String resolveNamespace(String candidate) {
@@ -449,9 +464,9 @@ public class KubernetesTools {
                 count);
     }
 
-    @Tool(name = "get_deployments", description = "Lists Deployments along with replica counts and selectors.", structuredContent = true)
+    @Tool(name = "get_deployments", description = "Lists Deployments along with replica counts and selectors.")
     @Blocking
-    public List<DeploymentSummary> getDeployments(
+    public String getDeployments(
             @ToolArg(description = "Namespace to inspect.", defaultValue = "") String namespace,
             @ToolArg(description = "Optional Kubernetes label selector (e.g. app=api,tier!=dev).", defaultValue = "") String labelSelector) {
         String ns = resolveNamespace(namespace);
@@ -459,15 +474,16 @@ public class KubernetesTools {
         DeploymentList list = (labelSelector != null && !labelSelector.isBlank())
                 ? deploymentOp.withLabelSelector(labelSelector).list()
                 : deploymentOp.list();
-        return Optional.ofNullable(list.getItems()).orElse(List.of()).stream()
+        List<DeploymentSummary> result = Optional.ofNullable(list.getItems()).orElse(List.of()).stream()
                 .sorted(Comparator.comparing(d -> Optional.ofNullable(d.getMetadata()).map(meta -> meta.getName()).orElse("")))
                 .map(KubernetesTools::toDeploymentSummary)
                 .toList();
+        return toJson(result);
     }
 
-    @Tool(name = "set_deployment_replicas", description = "Scales a Deployment to the requested replica count.", structuredContent = true)
+    @Tool(name = "set_deployment_replicas", description = "Scales a Deployment to the requested replica count.")
     @Blocking
-    public ScaleOperationResult setDeploymentReplicas(
+    public String setDeploymentReplicas(
             @ToolArg(description = "Namespace that holds the Deployment.", defaultValue = "") String namespace,
             @ToolArg(description = "Deployment name.") String deployment,
             @ToolArg(description = "Desired replica count.") int replicas,
@@ -480,17 +496,18 @@ public class KubernetesTools {
         }
         Deployment updated = config.dryRun() ? current : resource.scale(replicas, waitForReadiness);
         DeploymentStatus status = updated.getStatus();
-        return new ScaleOperationResult(
+        ScaleOperationResult result = new ScaleOperationResult(
                 ns,
                 deployment,
                 replicas,
                 safeInt(status != null ? status.getReplicas() : null),
                 Instant.now());
+        return toJson(result);
     }
 
-    @Tool(name = "add_deployment_env_var", description = "Adds or updates an environment variable for a Deployment container.", structuredContent = true)
+    @Tool(name = "add_deployment_env_var", description = "Adds or updates an environment variable for a Deployment container.")
     @Blocking
-    public EnvVarPatchResult addDeploymentEnvVar(
+    public String addDeploymentEnvVar(
             @ToolArg(description = "Namespace that holds the Deployment.", defaultValue = "") String namespace,
             @ToolArg(description = "Deployment name.") String deployment,
             @ToolArg(description = "Target container name (defaults to the first container).", defaultValue = "") String container,
@@ -529,12 +546,13 @@ public class KubernetesTools {
         if (!config.dryRun()) {
             resource.patch(desired);
         }
-        return new EnvVarPatchResult(ns, deployment, targetContainer.getName(), variable, value, action, Instant.now());
+        EnvVarPatchResult result = new EnvVarPatchResult(ns, deployment, targetContainer.getName(), variable, value, action, Instant.now());
+        return toJson(result);
     }
 
-    @Tool(name = "get_pod_logs", description = "Returns recent logs for a Pod (optionally scoping to a single container).", structuredContent = true)
+    @Tool(name = "get_pod_logs", description = "Returns recent logs for a Pod (optionally scoping to a single container).")
     @Blocking
-    public PodLogsResult getPodLogs(
+    public String getPodLogs(
             @ToolArg(description = "Namespace of the Pod.", defaultValue = "") String namespace,
             @ToolArg(description = "Pod name.") String pod,
             @ToolArg(description = "Container name (required for multi-container pods).", defaultValue = "") String container,
@@ -560,12 +578,13 @@ public class KubernetesTools {
         String logs = resolvedContainer != null && !resolvedContainer.isBlank()
                 ? podResource.inContainer(resolvedContainer).limitBytes(bytes).tailingLines(lines).getLog()
                 : podResource.limitBytes(bytes).tailingLines(lines).getLog();
-        return new PodLogsResult(ns, pod, resolvedContainer, lines, bytes, logs == null ? "" : logs);
+        PodLogsResult result = new PodLogsResult(ns, pod, resolvedContainer, lines, bytes, logs == null ? "" : logs);
+        return toJson(result);
     }
 
-    @Tool(name = "get_services", description = "Lists Services, their selectors, and exposed ports.", structuredContent = true)
+    @Tool(name = "get_services", description = "Lists Services, their selectors, and exposed ports.")
     @Blocking
-    public List<ServiceSummary> getServices(
+    public String getServices(
             @ToolArg(description = "Namespace filter (leave blank to use the default namespace).", defaultValue = "") String namespace,
             @ToolArg(description = "Label selector to match services.", defaultValue = "") String labelSelector,
             @ToolArg(description = "Set to true to list Services in all namespaces (requires configuration).", defaultValue = "false") boolean allNamespaces) {
@@ -577,15 +596,16 @@ public class KubernetesTools {
         var serviceList = (labelSelector != null && !labelSelector.isBlank())
                 ? serviceOp.withLabelSelector(labelSelector).list()
                 : serviceOp.list();
-        return Optional.ofNullable(serviceList.getItems()).orElse(List.of()).stream()
+        List<ServiceSummary> result = Optional.ofNullable(serviceList.getItems()).orElse(List.of()).stream()
                 .sorted(Comparator.comparing(s -> Optional.ofNullable(s.getMetadata()).map(meta -> meta.getNamespace() + "/" + meta.getName()).orElse("")))
                 .map(KubernetesTools::toServiceSummary)
                 .toList();
+        return toJson(result);
     }
 
-    @Tool(name = "get_storage", description = "Summaries PersistentVolumeClaims and PersistentVolumes.", structuredContent = true)
+    @Tool(name = "get_storage", description = "Summaries PersistentVolumeClaims and PersistentVolumes.")
     @Blocking
-    public StorageOverview getStorage(
+    public String getStorage(
             @ToolArg(description = "Namespace filter for PVCs.", defaultValue = "") String namespace,
             @ToolArg(description = "Inspect all namespaces for PVCs (requires configuration).", defaultValue = "false") boolean allNamespaces,
             @ToolArg(description = "Include PersistentVolume data.", defaultValue = "true") boolean includePersistentVolumes) {
@@ -605,12 +625,13 @@ public class KubernetesTools {
         if (includePersistentVolumes) {
             ensureClusterWideAllowed("Reading PersistentVolumes");
         }
-        return new StorageOverview(pvcs, pvs);
+        StorageOverview result = new StorageOverview(pvcs, pvs);
+        return toJson(result);
     }
 
-    @Tool(name = "get_events", description = "Streams the most recent Kubernetes events with optional filters.", structuredContent = true)
+    @Tool(name = "get_events", description = "Streams the most recent Kubernetes events with optional filters.")
     @Blocking
-    public List<EventInfo> getEvents(
+    public String getEvents(
             @ToolArg(description = "Namespace filter (ignored when allNamespaces=true).", defaultValue = "") String namespace,
             @ToolArg(description = "Fetch events for every namespace (requires configuration).", defaultValue = "false") boolean allNamespaces,
             @ToolArg(description = "Only include events for this Kubernetes object name.", defaultValue = "") String objectName,
@@ -627,7 +648,7 @@ public class KubernetesTools {
             events = Optional.ofNullable(eventOp.inNamespace(resolveNamespace(namespace)).list().getItems()).orElse(List.of());
         }
         int limit = maxItems > 0 ? Math.min(maxItems, config.eventsMaxItems()) : config.eventsMaxItems();
-        return events.stream()
+        List<EventInfo> result = events.stream()
                 .filter(event -> objectName == null || objectName.isBlank()
                         || (event.getRegarding() != null && objectName.equals(event.getRegarding().getName())))
                 .filter(event -> kind == null || kind.isBlank()
@@ -640,11 +661,12 @@ public class KubernetesTools {
                 .limit(limit)
                 .map(KubernetesTools::toEventInfo)
                 .toList();
+        return toJson(result);
     }
 
-    @Tool(name = "get_live_binpacking", description = "Summaries how pods are distributed across nodes to help reason about bin packing.", structuredContent = true)
+    @Tool(name = "get_live_binpacking", description = "Summaries how pods are distributed across nodes to help reason about bin packing.")
     @Blocking
-    public BinpackingSummary getLiveBinpacking(
+    public String getLiveBinpacking(
             @ToolArg(description = "Namespace filter for pods.", defaultValue = "") String namespace,
             @ToolArg(description = "Inspect every namespace (requires configuration).", defaultValue = "false") boolean allNamespaces,
             @ToolArg(description = "Label selector for pods.", defaultValue = "") String labelSelector) {
@@ -691,12 +713,13 @@ public class KubernetesTools {
                 })
                 .toList();
         String scope = allNamespaces ? "cluster" : "namespace:" + resolvedNamespace;
-        return new BinpackingSummary(scope, nodeSummaries, namespaceTotals);
+        BinpackingSummary result = new BinpackingSummary(scope, nodeSummaries, namespaceTotals);
+        return toJson(result);
     }
 
-    @Tool(name = "create_vpa", description = "Creates or updates a VerticalPodAutoscaler bound to a workload.", structuredContent = true)
+    @Tool(name = "create_vpa", description = "Creates or updates a VerticalPodAutoscaler bound to a workload.")
     @Blocking
-    public VpaSummary createVpa(
+    public String createVpa(
             @ToolArg(description = "Namespace for the VPA.", defaultValue = "") String namespace,
             @ToolArg(description = "VPA name (defaults to targetName-vpa).", defaultValue = "") String name,
             @ToolArg(description = "Workload kind (Deployment, StatefulSet, ...).", defaultValue = "Deployment") String targetKind,
@@ -720,12 +743,13 @@ public class KubernetesTools {
         GenericKubernetesResource persisted = config.dryRun()
                 ? desired
                 : vpaClient().inNamespace(ns).resource(desired).createOrReplace();
-        return toVpaSummary(persisted);
+        VpaSummary result = toVpaSummary(persisted);
+        return toJson(result);
     }
 
-    @Tool(name = "delete_vpa", description = "Deletes a VerticalPodAutoscaler.", structuredContent = true)
+    @Tool(name = "delete_vpa", description = "Deletes a VerticalPodAutoscaler.")
     @Blocking
-    public OperationStatus deleteVpa(
+    public String deleteVpa(
             @ToolArg(description = "Namespace containing the VPA.", defaultValue = "") String namespace,
             @ToolArg(description = "VPA name.") String name) {
         String ns = resolveNamespace(namespace);
@@ -738,12 +762,13 @@ public class KubernetesTools {
             resource.delete();
         }
         String message = config.dryRun() ? "Dry run – nothing deleted" : "Deletion requested";
-        return new OperationStatus("delete_vpa", ns + "/" + name, true, message, Instant.now());
+        OperationStatus result = new OperationStatus("delete_vpa", ns + "/" + name, true, message, Instant.now());
+        return toJson(result);
     }
 
-    @Tool(name = "create_vpas_for_namespace", description = "Creates VPAs for each Deployment in a namespace.", structuredContent = true)
+    @Tool(name = "create_vpas_for_namespace", description = "Creates VPAs for each Deployment in a namespace.")
     @Blocking
-    public BulkVpaOperationResult createVpasForNamespace(
+    public String createVpasForNamespace(
             @ToolArg(description = "Namespace to scan.", defaultValue = "") String namespace,
             @ToolArg(description = "Label selector to restrict which Deployments get VPAs.", defaultValue = "") String labelSelector,
             @ToolArg(description = "Suffix appended to each Deployment name when generating the VPA name.", defaultValue = "-vpa") String suffix,
@@ -776,12 +801,13 @@ public class KubernetesTools {
                     : (overwriteExisting ? vpaOp.resource(desired).createOrReplace() : vpaOp.resource(desired).create());
             created.add(toVpaSummary(persisted));
         }
-        return new BulkVpaOperationResult(ns, created.size(), skipped, created);
+        BulkVpaOperationResult result = new BulkVpaOperationResult(ns, created.size(), skipped, created);
+        return toJson(result);
     }
 
-    @Tool(name = "list_machinesets", description = "Lists MachineSets (OpenShift) with their replica counts.", structuredContent = true)
+    @Tool(name = "list_machinesets", description = "Lists MachineSets (OpenShift) with their replica counts.")
     @Blocking
-    public List<MachineSetSummary> listMachineSets(
+    public String listMachineSets(
             @ToolArg(description = "Namespace filter.", defaultValue = "openshift-machine-api") String namespace,
             @ToolArg(description = "Inspect all namespaces.", defaultValue = "false") boolean allNamespaces,
             @ToolArg(description = "Label selector to filter MachineSets.", defaultValue = "") String labelSelector) {
@@ -793,15 +819,16 @@ public class KubernetesTools {
         var list = (labelSelector != null && !labelSelector.isBlank())
                 ? msOp.withLabelSelector(labelSelector).list()
                 : msOp.list();
-        return Optional.ofNullable(list.getItems()).orElse(List.of()).stream()
+        List<MachineSetSummary> result = Optional.ofNullable(list.getItems()).orElse(List.of()).stream()
                 .map(KubernetesTools::toMachineSetSummary)
                 .toList();
+        return toJson(result);
     }
 
-    @Tool(name = "set_machineset_replicas", description = "Scales an OpenShift MachineSet.", structuredContent = true)
+    @Tool(name = "set_machineset_replicas", description = "Scales an OpenShift MachineSet.")
     @Blocking
     @SuppressWarnings("unchecked")
-    public ScaleOperationResult setMachineSetReplicas(
+    public String setMachineSetReplicas(
             @ToolArg(description = "MachineSet namespace.", defaultValue = "openshift-machine-api") String namespace,
             @ToolArg(description = "MachineSet name.") String name,
             @ToolArg(description = "Desired replicas.") int replicas) {
@@ -823,12 +850,13 @@ public class KubernetesTools {
                 .map(Object::toString)
                 .map(Integer::valueOf)
                 .orElse(replicas);
-        return new ScaleOperationResult(ns, name, replicas, actual, Instant.now());
+        ScaleOperationResult result = new ScaleOperationResult(ns, name, replicas, actual, Instant.now());
+        return toJson(result);
     }
 
-    @Tool(name = "delete_pod", description = "Deletes a single Pod.", structuredContent = true)
+    @Tool(name = "delete_pod", description = "Deletes a single Pod.")
     @Blocking
-    public OperationStatus deletePod(
+    public String deletePod(
             @ToolArg(description = "Namespace of the Pod.", defaultValue = "") String namespace,
             @ToolArg(description = "Pod name.") String name) {
         String ns = resolveNamespace(namespace);
@@ -841,12 +869,13 @@ public class KubernetesTools {
             resource.delete();
         }
         String message = config.dryRun() ? "Dry run – nothing deleted" : "Pod deletion requested";
-        return new OperationStatus("delete_pod", ns + "/" + name, true, message, Instant.now());
+        OperationStatus result = new OperationStatus("delete_pod", ns + "/" + name, true, message, Instant.now());
+        return toJson(result);
     }
 
-    @Tool(name = "delete_pods_by_selector", description = "Deletes all Pods that match a label selector.", structuredContent = true)
+    @Tool(name = "delete_pods_by_selector", description = "Deletes all Pods that match a label selector.")
     @Blocking
-    public OperationStatus deletePodsBySelector(
+    public String deletePodsBySelector(
             @ToolArg(description = "Namespace to prune.", defaultValue = "") String namespace,
             @ToolArg(description = "Label selector, e.g. app=api,env=dev.") String selector) {
         if (selector == null || selector.isBlank()) {
@@ -856,8 +885,9 @@ public class KubernetesTools {
         var podOp = client.pods().inNamespace(ns).withLabelSelector(selector);
         List<Pod> pods = Optional.ofNullable(podOp.list().getItems()).orElse(List.of());
         if (pods.isEmpty()) {
-            return new OperationStatus("delete_pods_by_selector", ns + " selector:" + selector, false,
+            OperationStatus result = new OperationStatus("delete_pods_by_selector", ns + " selector:" + selector, false,
                     "No pods matched the selector", Instant.now());
+            return toJson(result);
         }
         if (!config.dryRun()) {
             for (Pod pod : pods) {
@@ -870,13 +900,14 @@ public class KubernetesTools {
         String message = config.dryRun()
                 ? "Dry run – would delete " + pods.size() + " pods"
                 : "Deleted " + pods.size() + " pods";
-        return new OperationStatus("delete_pods_by_selector", ns + " selector:" + selector, true, message,
+        OperationStatus result = new OperationStatus("delete_pods_by_selector", ns + " selector:" + selector, true, message,
                 Instant.now());
+        return toJson(result);
     }
 
-    @Tool(name = "get_cluster_overview", description = "Summaries namespaces, nodes, workloads, and pod health across the cluster.", structuredContent = true)
+    @Tool(name = "get_cluster_overview", description = "Summaries namespaces, nodes, workloads, and pod health across the cluster.")
     @Blocking
-    public ClusterOverview getClusterOverview(
+    public String getClusterOverview(
             @ToolArg(description = "Set to false to skip per-node capacity details when clusters are very large.", defaultValue = "true") boolean includeNodeDetails) {
         ensureClusterWideAllowed("Cluster overview");
         var namespaces = client.namespaces().list().getItems();
@@ -899,7 +930,7 @@ public class KubernetesTools {
         List<NodeCapacity> nodeCapacities = includeNodeDetails
                 ? nodes.stream().map(KubernetesTools::toNodeCapacity).toList()
                 : List.of();
-        return new ClusterOverview(
+        ClusterOverview result = new ClusterOverview(
                 namespaces.size(),
                 nodes.size(),
                 deployments.size(),
@@ -907,6 +938,7 @@ public class KubernetesTools {
                 aggregatePodPhases(pods),
                 totals,
                 nodeCapacities);
+        return toJson(result);
     }
 
     @SuppressWarnings("unchecked")
