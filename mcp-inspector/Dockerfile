@@ -4,7 +4,7 @@ FROM node:22-bookworm
 RUN npm install -g @modelcontextprotocol/inspector
 
 # Cria usuário sem privilégios
-RUN useradd -m -u 1001 inspector
+RUN useradd -m -u 1001 inspector && mkdir /.npm && chmod -R 777 "/.npm"
 
 USER inspector
 WORKDIR /home/inspector/app
