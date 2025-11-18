@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import com.redhat.mcp.McpCallEvent;
 import com.redhat.mcp.McpEventService;
+import com.redhat.orchestrator.OrchestratorService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -57,6 +58,9 @@ public class ChatResource {
     
     @Inject
     AgentGPT5Mini agentGPT5Mini;
+    
+    @Inject
+    OrchestratorService orchestratorService;
 
     @Inject
     ChatMemoryProvider chatMemoryProvider;
@@ -85,6 +89,7 @@ public class ChatResource {
         
         boolean useMcp = request.useMcp() != null ? request.useMcp() : false;
         boolean useRag = request.useRag() != null ? request.useRag() : false;
+        boolean useOrchestrator = request.useOrchestrator() != null ? request.useOrchestrator() : false;
         String modelName = request.model() != null ? request.model() : "gpt4o-mini";
         
         // Se MCP está ativo, registra o requestId no serviço de eventos
@@ -94,8 +99,16 @@ public class ChatResource {
         }
         
         try {
-            // Seleciona o agente baseado no modelo
-            String result = routeMessage(modelName, memoryId, request.message(), useMcp, useRag);
+            String result;
+            
+            // Se orquestração está ativa, usa o OrchestratorService
+            if (useOrchestrator) {
+                Log.info("🎯 Modo orquestração ativado - delegando para OrchestratorService");
+                result = orchestratorService.processMessage(memoryId, request.message(), modelName);
+            } else {
+                // Modo tradicional: seleciona o agente baseado no modelo
+                result = routeMessage(modelName, memoryId, request.message(), useMcp, useRag);
+            }
             
             // Retorna com o requestId no header
             return Response.ok(result)
@@ -286,7 +299,8 @@ public class ChatResource {
         String sessionId,
         Boolean useMcp,
         Boolean useRag,
-        String model
+        String model,
+        Boolean useOrchestrator  // Nova flag para ativar orquestração
     ) {}
 
     /**

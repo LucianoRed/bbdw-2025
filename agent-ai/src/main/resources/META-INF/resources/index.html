@@ -1196,13 +1196,13 @@
         <div class="sidebar">
             <div class="sidebar-header">⚙️ Configurações</div>
             
-            <div class="feature-section">
+            <div class="feature-section" id="model-section">
                 <div class="feature-title">Modelo de IA</div>
                 <select id="model-selector" class="form-input" style="width: 100%;">
                     <option value="gpt-4o-mini">GPT-4o Mini</option>
                     <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                     <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                    <option value="gpt-4o-nano">GPT-4o Nano</option>
+                    <option value="gpt-4o-nano">GPT-4o</option>
                     <option value="gpt-4.1-nano">GPT-4.1 Nano</option>
                     <option value="gpt-5">GPT-5</option>
                     <option value="gpt-5-mini" selected>GPT-5 Mini (Padrão)</option>
@@ -1212,6 +1212,23 @@
             <div class="feature-section">
                 <div class="feature-title">Features</div>
                 
+                <div class="feature-item" onclick="toggleFeature('orchestrator')">
+                    <div class="feature-info">
+                        <span class="feature-icon">🎯</span>
+                        <span class="feature-label">Orquestrador</span>
+                    </div>
+                    <div class="toggle-switch" id="toggle-orchestrator"></div>
+                </div>
+                
+                <!-- Aviso quando orquestrador está ativo -->
+                <div id="orchestrator-notice" style="display: none; background: var(--bg-tertiary); padding: 10px; border-radius: 8px; margin: 10px 0; font-size: 12px; color: var(--text-secondary); border-left: 3px solid var(--primary-color);">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                        <span>ℹ️</span>
+                        <strong style="color: var(--text-primary);">Modo Automático</strong>
+                    </div>
+                    <div>O orquestrador gerencia automaticamente o modelo, MCP e RAG.</div>
+                </div>
+                
                 <div class="feature-item" onclick="toggleFeature('memory')">
                     <div class="feature-info">
                         <span class="feature-icon">🧠</span>
@@ -1220,7 +1237,7 @@
                     <div class="toggle-switch" id="toggle-memory"></div>
                 </div>
 
-                <div class="feature-item" onclick="toggleFeature('mcp')">
+                <div class="feature-item" id="mcp-feature" onclick="toggleFeature('mcp')">
                     <div class="feature-info">
                         <span class="feature-icon">🔌</span>
                         <span class="feature-label">MCP Tools</span>
@@ -1228,7 +1245,7 @@
                     <div class="toggle-switch" id="toggle-mcp"></div>
                 </div>
 
-                <div class="feature-item" onclick="toggleFeature('rag')">
+                <div class="feature-item" id="rag-feature" onclick="toggleFeature('rag')">
                     <div class="feature-info">
                         <span class="feature-icon">📚</span>
                         <span class="feature-label">RAG</span>
@@ -1471,6 +1488,74 @@
         </div>
     </div>
 
+    <!-- Modal de Informação do Orquestrador -->
+    <div id="orchestrator-info-modal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <span style="font-size: 32px;">🎯</span>
+                <span style="font-size: 20px; font-weight: 600;">Orquestrador Inteligente</span>
+            </div>
+            
+            <div style="line-height: 1.8; color: var(--text-primary); margin-bottom: 24px;">
+                <p style="margin-bottom: 16px; font-size: 15px;">
+                    O <strong>Orquestrador</strong> é um assistente inteligente que analisa sua pergunta e 
+                    <strong>automaticamente escolhe o melhor especialista</strong> para respondê-la.
+                </p>
+                
+                <div style="background: var(--bg-tertiary); padding: 16px; border-radius: 10px; margin-bottom: 16px; border-left: 4px solid var(--accent);">
+                    <div style="font-weight: 600; margin-bottom: 12px; font-size: 14px;">✨ Como funciona:</div>
+                    <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
+                        <li style="margin-bottom: 8px;">Analisa o contexto da sua pergunta</li>
+                        <li style="margin-bottom: 8px;">Escolhe o especialista ideal (K8s, Documentação, Troubleshooting)</li>
+                        <li style="margin-bottom: 8px;">Ativa MCP e RAG automaticamente quando necessário</li>
+                        <li>Otimiza recursos e reduz custos</li>
+                    </ul>
+                </div>
+                
+                <div style="background: var(--bg-tertiary); padding: 16px; border-radius: 10px; margin-bottom: 16px;">
+                    <div style="font-weight: 600; margin-bottom: 12px; font-size: 14px;">🎓 Exemplos:</div>
+                    <div style="font-size: 13px; line-height: 1.6;">
+                        <div style="margin-bottom: 10px;">
+                            <span style="color: var(--accent); font-weight: 600;">➜</span> 
+                            <em>"Quantos pods estão rodando?"</em><br>
+                            <span style="color: var(--text-secondary); font-size: 12px; margin-left: 16px;">
+                                → Usa especialista K8s com MCP
+                            </span>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <span style="color: var(--accent); font-weight: 600;">➜</span> 
+                            <em>"Como criar um deployment?"</em><br>
+                            <span style="color: var(--text-secondary); font-size: 12px; margin-left: 16px;">
+                                → Usa especialista Documentação com RAG
+                            </span>
+                        </div>
+                        <div>
+                            <span style="color: var(--accent); font-weight: 600;">➜</span> 
+                            <em>"Pod crashando com erro OOM"</em><br>
+                            <span style="color: var(--text-secondary); font-size: 12px; margin-left: 16px;">
+                                → Usa Troubleshooting com MCP + RAG
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="padding: 12px; background: rgba(102, 126, 234, 0.1); border-radius: 8px; border: 1px solid var(--accent); font-size: 13px;">
+                    <strong>💡 Dica:</strong> Com o orquestrador ativo, você não precisa se preocupar em ativar MCP ou RAG manualmente!
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button onclick="confirmOrchestratorActivation()" class="debug-button primary" style="flex: 1; padding: 14px; font-size: 15px; justify-content: center;">
+                    <span>✓</span>
+                    <span>Entendi, Ativar Orquestrador</span>
+                </button>
+                <button onclick="cancelOrchestratorActivation()" class="debug-button secondary" style="padding: 14px 20px;">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const chatMessages = document.getElementById('chatMessages');
         const messageInput = document.getElementById('messageInput');
@@ -1483,6 +1568,7 @@
         
         // Estado das features - recupera do localStorage
         const features = {
+            orchestrator: localStorage.getItem('feature-orchestrator') === 'true',
             memory: localStorage.getItem('feature-memory') === 'true',
             mcp: localStorage.getItem('feature-mcp') === 'true',
             rag: localStorage.getItem('feature-rag') === 'true'
@@ -1514,6 +1600,9 @@
         });
         
         // Atualiza UI dos toggles baseado no localStorage
+        if (features.orchestrator) {
+            document.getElementById('toggle-orchestrator').classList.add('active');
+        }
         if (features.memory) {
             document.getElementById('toggle-memory').classList.add('active');
         }
@@ -1526,9 +1615,24 @@
         
         // Exibe sessionId completo
         sessionDisplay.textContent = sessionId;
+        
+        // Atualiza estado inicial dos controles baseado no orquestrador
+        updateControlsState();
 
         // Função para toggle de features
         async function toggleFeature(featureName) {
+            // Se está ativando o orquestrador, mostra modal explicativo
+            if (featureName === 'orchestrator' && !features[featureName]) {
+                showOrchestratorInfo();
+                return;
+            }
+            
+            // Se orquestrador está ativo, não permite alterar MCP ou RAG
+            if (features.orchestrator && (featureName === 'mcp' || featureName === 'rag')) {
+                showNotification('⚠️ O Orquestrador gerencia automaticamente MCP e RAG');
+                return;
+            }
+            
             features[featureName] = !features[featureName];
             const toggle = document.getElementById(`toggle-${featureName}`);
             toggle.classList.toggle('active');
@@ -1542,6 +1646,7 @@
             
             // Feedback visual
             const featureLabels = {
+                orchestrator: '🎯 Orquestrador',
                 memory: '🧠 Memória',
                 mcp: '🔌 MCP Tools',
                 rag: '📚 RAG'
@@ -1549,6 +1654,11 @@
             
             const status = features[featureName] ? 'ativada' : 'desativada';
             showNotification(`${featureLabels[featureName]} ${status}!`);
+            
+            // Atualiza estado dos controles se for orquestrador
+            if (featureName === 'orchestrator') {
+                updateControlsState();
+            }
             
             // Lógica específica por feature
             if (featureName === 'memory' && !features[featureName]) {
@@ -1801,6 +1911,7 @@
             sendButton.disabled = true;
 
             // Determina configurações baseado nas features
+            const useOrchestrator = features.orchestrator;
             const useMemory = features.memory;
             const useMcp = features.mcp;
             const useRag = features.rag;
@@ -1809,6 +1920,7 @@
             
             // Log para debug
             console.log('Enviando mensagem com configurações:');
+            console.log('- Orquestrador:', useOrchestrator);
             console.log('- Memória:', useMemory, '| SessionId:', currentSessionId);
             console.log('- MCP:', useMcp);
             console.log('- RAG:', useRag);
@@ -1863,6 +1975,7 @@
                         sessionId: currentSessionId,
                         useMcp: useMcp,
                         useRag: useRag,
+                        useOrchestrator: useOrchestrator,
                         model: selectedModel
                     })
                 });
@@ -2444,6 +2557,108 @@
         function closeMessageModal() {
             const modal = document.getElementById('message-modal');
             modal.classList.remove('show');
+        }
+
+        /**
+         * Atualiza o estado dos controles baseado no orquestrador
+         */
+        function updateControlsState() {
+            const modelSection = document.getElementById('model-section');
+            const modelSelector = document.getElementById('model-selector');
+            const mcpFeature = document.getElementById('mcp-feature');
+            const ragFeature = document.getElementById('rag-feature');
+            const orchestratorNotice = document.getElementById('orchestrator-notice');
+            
+            if (features.orchestrator) {
+                // Mostra aviso
+                orchestratorNotice.style.display = 'block';
+                
+                // Desabilita seletor de modelo
+                modelSelector.disabled = true;
+                modelSection.style.opacity = '0.5';
+                modelSection.style.pointerEvents = 'none';
+                
+                // Desabilita toggles de MCP e RAG
+                mcpFeature.style.opacity = '0.5';
+                mcpFeature.style.pointerEvents = 'none';
+                ragFeature.style.opacity = '0.5';
+                ragFeature.style.pointerEvents = 'none';
+                
+                // Desativa MCP e RAG se estiverem ativos
+                if (features.mcp) {
+                    features.mcp = false;
+                    document.getElementById('toggle-mcp').classList.remove('active');
+                    localStorage.setItem('feature-mcp', 'false');
+                }
+                if (features.rag) {
+                    features.rag = false;
+                    document.getElementById('toggle-rag').classList.remove('active');
+                    localStorage.setItem('feature-rag', 'false');
+                }
+            } else {
+                // Esconde aviso
+                orchestratorNotice.style.display = 'none';
+                
+                // Habilita seletor de modelo
+                modelSelector.disabled = false;
+                modelSection.style.opacity = '1';
+                modelSection.style.pointerEvents = 'auto';
+                
+                // Habilita toggles de MCP e RAG
+                mcpFeature.style.opacity = '1';
+                mcpFeature.style.pointerEvents = 'auto';
+                ragFeature.style.opacity = '1';
+                ragFeature.style.pointerEvents = 'auto';
+            }
+        }
+
+        /**
+         * Mostra o modal de informação do orquestrador
+         */
+        function showOrchestratorInfo() {
+            const modal = document.getElementById('orchestrator-info-modal');
+            modal.classList.add('show');
+            
+            // Fecha o modal ao clicar fora dele
+            modal.onclick = function(event) {
+                if (event.target === modal) {
+                    cancelOrchestratorActivation();
+                }
+            };
+        }
+
+        /**
+         * Confirma e ativa o orquestrador
+         */
+        function confirmOrchestratorActivation() {
+            features.orchestrator = true;
+            const toggle = document.getElementById('toggle-orchestrator');
+            toggle.classList.add('active');
+            
+            // Salva no localStorage
+            localStorage.setItem('feature-orchestrator', 'true');
+            
+            // Atualiza estado dos controles
+            updateControlsState();
+            
+            // Fecha o modal
+            const modal = document.getElementById('orchestrator-info-modal');
+            modal.classList.remove('show');
+            
+            // Mostra notificação
+            showNotification('🎯 Orquestrador ativado! Modelo, MCP e RAG serão gerenciados automaticamente.');
+            
+            console.log('Orquestrador ativado');
+        }
+
+        /**
+         * Cancela a ativação do orquestrador
+         */
+        function cancelOrchestratorActivation() {
+            const modal = document.getElementById('orchestrator-info-modal');
+            modal.classList.remove('show');
+            
+            console.log('Ativação do orquestrador cancelada');
         }
 
         // Carregar histórico ao iniciar
