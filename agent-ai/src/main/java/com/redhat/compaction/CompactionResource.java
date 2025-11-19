@@ -36,6 +36,34 @@ public class CompactionResource {
     RedisService redisService;
     
     /**
+     * Verifica o status de compactação para uma sessão
+     */
+    @GET
+    @Path("/can-compact/{sessionId}")
+    public CompactionStatusResult canCompact(@PathParam("sessionId") String sessionId) {
+        boolean canCompact = compactionService.canCompact(sessionId);
+        int messageCount = compactionService.getMessageCount(sessionId);
+        int minMessages = compactionService.getMinMessagesToCompact();
+        int missingMessages = Math.max(0, minMessages - messageCount);
+        
+        return new CompactionStatusResult(
+            canCompact, 
+            messageCount, 
+            minMessages, 
+            missingMessages
+        );
+    }
+    
+    /**
+     * Compacta uma sessão específica e retorna estatísticas
+     */
+    @POST
+    @Path("/session/{sessionId}")
+    public ChatMemoryCompactionService.CompactionStats compactSession(@PathParam("sessionId") String sessionId) {
+        return compactionService.compactSession(sessionId);
+    }
+    
+    /**
      * Executa a compactação de memórias de chat manualmente
      */
     @POST
@@ -106,6 +134,7 @@ public class CompactionResource {
     
     // Records para respostas
     public record CompactionResult(String message, long timestamp) {}
+    public record CompactionStatusResult(boolean canCompact, int messageCount, int minMessages, int missingMessages) {}
     public record RedisMessageDTO(int index, String role, String content) {}
     public record RedisMessagesResult(String sessionId, int messageCount, List<RedisMessageDTO> messages) {}
     public record SessionInfo(String sessionId, long messageCount) {}

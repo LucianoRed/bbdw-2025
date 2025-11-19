@@ -973,6 +973,57 @@
             font-size: 12px;
         }
 
+        .mcp-tools-container {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .mcp-tool-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+
+        .mcp-tool-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+
+        .mcp-tool-description {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .mcp-tool-params {
+            font-size: 11px;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 8px;
+            border-radius: 6px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
         /* Modal para mensagem completa */
         .message-modal {
             display: none;
@@ -1188,6 +1239,48 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.6; }
         }
+
+        /* Tooltip */
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            text-align: center;
+            border-radius: 8px;
+            padding: 8px 12px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-size: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px var(--shadow);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: var(--border-color) transparent transparent transparent;
+        }
+
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -1206,6 +1299,7 @@
                     <option value="gpt-4.1-nano">GPT-4.1 Nano</option>
                     <option value="gpt-5">GPT-5</option>
                     <option value="gpt-5-mini" selected>GPT-5 Mini (Padrão)</option>
+                    <option value="dynamic-mcp">🔌 Dynamic MCP (Experimental)</option>
                 </select>
             </div>
             
@@ -1251,6 +1345,19 @@
                         <span class="feature-label">RAG</span>
                     </div>
                     <div class="toggle-switch" id="toggle-rag"></div>
+                </div>
+            </div>
+
+            <div class="feature-section">
+                <div class="feature-title">Ações</div>
+                <div class="tooltip-container" style="width: 100%;">
+                    <button id="compact-button" class="feature-item" onclick="forceCompaction()" style="width: 100%; padding: 12px 16px; cursor: pointer; border: none; font-family: inherit; color: var(--text-primary);">
+                        <div class="feature-info">
+                            <span class="feature-icon">🗜️</span>
+                            <span class="feature-label" style="color: var(--text-primary);">Compactar Memória</span>
+                        </div>
+                    </button>
+                    <span id="compact-tooltip" class="tooltip-text"></span>
                 </div>
             </div>
 
@@ -1404,33 +1511,30 @@
         <!-- MCP Servers Tab -->
         <div id="mcp-tab" class="tab-content">
             <div class="debug-panel">
+                <div class="debug-controls" style="margin-bottom: 15px;">
+                    <button class="debug-button primary" onclick="openAddMcpModal()">
+                        <span>➕</span>
+                        <span>Adicionar Servidor</span>
+                    </button>
+                    <button class="debug-button secondary" onclick="loadMcpConfig()">
+                        <span>🔄</span>
+                        <span>Atualizar Lista</span>
+                    </button>
+                </div>
+                
                 <div class="debug-info">
                     <div class="debug-info-header">
                         <span>🔌</span>
-                        <span>Configuração MCP Server</span>
+                        <span>Servidores MCP Registrados</span>
+                        <span style="margin-left: auto; font-weight: normal; color: var(--text-secondary);">
+                            Total: <span id="mcp-server-count">0</span>
+                        </span>
                     </div>
-                    <div class="debug-info-content">
-                        <!-- MCP Server Configuration (Read-Only) -->
-                        <div style="margin-bottom: 20px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">
-                                    SERVIDOR K8S MCP
-                                </span>
-                                <button onclick="loadMcpConfig()" style="background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px;">
-                                    🔄
-                                </button>
-                            </div>
-                            
-                            <div id="mcp-config-container" class="mcp-server-card" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
-                                <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
-                                    <div style="font-size: 32px; margin-bottom: 10px;">⏳</div>
-                                    <div>Carregando configurações...</div>
-                                </div>
-                            </div>
-                            
-                            <div style="padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; font-size: 12px; color: var(--text-secondary);">
-                                ℹ️ Configurações em tempo real do <code style="background: var(--bg-chat); padding: 2px 6px; border-radius: 4px;">application.properties</code>
-                            </div>
+                    <div class="debug-info-content scrollable" id="mcp-config-container">
+                        <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                            <div style="font-size: 32px; margin-bottom: 10px;">🔌</div>
+                            <div>Nenhum servidor MCP cadastrado</div>
+                            <div style="font-size: 12px; margin-top: 10px;">Clique em "Adicionar Servidor" para começar</div>
                         </div>
                     </div>
                 </div>
@@ -1444,10 +1548,6 @@
                     <button class="debug-button primary" onclick="loadRedisMessages()">
                         <span>�</span>
                         <span>Atualizar Mensagens</span>
-                    </button>
-                    <button class="debug-button secondary" onclick="forceCompaction()">
-                        <span>🗜️</span>
-                        <span>Compactar</span>
                     </button>
                 </div>
                 <div class="debug-info">
@@ -1485,6 +1585,106 @@
         <div class="compacting-message">
             <div class="compacting-spinner">🗜️</div>
             <div class="compacting-text">Compactando mensagens...</div>
+        </div>
+    </div>
+
+    <!-- Modal de Resultado da Compactação -->
+    <div id="compaction-result-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <span style="font-size: 32px;">✅</span>
+                <span style="font-size: 20px; font-weight: 600;">Compactação Concluída!</span>
+            </div>
+            
+            <div style="background: var(--bg-tertiary); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <div style="display: grid; gap: 16px;">
+                    <!-- Mensagens -->
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--text-secondary); font-size: 14px;">📊 Mensagens:</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span id="compact-result-before" style="font-size: 18px; font-weight: 600; color: var(--text-primary);"></span>
+                            <span style="color: var(--text-secondary);">→</span>
+                            <span id="compact-result-after" style="font-size: 18px; font-weight: 600; color: var(--accent);"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Redução -->
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--text-secondary); font-size: 14px;">📉 Redução:</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span id="compact-result-removed" style="font-size: 16px; font-weight: 600; color: var(--text-primary);"></span>
+                            <span style="color: var(--text-secondary);">mensagens</span>
+                            <span id="compact-result-percent" style="background: var(--accent); color: white; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600;"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Tokens -->
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--text-secondary); font-size: 14px;">🚀 Tokens economizados:</span>
+                        <span id="compact-result-tokens" style="font-size: 16px; font-weight: 600; color: #10b981;"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions" style="margin-top: 0;">
+                <button onclick="closeCompactionResultModal()" class="debug-button primary" style="width: 100%; padding: 14px; font-size: 15px; justify-content: center;">
+                    <span>✓</span>
+                    <span>Fechar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Adicionar MCP Server -->
+    <div id="add-mcp-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">🔌 Adicionar MCP Server</div>
+            
+            <div class="form-group">
+                <label class="form-label">Nome do Servidor</label>
+                <input type="text" id="mcp-name" class="form-input" placeholder="meu-servidor-mcp">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Tipo de Transporte</label>
+                <select id="mcp-transport-type" class="form-input" onchange="toggleMcpFields()">
+                    <option value="http">HTTP (Streamable)</option>
+                    <option value="stdio">Stdio (Local Process)</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="mcp-url-group">
+                <label class="form-label">URL do Servidor</label>
+                <input type="text" id="mcp-url" class="form-input" placeholder="http://localhost:3001/mcp">
+            </div>
+            
+            <div class="form-group" id="mcp-command-group" style="display: none;">
+                <label class="form-label">Comando (separado por espaços)</label>
+                <input type="text" id="mcp-command" class="form-input" placeholder="/usr/bin/npm exec @modelcontextprotocol/server-everything">
+            </div>
+            
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="mcp-log-requests" style="width: auto;">
+                    <span class="form-label" style="margin: 0;">Log de Requisições</span>
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="mcp-log-responses" style="width: auto;">
+                    <span class="form-label" style="margin: 0;">Log de Respostas</span>
+                </label>
+            </div>
+            
+            <div class="form-actions">
+                <button onclick="closeAddMcpModal()" style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                    Cancelar
+                </button>
+                <button onclick="submitMcpServer()" style="background: var(--accent); color: white;">
+                    Adicionar Servidor
+                </button>
+            </div>
         </div>
     </div>
 
@@ -2006,6 +2206,9 @@
                     mcpIndicator.remove();
                 }
                 
+                // Atualiza status do botão de compactar após enviar mensagem
+                updateCompactButtonStatus();
+                
             } catch (error) {
                 console.error('Erro ao enviar mensagem:', error);
                 aiMessageDiv.innerHTML = '<p>❌ Erro ao comunicar com o servidor</p>';
@@ -2155,22 +2358,64 @@
             overlay.classList.add('show');
             
             try {
-                const response = await fetch('/admin/compaction', { method: 'POST' });
+                // Chama o endpoint específico da sessão atual
+                const response = await fetch(`/admin/compaction/session/${sessionId}`, { method: 'POST' });
                 const data = await response.json();
                 
-                showNotification('🗜️ ' + data.message);
+                overlay.classList.remove('show');
                 
-                // Aguarda 2 segundos e recarrega as mensagens
-                setTimeout(() => {
-                    overlay.classList.remove('show');
-                    loadRedisMessages();
-                }, 2000);
+                if (data.success) {
+                    // Calcula a redução de mensagens
+                    const reduction = data.messagesBefore - data.messagesAfter;
+                    const reductionPercent = Math.round((reduction / data.messagesBefore) * 100);
+                    
+                    // Atualiza os valores no modal
+                    document.getElementById('compact-result-before').textContent = data.messagesBefore;
+                    document.getElementById('compact-result-after').textContent = data.messagesAfter;
+                    document.getElementById('compact-result-removed').textContent = reduction;
+                    document.getElementById('compact-result-percent').textContent = `-${reductionPercent}%`;
+                    document.getElementById('compact-result-tokens').textContent = `~${data.tokensSaved}`;
+                    
+                    // Mostra o modal
+                    showCompactionResultModal();
+                    
+                    // Mostra notificação breve
+                    showNotification(`🗜️ Compactação: ${data.messagesBefore} → ${data.messagesAfter} mensagens`);
+                } else {
+                    alert('⚠️ ' + data.message);
+                }
+                
+                // Recarrega as mensagens
+                await loadRedisMessages();
                 
             } catch (error) {
                 console.error('Erro ao compactar:', error);
                 overlay.classList.remove('show');
-                alert('Erro ao compactar memórias');
+                alert('❌ Erro ao compactar memórias: ' + error.message);
             }
+        }
+        
+        /**
+         * Mostra o modal de resultado da compactação
+         */
+        function showCompactionResultModal() {
+            const modal = document.getElementById('compaction-result-modal');
+            modal.classList.add('show');
+            
+            // Fecha o modal ao clicar fora dele
+            modal.onclick = function(event) {
+                if (event.target === modal) {
+                    closeCompactionResultModal();
+                }
+            };
+        }
+        
+        /**
+         * Fecha o modal de resultado da compactação
+         */
+        function closeCompactionResultModal() {
+            const modal = document.getElementById('compaction-result-modal');
+            modal.classList.remove('show');
         }
         
         /**
@@ -2404,11 +2649,45 @@
         }
         
         /**
+         * Atualiza o status do botão de compactar
+         */
+        async function updateCompactButtonStatus() {
+            const compactButton = document.getElementById('compact-button');
+            const compactTooltip = document.getElementById('compact-tooltip');
+            
+            if (!compactButton || !compactTooltip) return;
+            
+            try {
+                const response = await fetch(`/admin/compaction/can-compact/${sessionId}`);
+                const data = await response.json();
+                
+                if (data.canCompact) {
+                    compactButton.disabled = false;
+                    compactTooltip.textContent = `✅ ${data.messageCount} mensagens disponíveis para compactar`;
+                } else {
+                    compactButton.disabled = true;
+                    if (data.messageCount === 0) {
+                        compactTooltip.textContent = '⚠️ Nenhuma mensagem na sessão';
+                    } else {
+                        compactTooltip.textContent = `⚠️ Necessário pelo menos ${data.minMessages} mensagens (faltam ${data.missingMessages})`;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao verificar status de compactação:', error);
+                compactButton.disabled = true;
+                compactTooltip.textContent = '❌ Erro ao verificar status';
+            }
+        }
+        
+        /**
          * Carrega as mensagens do Redis para a sessão atual
          */
         async function loadRedisMessages() {
             const container = document.getElementById('redis-messages-container');
             const countEl = document.getElementById('redis-message-count');
+            
+            // Atualiza status do botão de compactar
+            await updateCompactButtonStatus();
             
             // Mostra loading
             container.innerHTML = '<div style="text-align: center; padding: 20px;"><span>⏳</span> Carregando...</div>';
@@ -2472,61 +2751,300 @@
         }
 
         /**
-         * Carrega configuração MCP do backend
+         * Carrega lista de servidores MCP
          */
         async function loadMcpConfig() {
             const container = document.getElementById('mcp-config-container');
+            const countEl = document.getElementById('mcp-server-count');
             
             try {
-                const response = await fetch('/admin/mcp/config');
+                const response = await fetch('/api/mcp/servers');
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
                 
-                const config = await response.json();
+                const servers = await response.json();
                 
-                container.innerHTML = `
-                    <div style="margin-bottom: 12px;">
-                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">MCP Server URL</div>
-                        <div style="font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-primary); background: var(--bg-chat); padding: 8px; border-radius: 6px; word-break: break-all;">
-                            ${config.url || 'N/A'}
+                countEl.textContent = servers.length;
+                
+                if (servers.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                            <div style="font-size: 32px; margin-bottom: 10px;">🔌</div>
+                            <div>Nenhum servidor MCP cadastrado</div>
+                            <div style="font-size: 12px; margin-top: 10px;">Clique em "Adicionar Servidor" para começar</div>
                         </div>
-                    </div>
+                    `;
+                    return;
+                }
+                
+                // Renderiza os servidores
+                let html = '';
+                for (const server of servers) {
+                    const transportIcon = server.transportType === 'stdio' ? '💻' : '🌐';
+                    const transportLabel = server.transportType === 'stdio' ? 'Stdio' : 'HTTP';
+                    const serverId = server.name.replace(/[^a-zA-Z0-9]/g, '-');
                     
-                    <div style="margin-bottom: 12px;">
-                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Transport Type</div>
-                        <div style="font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-primary); background: var(--bg-chat); padding: 8px; border-radius: 6px;">
-                            ${config.transportType || 'N/A'}
+                    html += `
+                        <div class="mcp-server-card">
+                            <div class="mcp-server-header">
+                                <div style="flex: 1;">
+                                    <div class="mcp-server-name">${transportIcon} ${server.name}</div>
+                                    <div class="mcp-server-url">${server.url}</div>
+                                    <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                                        <span style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: var(--bg-secondary); color: var(--text-secondary);">
+                                            ${transportLabel}
+                                        </span>
+                                        ${server.logRequests ? '<span style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: var(--accent); color: white;">Log Req</span>' : ''}
+                                        ${server.logResponses ? '<span style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: var(--accent); color: white;">Log Res</span>' : ''}
+                                    </div>
+                                </div>
+                                <div class="mcp-server-actions">
+                                    <button class="debug-button secondary" onclick="toggleMcpTools('${serverId}')" style="font-size: 12px; padding: 6px 12px; margin-right: 8px;">
+                                        🔧 Tools
+                                    </button>
+                                    <button class="debug-button danger" onclick="removeMcpServer('${server.name}')" style="font-size: 12px; padding: 6px 12px;">
+                                        🗑️ Remover
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="tools-${serverId}" class="mcp-tools-container" style="display: none;">
+                                <div style="text-align: center; padding: 15px; color: var(--text-secondary);">
+                                    <div style="font-size: 14px;">⏳ Carregando tools...</div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div style="margin-bottom: 12px;">
-                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Log Requests</div>
-                        <div style="font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-primary); background: var(--bg-chat); padding: 8px; border-radius: 6px;">
-                            ${config.logRequests}
-                        </div>
-                    </div>
-                    
-                    <div style="margin-bottom: 12px;">
-                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Log Responses</div>
-                        <div style="font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-primary); background: var(--bg-chat); padding: 8px; border-radius: 6px;">
-                            ${config.logResponses}
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Tool Execution Timeout</div>
-                        <div style="font-family: 'Courier New', monospace; font-size: 13px; color: var(--text-primary); background: var(--bg-chat); padding: 8px; border-radius: 6px;">
-                            ${config.toolExecutionTimeout || 'N/A'}
-                        </div>
-                    </div>
-                `;
+                    `;
+                }
+                
+                container.innerHTML = html;
                 
             } catch (error) {
-                console.error('Erro ao carregar configuração MCP:', error);
+                console.error('Erro ao carregar servidores MCP:', error);
                 container.innerHTML = `
                     <div style="text-align: center; padding: 20px; color: var(--danger);">
-                        <div>❌ Erro ao carregar configuração</div>
+                        <div>❌ Erro ao carregar servidores</div>
+                        <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * Abre modal para adicionar servidor MCP
+         */
+        function openAddMcpModal() {
+            const modal = document.getElementById('add-mcp-modal');
+            modal.classList.add('show');
+            
+            // Limpa os campos
+            document.getElementById('mcp-name').value = '';
+            document.getElementById('mcp-url').value = '';
+            document.getElementById('mcp-command').value = '';
+            document.getElementById('mcp-transport-type').value = 'http';
+            document.getElementById('mcp-log-requests').checked = false;
+            document.getElementById('mcp-log-responses').checked = false;
+            toggleMcpFields();
+        }
+
+        /**
+         * Fecha modal de adicionar servidor MCP
+         */
+        function closeAddMcpModal() {
+            const modal = document.getElementById('add-mcp-modal');
+            modal.classList.remove('show');
+        }
+
+        /**
+         * Alterna entre campos HTTP e Stdio
+         */
+        function toggleMcpFields() {
+            const transportType = document.getElementById('mcp-transport-type').value;
+            const urlGroup = document.getElementById('mcp-url-group');
+            const commandGroup = document.getElementById('mcp-command-group');
+            
+            if (transportType === 'stdio') {
+                urlGroup.style.display = 'none';
+                commandGroup.style.display = 'block';
+            } else {
+                urlGroup.style.display = 'block';
+                commandGroup.style.display = 'none';
+            }
+        }
+
+        /**
+         * Submete o formulário de adicionar servidor MCP
+         */
+        async function submitMcpServer() {
+            const name = document.getElementById('mcp-name').value.trim();
+            const transportType = document.getElementById('mcp-transport-type').value;
+            const url = transportType === 'http' 
+                ? document.getElementById('mcp-url').value.trim()
+                : document.getElementById('mcp-command').value.trim();
+            const logRequests = document.getElementById('mcp-log-requests').checked;
+            const logResponses = document.getElementById('mcp-log-responses').checked;
+            
+            // Validações
+            if (!name) {
+                alert('Por favor, informe o nome do servidor');
+                return;
+            }
+            
+            if (!url) {
+                alert(transportType === 'http' 
+                    ? 'Por favor, informe a URL do servidor'
+                    : 'Por favor, informe o comando');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/mcp/servers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        url: url,
+                        transportType: transportType,
+                        logRequests: logRequests,
+                        logResponses: logResponses
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || `HTTP ${response.status}`);
+                }
+                
+                showNotification(`✅ Servidor MCP "${name}" adicionado com sucesso!`);
+                closeAddMcpModal();
+                loadMcpConfig(); // Recarrega a lista
+                
+            } catch (error) {
+                console.error('Erro ao adicionar servidor MCP:', error);
+                alert(`Erro ao adicionar servidor: ${error.message}`);
+            }
+        }
+
+        /**
+         * Remove um servidor MCP
+         */
+        async function removeMcpServer(name) {
+            if (!confirm(`Deseja realmente remover o servidor "${name}"?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/mcp/servers/${encodeURIComponent(name)}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || `HTTP ${response.status}`);
+                }
+                
+                showNotification(`✅ Servidor MCP "${name}" removido com sucesso!`);
+                loadMcpConfig(); // Recarrega a lista
+                
+            } catch (error) {
+                console.error('Erro ao remover servidor MCP:', error);
+                alert(`Erro ao remover servidor: ${error.message}`);
+            }
+        }
+
+        /**
+         * Alterna exibição das tools de um servidor MCP
+         */
+        async function toggleMcpTools(serverId) {
+            const container = document.getElementById(`tools-${serverId}`);
+            
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                // Se ainda não carregou as tools, carrega agora
+                if (container.innerHTML.includes('Carregando')) {
+                    await loadMcpTools(serverId);
+                }
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        /**
+         * Carrega as tools de um servidor MCP específico
+         */
+        async function loadMcpTools(serverId) {
+            const container = document.getElementById(`tools-${serverId}`);
+            
+            try {
+                const response = await fetch('/api/mcp/tools');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const allTools = await response.json();
+                
+                if (allTools.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 15px; color: var(--text-secondary);">
+                            <div style="font-size: 14px;">📭 Nenhuma tool disponível</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Renderiza as tools
+                let html = '<div style="max-height: 400px; overflow-y: auto; padding-right: 8px;">';
+                
+                for (const tool of allTools) {
+                    // Formata os parâmetros de forma mais legível
+                    let paramsHtml = '';
+                    if (tool.parameters && tool.parameters !== 'null') {
+                        try {
+                            // Tenta extrair informações úteis dos parâmetros
+                            const paramsStr = tool.parameters.toString();
+                            const cleanParams = paramsStr
+                                .replace(/JsonObjectSchema \{[^}]*properties = \{/, 'Parâmetros:\n')
+                                .replace(/JsonStringSchema \{description = "(.*?)"\s*\}/g, '  • $1')
+                                .replace(/JsonNumberSchema \{description = "(.*?)"\s*\}/g, '  • $1')
+                                .replace(/JsonBooleanSchema \{description = "(.*?)"\s*\}/g, '  • $1')
+                                .replace(/JsonEnumSchema \{description = "(.*?)", enumValues = \[(.*?)\]\s*\}/g, '  • $1 [valores: $2]')
+                                .replace(/JsonIntegerSchema \{description = "(.*?)"\s*\}/g, '  • $1')
+                                .replace(/}/g, '')
+                                .replace(/required = \[(.*?)\]/g, '\nObrigatórios: $1')
+                                .trim();
+                            
+                            if (cleanParams && cleanParams !== 'Parâmetros:') {
+                                paramsHtml = `<div class="mcp-tool-params">${cleanParams}</div>`;
+                            }
+                        } catch (e) {
+                            // Se falhar ao parsear, mostra o raw
+                            paramsHtml = `<div class="mcp-tool-params">${tool.parameters}</div>`;
+                        }
+                    }
+                    
+                    html += `
+                        <div class="mcp-tool-item">
+                            <div class="mcp-tool-name">🔧 ${tool.name}</div>
+                            ${tool.description ? `<div class="mcp-tool-description">${tool.description}</div>` : ''}
+                            ${paramsHtml}
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+                html += `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color); font-size: 12px; color: var(--text-secondary); text-align: center;">
+                    Total: ${allTools.length} tool(s) disponível(is)
+                </div>`;
+                
+                container.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Erro ao carregar tools MCP:', error);
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 15px; color: var(--danger);">
+                        <div style="font-size: 14px;">❌ Erro ao carregar tools</div>
                         <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
                     </div>
                 `;
@@ -2663,6 +3181,9 @@
 
         // Carregar histórico ao iniciar
         loadHistory();
+        
+        // Atualiza status do botão de compactar ao carregar
+        updateCompactButtonStatus();
 
         // Foca no input ao carregar
         messageInput.focus();

@@ -60,6 +60,9 @@ public class ChatResource {
     AgentGPT5Mini agentGPT5Mini;
     
     @Inject
+    AgentWithDynamicMcp agentWithDynamicMcp;
+    
+    @Inject
     OrchestratorService orchestratorService;
 
     @Inject
@@ -155,6 +158,10 @@ public class ChatResource {
             case "gpt-5-mini", "gpt5-mini" -> {
                 if (useMcp) yield agentGPT5Mini.sendMessageWithMcp(memoryId, message);
                 else yield agentGPT5Mini.sendMessage(memoryId, message);
+            }
+            case "dynamic-mcp" -> {
+                // Agent especial que usa servidores MCP dinâmicos cadastrados via UI
+                yield agentWithDynamicMcp.chat(memoryId, message);
             }
             default -> {
                 // Fallback para o agente padrão com RAG support
