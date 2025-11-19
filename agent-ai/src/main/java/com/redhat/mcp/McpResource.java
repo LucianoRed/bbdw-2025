@@ -72,7 +72,32 @@ public class McpResource {
                     .build();
         }
     }
+    
+    @POST
+    @Path("/test-tool")
+    public Response testTool(TestToolRequest request) {
+        try {
+            dev.langchain4j.agent.tool.ToolExecutionRequest toolRequest = 
+                dev.langchain4j.agent.tool.ToolExecutionRequest.builder()
+                    .name(request.toolName())
+                    .arguments(request.arguments())
+                    .build();
+            
+            String result = mcpManager.executeTool(toolRequest);
+            return Response.ok(new TestToolResponse(result, false)).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new TestToolResponse(null, true, e.getMessage()))
+                    .build();
+        }
+    }
 
     public record ErrorResponse(String message) {}
     public record ToolSummary(String name, String description, String parameters) {}
+    public record TestToolRequest(String toolName, String arguments) {}
+    public record TestToolResponse(String result, boolean error, String message) {
+        public TestToolResponse(String result, boolean error) {
+            this(result, error, null);
+        }
+    }
 }

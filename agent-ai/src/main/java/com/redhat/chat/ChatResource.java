@@ -22,8 +22,6 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
@@ -58,9 +56,6 @@ public class ChatResource {
     
     @Inject
     AgentGPT5Mini agentGPT5Mini;
-    
-    @Inject
-    AgentWithDynamicMcp agentWithDynamicMcp;
     
     @Inject
     OrchestratorService orchestratorService;
@@ -158,10 +153,6 @@ public class ChatResource {
             case "gpt-5-mini", "gpt5-mini" -> {
                 if (useMcp) yield agentGPT5Mini.sendMessageWithMcp(memoryId, message);
                 else yield agentGPT5Mini.sendMessage(memoryId, message);
-            }
-            case "dynamic-mcp" -> {
-                // Agent especial que usa servidores MCP dinâmicos cadastrados via UI
-                yield agentWithDynamicMcp.chat(memoryId, message);
             }
             default -> {
                 // Fallback para o agente padrão com RAG support
@@ -288,6 +279,7 @@ public class ChatResource {
     @Path("/mcp-calls/{requestId}")
     public List<McpCallDTO> getMcpCalls(@PathParam("requestId") String requestId) {
         List<McpCallEvent> events = mcpEventService.getEvents(requestId);
+        Log.debugf("Requisição de MCP calls para requestId %s: %d eventos encontrados", requestId, events.size());
         
         return events.stream()
                 .map(event -> new McpCallDTO(

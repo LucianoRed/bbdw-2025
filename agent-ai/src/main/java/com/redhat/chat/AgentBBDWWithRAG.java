@@ -1,11 +1,11 @@
 package com.redhat.chat;
 
+import com.redhat.mcp.DynamicMcpToolProviderSupplier;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import io.quarkiverse.langchain4j.RegisterAiService;
 import io.quarkiverse.langchain4j.RegisterAiService.BeanChatMemoryProviderSupplier;
-import io.quarkiverse.langchain4j.mcp.runtime.McpToolBox;
 import jakarta.enterprise.context.ApplicationScoped;
 
 /**
@@ -18,17 +18,17 @@ import jakarta.enterprise.context.ApplicationScoped;
  */
 @RegisterAiService(
     modelName = "my-model",
-    chatMemoryProviderSupplier = BeanChatMemoryProviderSupplier.class
+    chatMemoryProviderSupplier = BeanChatMemoryProviderSupplier.class,
+    toolProviderSupplier = DynamicMcpToolProviderSupplier.class
 )
 @ApplicationScoped
 public interface AgentBBDWWithRAG {
     
-    @McpToolBox("k8s-server")
     @SystemMessage("""
         Você é um assistente de AI especializado em análise de clusters OpenShift/Kubernetes.
         Você tem acesso a:
         1. Documentação oficial do OpenShift (via RAG)
-        2. Ferramentas para consultar informações do cluster em tempo real (via MCP)
+        2. Ferramentas MCP cadastradas dinamicamente para consultar informações do cluster em tempo real
         
         ESTRATÉGIA DE USO:
         - Para perguntas conceituais, configurações ou boas práticas: use a documentação do RAG

@@ -67,7 +67,7 @@
         .main-container {
             display: flex;
             gap: 20px;
-            max-width: 1200px;
+            max-width: 1400px;
             width: 100%;
             height: 90vh;
         }
@@ -324,7 +324,7 @@
         }
 
         .message-content {
-            max-width: 70%;
+            max-width: 85%;
             padding: 16px 20px;
             border-radius: 16px;
             line-height: 1.6;
@@ -1024,6 +1024,29 @@
             word-break: break-all;
         }
 
+        .mcp-test-tool-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .mcp-test-tool-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        .mcp-test-tool-btn:active {
+            transform: translateY(0);
+        }
+
         /* Modal para mensagem completa */
         .message-modal {
             display: none;
@@ -1192,6 +1215,10 @@
             animation: spin 1s linear infinite;
         }
 
+        .mcp-tools-list {
+            min-height: 20px;
+        }
+
         .mcp-tool-call {
             background: var(--bg-secondary);
             border-left: 3px solid var(--accent);
@@ -1238,6 +1265,11 @@
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.6; }
+        }
+
+        /* Resumo sutil de MCP Tools após conclusão */
+        .mcp-tools-summary {
+            animation: fadeIn 0.4s ease;
         }
 
         /* Tooltip */
@@ -1299,7 +1331,6 @@
                     <option value="gpt-4.1-nano">GPT-4.1 Nano</option>
                     <option value="gpt-5">GPT-5</option>
                     <option value="gpt-5-mini" selected>GPT-5 Mini (Padrão)</option>
-                    <option value="dynamic-mcp">🔌 Dynamic MCP (Experimental)</option>
                 </select>
             </div>
             
@@ -1638,7 +1669,9 @@
     <!-- Modal para Adicionar MCP Server -->
     <div id="add-mcp-modal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">🔌 Adicionar MCP Server</div>
+            <div class="modal-header" id="mcp-modal-title">🔌 Adicionar MCP Server</div>
+            <input type="hidden" id="mcp-edit-mode" value="false">
+            <input type="hidden" id="mcp-original-name" value="">
             
             <div class="form-group">
                 <label class="form-label">Nome do Servidor</label>
@@ -1681,8 +1714,42 @@
                 <button onclick="closeAddMcpModal()" style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
                     Cancelar
                 </button>
-                <button onclick="submitMcpServer()" style="background: var(--accent); color: white;">
+                <button id="mcp-submit-button" onclick="submitMcpServer()" style="background: var(--accent); color: white;">
                     Adicionar Servidor
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Testar Tool -->
+    <div id="test-tool-modal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">🧪 Testar Tool</div>
+            
+            <div class="form-group">
+                <label class="form-label">Nome da Tool</label>
+                <input type="text" id="test-tool-name" class="form-input" readonly style="background: var(--bg-tertiary); cursor: not-allowed;">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Argumentos (JSON)</label>
+                <textarea id="test-tool-args" class="form-input" rows="8" placeholder='{"param1": "value1", "param2": "value2"}'></textarea>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">
+                    💡 Digite os argumentos em formato JSON. Deixe vazio {} se a tool não precisar de argumentos.
+                </div>
+            </div>
+            
+            <div id="test-tool-result" style="display: none; margin-top: 16px;">
+                <label class="form-label">Resultado</label>
+                <div id="test-tool-result-content" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all;"></div>
+            </div>
+            
+            <div class="form-actions">
+                <button onclick="closeTestToolModal()" style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                    Fechar
+                </button>
+                <button id="test-tool-submit-button" onclick="executeTestTool()" style="background: var(--accent); color: white;">
+                    🧪 Executar
                 </button>
             </div>
         </div>
@@ -1776,6 +1843,9 @@
 
         let messageCount = 0;
         
+        // Cache de tools por serverId
+        const mcpToolsCache = {};
+        
         // Recupera ou cria sessionId persistente
         let sessionId = localStorage.getItem('chatSessionId');
         if (!sessionId) {
@@ -1821,6 +1891,23 @@
 
         // Função para toggle de features
         async function toggleFeature(featureName) {
+            // Se está tentando ativar MCP, verifica se há servidores cadastrados
+            if (featureName === 'mcp' && !features[featureName]) {
+                try {
+                    const response = await fetch('/api/mcp/servers');
+                    if (response.ok) {
+                        const servers = await response.json();
+                        if (servers.length === 0) {
+                            showNotification('⚠️ Nenhum servidor MCP cadastrado. Cadastre um servidor primeiro.');
+                            openAddMcpModal();
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Erro ao verificar servidores MCP:', error);
+                }
+            }
+            
             // Se está ativando o orquestrador, mostra modal explicativo
             if (featureName === 'orchestrator' && !features[featureName]) {
                 showOrchestratorInfo();
@@ -1934,10 +2021,16 @@
 
         // Função para processar markdown com quebras de linha adequadas
         function parseMarkdown(text) {
+            // Verifica se text é null ou undefined
+            if (!text) {
+                return '';
+            }
+            
+            // Garante que text é uma string
+            text = String(text);
+            
             // Adiciona quebra de linha dupla antes de headings se não houver
             text = text.replace(/([^\n])(#{1,3}\s)/g, '$1\n\n$2');
-            // Adiciona quebra de linha após headings se não houver
-            text = text.replace(/(#{1,3}\s[^\n]+)([^\n])/g, '$1\n\n$2');
             // Garante espaço antes de listas numeradas
             text = text.replace(/([^\n])(\d+\.\s)/g, '$1\n\n$2');
             return marked.parse(text);
@@ -2146,26 +2239,39 @@
 
             // Cria indicador de MCP tools se MCP estiver ativo
             let mcpIndicator = null;
+            let mcpToolsList = null;
             let mcpToolsMap = new Map(); // Mapa para rastrear status das tools
             let pollingInterval = null;
-            let requestId = null;
+            let currentRequestId = { value: null }; // Objeto para permitir atualização por referência
             
             if (useMcp) {
                 mcpIndicator = document.createElement('div');
                 mcpIndicator.className = 'mcp-tools-indicator';
-                mcpIndicator.innerHTML = `
-                    <div class="mcp-tools-header">
-                        <span class="mcp-tools-spinner">🔌</span>
-                        <span>MCP Tools Ativas</span>
-                    </div>
-                    <div id="mcp-tools-list"></div>
+                
+                const header = document.createElement('div');
+                header.className = 'mcp-tools-header';
+                header.innerHTML = `
+                    <span class="mcp-tools-spinner">🔌</span>
+                    <span>MCP Tools Ativas</span>
                 `;
-                aiMessageDiv.parentElement.insertBefore(mcpIndicator, aiMessageDiv);
+                
+                mcpToolsList = document.createElement('div');
+                mcpToolsList.className = 'mcp-tools-list';
+                mcpToolsList.id = 'mcp-tools-list-' + Date.now(); // ID único
+                
+                mcpIndicator.appendChild(header);
+                mcpIndicator.appendChild(mcpToolsList);
+                
+                // Insere dentro do aiMessageDiv, no topo
+                aiMessageDiv.appendChild(mcpIndicator);
+                
+                console.log('✅ Indicador MCP criado com ID:', mcpToolsList.id);
             }
 
             try {
                 // Usa o endpoint tradicional (não-streaming) com @RunOnVirtualThread
-                const response = await fetch('/chat/message', {
+                // Fazemos a requisição com fetch, mas não aguardamos ainda
+                const fetchPromise = fetch('/chat/message', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2180,30 +2286,85 @@
                     })
                 });
 
+                // Pega o requestId do header assim que possível
+                fetchPromise.then(response => {
+                    if (response.ok) {
+                        const requestId = response.headers.get('X-Request-Id');
+                        if (requestId) {
+                            currentRequestId.value = requestId;
+                            console.log('✅ RequestId ativado no polling:', requestId);
+                            
+                            // Inicia polling IMEDIATAMENTE após ter o requestId
+                            if (useMcp && mcpIndicator && !pollingInterval) {
+                                console.log('🔄 Iniciando polling de MCP tools com requestId:', requestId);
+                                
+                                // Faz primeira chamada imediatamente
+                                console.log('📡 Primeira chamada de polling imediata');
+                                pollMcpCalls(currentRequestId.value, mcpToolsMap, mcpToolsList);
+                                
+                                // Depois continua com intervalo
+                                pollingInterval = setInterval(() => {
+                                    console.log('📡 Polling interval executando com requestId:', currentRequestId.value);
+                                    pollMcpCalls(currentRequestId.value, mcpToolsMap, mcpToolsList);
+                                }, 300);
+                            }
+                        }
+                    }
+                });
+
+                // Agora aguardamos a resposta completa
+                const response = await fetchPromise;
+
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                // Obtém o requestId do header
-                requestId = response.headers.get('X-Request-Id');
-                console.log('RequestId recebido:', requestId);
-                
-                // Se MCP está ativo e temos requestId, inicia polling
-                if (useMcp && requestId && mcpIndicator) {
-                    pollingInterval = setInterval(() => pollMcpCalls(requestId, mcpToolsMap), 500);
-                }
+                const requestId = response.headers.get('X-Request-Id');
+                console.log('RequestId recebido (response body):', requestId);
 
                 const text = await response.text();
-                aiMessageDiv.innerHTML = parseMarkdown(text);
+                
+                // Se há indicador MCP, adiciona o conteúdo após ele
+                if (mcpIndicator) {
+                    const contentDiv = document.createElement('div');
+                    contentDiv.innerHTML = parseMarkdown(text);
+                    aiMessageDiv.appendChild(contentDiv);
+                } else {
+                    aiMessageDiv.innerHTML = parseMarkdown(text);
+                }
+                
                 aiMessageDiv.classList.remove('streaming');
                 updateMessageCount();
                 
-                // Para o polling e remove indicador MCP após conclusão
+                // Aguarda mais um pouco para capturar eventos que podem chegar depois da resposta
+                console.log('⏳ Aguardando eventos MCP finais...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Para o polling
                 if (pollingInterval) {
                     clearInterval(pollingInterval);
+                    console.log('🛑 Polling parado');
                 }
-                if (mcpIndicator && mcpToolsMap.size === 0) {
-                    mcpIndicator.remove();
+                
+                // Transforma o indicador de MCP em resumo sutil se houver tools usadas
+                console.log('📊 Verificando tools no mapa:', mcpToolsMap.size, 'tools:', Array.from(mcpToolsMap.keys()));
+                
+                if (mcpIndicator && mcpToolsMap.size > 0) {
+                    const toolsUsed = Array.from(mcpToolsMap.keys());
+                    console.log('✅ Criando resumo de MCP tools:', toolsUsed);
+                    mcpIndicator.className = 'mcp-tools-summary';
+                    mcpIndicator.innerHTML = `
+                        <div style="font-size: 11px; color: var(--text-secondary); padding: 8px; background: var(--bg-tertiary); border-radius: 6px; border-left: 3px solid var(--accent); margin-bottom: 12px;">
+                            <span style="opacity: 0.7;">🔧 Tools utilizadas:</span> 
+                            <span style="font-weight: 500;">${toolsUsed.join(', ')}</span>
+                        </div>
+                    `;
+                } else {
+                    console.log('⚠️ Indicador MCP não será mostrado - mcpIndicator:', !!mcpIndicator, 'tools:', mcpToolsMap.size);
+                    if (mcpIndicator) {
+                        // Remove se não houver tools usadas
+                        mcpIndicator.remove();
+                    }
                 }
                 
                 // Atualiza status do botão de compactar após enviar mensagem
@@ -2230,24 +2391,37 @@
         /**
          * Faz polling das chamadas MCP para um requestId
          */
-        async function pollMcpCalls(requestId, toolsMap) {
+        async function pollMcpCalls(requestId, toolsMap, toolListElement) {
             try {
                 const response = await fetch(`/chat/mcp-calls/${requestId}`);
-                if (!response.ok) return;
+                if (!response.ok) {
+                    console.log('Polling MCP: response not ok', response.status);
+                    return;
+                }
                 
                 const events = await response.json();
-                const toolList = document.getElementById('mcp-tools-list');
-                if (!toolList) return;
+                console.log('Polling MCP: eventos recebidos', events);
+                
+                if (!toolListElement) {
+                    console.log('Polling MCP: toolListElement não fornecido');
+                    return;
+                }
+                
+                const toolList = toolListElement;
                 
                 // Processa cada evento
                 for (const event of events) {
                     const toolName = event.name;
                     const status = event.status;
+                    console.log(`🔧 Polling MCP: processando tool ${toolName} com status ${status}`);
                     
                     // Se é uma nova tool ou status mudou
                     const currentStatus = toolsMap.get(toolName);
+                    console.log(`   Status anterior: ${currentStatus}, novo: ${status}`);
+                    
                     if (!currentStatus || currentStatus !== status) {
                         toolsMap.set(toolName, status);
+                        console.log(`   ✅ Atualizando UI para tool ${toolName}`);
                         
                         // Atualiza ou cria o elemento da tool
                         let toolDiv = document.getElementById(`mcp-tool-${toolName.replace(/[^a-zA-Z0-9]/g, '_')}`);
@@ -2803,6 +2977,9 @@
                                     <button class="debug-button secondary" onclick="toggleMcpTools('${serverId}')" style="font-size: 12px; padding: 6px 12px; margin-right: 8px;">
                                         🔧 Tools
                                     </button>
+                                    <button class="debug-button secondary" onclick="editMcpServer('${server.name}')" style="font-size: 12px; padding: 6px 12px; margin-right: 8px;">
+                                        ✏️ Editar
+                                    </button>
                                     <button class="debug-button danger" onclick="removeMcpServer('${server.name}')" style="font-size: 12px; padding: 6px 12px;">
                                         🗑️ Remover
                                     </button>
@@ -2837,14 +3014,67 @@
             const modal = document.getElementById('add-mcp-modal');
             modal.classList.add('show');
             
+            // Modo adicionar
+            document.getElementById('mcp-modal-title').textContent = '🔌 Adicionar MCP Server';
+            document.getElementById('mcp-edit-mode').value = 'false';
+            document.getElementById('mcp-original-name').value = '';
+            document.getElementById('mcp-submit-button').textContent = 'Adicionar Servidor';
+            
             // Limpa os campos
             document.getElementById('mcp-name').value = '';
+            document.getElementById('mcp-name').disabled = false;
             document.getElementById('mcp-url').value = '';
             document.getElementById('mcp-command').value = '';
             document.getElementById('mcp-transport-type').value = 'http';
             document.getElementById('mcp-log-requests').checked = false;
             document.getElementById('mcp-log-responses').checked = false;
             toggleMcpFields();
+        }
+
+        /**
+         * Abre modal para editar servidor MCP
+         */
+        async function editMcpServer(serverName) {
+            try {
+                const response = await fetch('/api/mcp/servers');
+                if (!response.ok) throw new Error('Erro ao carregar servidor');
+                
+                const servers = await response.json();
+                const server = servers.find(s => s.name === serverName);
+                
+                if (!server) {
+                    alert('Servidor não encontrado');
+                    return;
+                }
+                
+                // Modo edição
+                const modal = document.getElementById('add-mcp-modal');
+                modal.classList.add('show');
+                
+                document.getElementById('mcp-modal-title').textContent = '✏️ Editar MCP Server';
+                document.getElementById('mcp-edit-mode').value = 'true';
+                document.getElementById('mcp-original-name').value = serverName;
+                document.getElementById('mcp-submit-button').textContent = 'Atualizar Servidor';
+                
+                // Preenche os campos
+                document.getElementById('mcp-name').value = server.name;
+                document.getElementById('mcp-name').disabled = true; // Nome não pode ser alterado
+                document.getElementById('mcp-transport-type').value = server.transportType;
+                document.getElementById('mcp-log-requests').checked = server.logRequests || false;
+                document.getElementById('mcp-log-responses').checked = server.logResponses || false;
+                
+                toggleMcpFields();
+                
+                if (server.transportType === 'stdio') {
+                    document.getElementById('mcp-command').value = server.url;
+                } else {
+                    document.getElementById('mcp-url').value = server.url;
+                }
+                
+            } catch (error) {
+                console.error('Erro ao editar servidor:', error);
+                alert('Erro ao carregar dados do servidor: ' + error.message);
+            }
         }
 
         /**
@@ -2873,9 +3103,11 @@
         }
 
         /**
-         * Submete o formulário de adicionar servidor MCP
+         * Submete o formulário de adicionar/editar servidor MCP
          */
         async function submitMcpServer() {
+            const isEditMode = document.getElementById('mcp-edit-mode').value === 'true';
+            const originalName = document.getElementById('mcp-original-name').value;
             const name = document.getElementById('mcp-name').value.trim();
             const transportType = document.getElementById('mcp-transport-type').value;
             const url = transportType === 'http' 
@@ -2897,8 +3129,28 @@
                 return;
             }
             
+            // Mostra loading
+            const submitButton = document.getElementById('mcp-submit-button');
+            const originalButtonText = submitButton.textContent;
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span style="display: inline-block; animation: spin 1s linear infinite;">⏳</span> Processando...';
+            
             try {
-                const response = await fetch('/api/mcp/servers', {
+                let response;
+                
+                if (isEditMode) {
+                    // Editar: primeiro remove o antigo, depois adiciona o novo
+                    const deleteResponse = await fetch(`/api/mcp/servers/${encodeURIComponent(originalName)}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!deleteResponse.ok) {
+                        throw new Error('Erro ao remover configuração anterior');
+                    }
+                }
+                
+                // Adiciona (ou re-adiciona no caso de edição)
+                response = await fetch('/api/mcp/servers', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -2917,7 +3169,8 @@
                     throw new Error(error.message || `HTTP ${response.status}`);
                 }
                 
-                showNotification(`✅ Servidor MCP "${name}" adicionado com sucesso!`);
+                const action = isEditMode ? 'atualizado' : 'adicionado';
+                showNotification(`✅ Servidor MCP "${name}" ${action} com sucesso!`);
                 closeAddMcpModal();
                 loadMcpConfig(); // Recarrega a lista
                 
@@ -2985,6 +3238,9 @@
                 
                 const allTools = await response.json();
                 
+                // Armazena no cache para uso posterior
+                mcpToolsCache[serverId] = allTools;
+                
                 if (allTools.length === 0) {
                     container.innerHTML = `
                         <div style="text-align: center; padding: 15px; color: var(--text-secondary);">
@@ -2997,7 +3253,8 @@
                 // Renderiza as tools
                 let html = '<div style="max-height: 400px; overflow-y: auto; padding-right: 8px;">';
                 
-                for (const tool of allTools) {
+                for (let i = 0; i < allTools.length; i++) {
+                    const tool = allTools[i];
                     // Formata os parâmetros de forma mais legível
                     let paramsHtml = '';
                     if (tool.parameters && tool.parameters !== 'null') {
@@ -3025,8 +3282,13 @@
                     }
                     
                     html += `
-                        <div class="mcp-tool-item">
-                            <div class="mcp-tool-name">🔧 ${tool.name}</div>
+                        <div class="mcp-tool-item" data-tool-index="${i}">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                <div class="mcp-tool-name">🔧 ${tool.name}</div>
+                                <button class="mcp-test-tool-btn" onclick="openTestToolModal('${serverId}', ${i})">
+                                    🧪 Testar
+                                </button>
+                            </div>
                             ${tool.description ? `<div class="mcp-tool-description">${tool.description}</div>` : ''}
                             ${paramsHtml}
                         </div>
@@ -3048,6 +3310,130 @@
                         <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
                     </div>
                 `;
+            }
+        }
+
+        /**
+         * Abre modal para testar uma tool
+         */
+        function openTestToolModal(serverId, toolIndex) {
+            const modal = document.getElementById('test-tool-modal');
+            const toolNameInput = document.getElementById('test-tool-name');
+            const argsTextarea = document.getElementById('test-tool-args');
+            const resultDiv = document.getElementById('test-tool-result');
+            const submitButton = document.getElementById('test-tool-submit-button');
+            
+            // Busca a tool do cache
+            const tools = mcpToolsCache[serverId];
+            if (!tools || !tools[toolIndex]) {
+                alert('Tool não encontrada no cache');
+                return;
+            }
+            
+            const tool = tools[toolIndex];
+            
+            // Define o nome da tool
+            toolNameInput.value = tool.name;
+            
+            // Tenta criar um template de argumentos baseado nos parâmetros
+            let argsTemplate = '{}';
+            if (tool.parameters && tool.parameters !== 'null' && tool.parameters !== '{}') {
+                try {
+                    // Os parâmetros vêm como string do backend
+                    const paramsStr = tool.parameters.toString();
+                    
+                    // Tenta extrair nomes de propriedades para criar template
+                    // Exemplo de formato: "JsonObjectSchema {properties = {param1 = ..., param2 = ...}}"
+                    const propsMatch = paramsStr.match(/properties = \{([^}]+)\}/);
+                    if (propsMatch) {
+                        const propsStr = propsMatch[1];
+                        const propNames = propsStr.split(',').map(p => p.split('=')[0].trim());
+                        const template = {};
+                        propNames.forEach(name => {
+                            template[name] = '';
+                        });
+                        argsTemplate = JSON.stringify(template, null, 2);
+                    }
+                } catch (e) {
+                    console.log('Não foi possível criar template de argumentos:', e);
+                }
+            }
+            
+            argsTextarea.value = argsTemplate;
+            
+            // Esconde resultado anterior
+            resultDiv.style.display = 'none';
+            
+            // Reseta botão
+            submitButton.disabled = false;
+            submitButton.innerHTML = '🧪 Executar';
+            
+            modal.classList.add('show');
+        }
+
+        /**
+         * Fecha modal de teste de tool
+         */
+        function closeTestToolModal() {
+            const modal = document.getElementById('test-tool-modal');
+            modal.classList.remove('show');
+        }
+
+        /**
+         * Executa o teste da tool
+         */
+        async function executeTestTool() {
+            const toolName = document.getElementById('test-tool-name').value;
+            const argsText = document.getElementById('test-tool-args').value.trim();
+            const resultDiv = document.getElementById('test-tool-result');
+            const resultContent = document.getElementById('test-tool-result-content');
+            const submitButton = document.getElementById('test-tool-submit-button');
+            
+            // Valida JSON
+            let args;
+            try {
+                args = argsText ? JSON.parse(argsText) : {};
+            } catch (e) {
+                alert('❌ JSON inválido nos argumentos. Verifique a sintaxe.');
+                return;
+            }
+            
+            // Mostra loading
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span style="display: inline-block; animation: spin 1s linear infinite;">⏳</span> Executando...';
+            resultDiv.style.display = 'block';
+            resultContent.textContent = '⏳ Executando tool...';
+            resultContent.style.color = 'var(--text-secondary)';
+            
+            try {
+                const response = await fetch('/api/mcp/test-tool', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        toolName: toolName,
+                        arguments: args
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error || `HTTP ${response.status}`);
+                }
+                
+                // Mostra resultado formatado
+                resultContent.textContent = JSON.stringify(result, null, 2);
+                resultContent.style.color = 'var(--success)';
+                
+            } catch (error) {
+                console.error('Erro ao executar tool:', error);
+                resultContent.textContent = `❌ Erro: ${error.message}`;
+                resultContent.style.color = 'var(--danger)';
+            } finally {
+                submitButton.disabled = false;
+                submitButton.innerHTML = '🧪 Executar';
             }
         }
 
