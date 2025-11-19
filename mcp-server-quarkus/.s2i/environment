@@ -1,4 +1,4 @@
 MAVEN_S2I_ARTIFACT_DIRS=target/quarkus-app
 S2I_SOURCE_DEPLOYMENTS_FILTER=quarkus-run.jar lib quarkus app
-JAVA_OPTIONS=-Dquarkus.http.host=0.0.0.0
+JAVA_OPTIONS=-Dquarkus.http.host=0.0.0.0 -Dquarkus.mcp.server.stdio.enabled=false -Dquarkus.http.cors=true -Dquarkus.http.cors.origins=http://localhost:3000 -Dquarkus.http.cors.methods=GET,POST,OPTIONS -Dquarkus.http.cors.headers=Content-Type,Authorization,Mcp-Session-Id -Dquarkus.http.cors.exposed-headers=Mcp-Session-Id -Dquarkus.http.cors.access-control-allow-credentials=true
 AB_JOLOKIA_OFF=true

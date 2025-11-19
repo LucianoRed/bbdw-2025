@@ -94,3 +94,14 @@ If you want to learn more about building native executables, please consult <htt
 Easily start your REST Web Services
 
 [Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+
+### For OpenShift
+
+````
+oc import-image openjdk-21:latest \
+  --from=registry.redhat.io/ubi9/openjdk-21:latest \
+  --confirm
+````
+
+### No deployment:
+JAVA_OPTIONS=-Dquarkus.mcp.server.stdio.enabled=false
