@@ -2270,6 +2270,10 @@
 
             try {
                 // Usa o endpoint tradicional (não-streaming) com @RunOnVirtualThread
+                // Criamos um AbortController para timeout maior (5 minutos para MCP tools)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), useMcp ? 300000 : 60000); // 5min se MCP, 1min caso contrário
+                
                 // Fazemos a requisição com fetch, mas não aguardamos ainda
                 const fetchPromise = fetch('/chat/message', {
                     method: 'POST',
@@ -2283,8 +2287,9 @@
                         useRag: useRag,
                         useOrchestrator: useOrchestrator,
                         model: selectedModel
-                    })
-                });
+                    }),
+                    signal: controller.signal
+                }).finally(() => clearTimeout(timeoutId));
 
                 // Pega o requestId do header assim que possível
                 fetchPromise.then(response => {
@@ -2372,7 +2377,16 @@
                 
             } catch (error) {
                 console.error('Erro ao enviar mensagem:', error);
-                aiMessageDiv.innerHTML = '<p>❌ Erro ao comunicar com o servidor</p>';
+                
+                // Verifica se foi timeout ou erro de rede
+                let errorMessage = '<p>❌ Erro ao comunicar com o servidor</p>';
+                if (error.name === 'AbortError') {
+                    errorMessage = '<p>⏱️ Tempo limite excedido. As MCP tools podem estar demorando muito. Tente novamente ou desative o MCP temporariamente.</p>';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage = '<p>❌ Erro de conexão com o servidor. Verifique se o backend está rodando.</p>';
+                }
+                
+                aiMessageDiv.innerHTML = errorMessage;
                 aiMessageDiv.classList.remove('streaming');
                 
                 // Para o polling e remove indicador MCP em caso de erro
@@ -2533,7 +2547,13 @@
             
             try {
                 // Chama o endpoint específico da sessão atual
-                const response = await fetch(`/admin/compaction/session/${sessionId}`, { method: 'POST' });
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutos
+                
+                const response = await fetch(`/admin/compaction/session/${sessionId}`, { 
+                    method: 'POST',
+                    signal: controller.signal
+                }).finally(() => clearTimeout(timeoutId));
                 const data = await response.json();
                 
                 overlay.classList.remove('show');
@@ -2602,7 +2622,13 @@
             statusEl.innerHTML = '<span>⏳</span><span>Indexando...</span>';
             
             try {
-                const response = await fetch('/admin/rag/ingest', { method: 'POST' });
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutos
+                
+                const response = await fetch('/admin/rag/ingest', { 
+                    method: 'POST',
+                    signal: controller.signal
+                }).finally(() => clearTimeout(timeoutId));
                 const data = await response.json();
                 
                 if (data.success) {
@@ -2644,7 +2670,13 @@
             statusEl.innerHTML = '<span>⏳</span><span>Re-indexando...</span>';
             
             try {
-                const response = await fetch('/admin/rag/reingest', { method: 'POST' });
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutos
+                
+                const response = await fetch('/admin/rag/reingest', { 
+                    method: 'POST',
+                    signal: controller.signal
+                }).finally(() => clearTimeout(timeoutId));
                 const data = await response.json();
                 
                 if (data.success) {
@@ -3406,6 +3438,9 @@
             resultContent.style.color = 'var(--text-secondary)';
             
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutos
+                
                 const response = await fetch('/api/mcp/test-tool', {
                     method: 'POST',
                     headers: {
@@ -3414,8 +3449,9 @@
                     body: JSON.stringify({
                         toolName: toolName,
                         arguments: args
-                    })
-                });
+                    }),
+                    signal: controller.signal
+                }).finally(() => clearTimeout(timeoutId));
                 
                 const result = await response.json();
                 
