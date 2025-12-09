@@ -96,8 +96,12 @@ public class McpEventService {
     /**
      * Adiciona um evento à lista
      */
-    private void addEvent(McpCallEvent event) {
+    public void addEvent(McpCallEvent event) {
         eventsByRequest.computeIfAbsent(event.getRequestId(), k -> new ArrayList<>()).add(event);
+        Log.infof("✅ Evento MCP adicionado: requestId=%s, tool=%s, status=%s", 
+                 event.getRequestId(), event.getToolName(), event.getStatus());
+        // Dispara evento para observers
+        mcpEventBus.fire(event);
     }
     
     /**

@@ -22,8 +22,6 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
@@ -281,6 +279,7 @@ public class ChatResource {
     @Path("/mcp-calls/{requestId}")
     public List<McpCallDTO> getMcpCalls(@PathParam("requestId") String requestId) {
         List<McpCallEvent> events = mcpEventService.getEvents(requestId);
+        Log.debugf("Requisição de MCP calls para requestId %s: %d eventos encontrados", requestId, events.size());
         
         return events.stream()
                 .map(event -> new McpCallDTO(

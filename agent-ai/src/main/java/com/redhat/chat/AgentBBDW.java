@@ -1,24 +1,24 @@
 package com.redhat.chat;
 
+import com.redhat.mcp.DynamicMcpToolProviderSupplier;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import io.quarkiverse.langchain4j.RegisterAiService;
 import io.quarkiverse.langchain4j.RegisterAiService.BeanChatMemoryProviderSupplier;
-import io.quarkiverse.langchain4j.mcp.runtime.McpToolBox;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @RegisterAiService(
-    modelName = "my-model",
-    chatMemoryProviderSupplier = BeanChatMemoryProviderSupplier.class
+    modelName = "gpt4o-mini-model",
+    chatMemoryProviderSupplier = BeanChatMemoryProviderSupplier.class,
+    toolProviderSupplier = DynamicMcpToolProviderSupplier.class
 )
 @ApplicationScoped
 public interface AgentBBDW {
     
-    @McpToolBox("k8s-server")
     @SystemMessage("""
         Você é um assistente de AI especializado em análise de clusters OpenShift/Kubernetes. 
-        Você tem acesso a ferramentas para consultar informações do cluster em tempo real.
+        Você tem acesso a ferramentas MCP cadastradas dinamicamente para consultar informações do cluster em tempo real.
         
         Sempre responda em markdown usando:
         - Listas para enumerações
@@ -27,7 +27,6 @@ public interface AgentBBDW {
         - Formatação adequada para melhorar a legibilidade
         
         Ao analisar o cluster, seja proativo em buscar informações relevantes usando as ferramentas disponíveis.
-        Só faça chamadas para o MCP k8s-server quando for necessário.
         """)
     String sendMessageWithMcp(
         @MemoryId String memoryId,

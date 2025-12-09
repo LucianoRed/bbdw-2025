@@ -1,7 +1,15 @@
 package com.redhat.orchestrator;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.chat.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -29,6 +37,9 @@ public class OrchestratorService {
     
     @Inject
     AgentGPT4oMini agentGeneral;
+    
+    @Inject
+    ChatMemoryProvider chatMemoryProvider;
     
     private final ObjectMapper objectMapper = new ObjectMapper();
     
@@ -70,6 +81,9 @@ public class OrchestratorService {
      * Delega a mensagem para o agente especializado baseado na decisão do orquestrador
      */
     private String delegateToSpecialist(RoutingDecision decision, String memoryId, String message) {
+        // Limpa mensagens de tool do histórico para evitar erros de "tool without tool_calls"
+        cleanToolMessagesFromMemory(memoryId);
+        
         return switch (decision.specialist()) {
             case K8S_CLUSTER -> {
                 Log.info("🔧 Delegando para agente K8S_CLUSTER");
@@ -104,6 +118,41 @@ public class OrchestratorService {
                 yield agentGeneral.sendMessage(memoryId, message);
             }
         };
+    }
+    
+    /**
+     * Limpa mensagens de tool do histórico para evitar erros de validação da OpenAI
+     * quando há mensagens com role 'tool' sem um 'tool_calls' precedente
+     */
+    private void cleanToolMessagesFromMemory(String memoryId) {
+        try {
+            ChatMemory memory = chatMemoryProvider.get(memoryId);
+            List<ChatMessage> messages = memory.messages();
+            
+            // Filtra mensagens removendo ToolExecutionResultMessage e AiMessage com tool_calls
+            List<ChatMessage> cleanedMessages = new ArrayList<>();
+            for (ChatMessage msg : messages) {
+                // Mantém apenas UserMessage e AiMessage sem tool_calls
+                if (msg instanceof UserMessage) {
+                    cleanedMessages.add(msg);
+                } else if (msg instanceof AiMessage aiMsg) {
+                    // Só adiciona AiMessage se não tiver tool_calls
+                    if (!aiMsg.hasToolExecutionRequests()) {
+                        cleanedMessages.add(msg);
+                    }
+                }
+                // Ignora ToolExecutionResultMessage e SystemMessage
+            }
+            
+            // Limpa a memória e re-adiciona apenas as mensagens válidas
+            memory.clear();
+            cleanedMessages.forEach(memory::add);
+            
+            Log.debugf("🧹 Memória limpa: removidas mensagens de tool para evitar erros de validação");
+        } catch (Exception e) {
+            Log.warnf("Erro ao limpar mensagens de tool da memória: %s", e.getMessage());
+            // Não lança exceção, continua com a memória como está
+        }
     }
     
     /**

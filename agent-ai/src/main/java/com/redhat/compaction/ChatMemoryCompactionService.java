@@ -28,9 +28,13 @@ public class ChatMemoryCompactionService {
     ChatSummaryAgent summaryAgent;
     
     // Configurações
-    private static final int MIN_MESSAGES_TO_COMPACT = 10; // Mínimo de mensagens para compactar
+    private static final int MIN_MESSAGES_TO_COMPACT = 8; // Mínimo de mensagens para compactar
     private static final int MESSAGES_TO_KEEP_RECENT = 6;   // Últimas N mensagens a manter intactas
     private static final String CHAT_MEMORY_PATTERN = "chat-memory:*";
+    
+    public int getMinMessagesToCompact() {
+        return MIN_MESSAGES_TO_COMPACT;
+    }
     
     /**
      * Compacta todas as memórias de chat (chamado manualmente)
@@ -75,6 +79,93 @@ public class ChatMemoryCompactionService {
             
         } catch (Exception e) {
             Log.error("❌ Erro ao executar compactação", e);
+        }
+    }
+    
+    /**
+     * Verifica se uma sessão pode ser compactada
+     * @return true se tem mensagens suficientes para compactar
+     */
+    public boolean canCompact(String memoryId) {
+        List<ChatMessage> messages = chatMemoryStore.getMessages(memoryId);
+        return messages.size() >= MIN_MESSAGES_TO_COMPACT;
+    }
+    
+    /**
+     * Retorna quantas mensagens existem em uma sessão
+     */
+    public int getMessageCount(String memoryId) {
+        List<ChatMessage> messages = chatMemoryStore.getMessages(memoryId);
+        return messages.size();
+    }
+    
+    /**
+     * Compacta uma sessão específica e retorna estatísticas
+     */
+    public CompactionStats compactSession(String memoryId) {
+        List<ChatMessage> messages = chatMemoryStore.getMessages(memoryId);
+        int messagesBefore = messages.size();
+        
+        // Se não tem mensagens suficientes, não compacta
+        if (messagesBefore < MIN_MESSAGES_TO_COMPACT) {
+            return new CompactionStats(false, messagesBefore, messagesBefore, 0, "Mensagens insuficientes para compactar");
+        }
+        
+        Log.infof("🔍 Compactando sessão %s com %d mensagens", memoryId, messagesBefore);
+        
+        // Separa mensagens antigas das recentes
+        int splitIndex = messagesBefore - MESSAGES_TO_KEEP_RECENT;
+        List<ChatMessage> oldMessages = messages.subList(0, splitIndex);
+        List<ChatMessage> recentMessages = messages.subList(splitIndex, messagesBefore);
+        
+        // Calcula tokens antes da compactação
+        int tokensBefore = estimateTokens(oldMessages);
+        
+        // Cria o histórico de conversa para resumir
+        StringBuilder conversationHistory = new StringBuilder();
+        for (ChatMessage msg : oldMessages) {
+            if (msg instanceof UserMessage userMsg) {
+                conversationHistory.append("Usuário: ").append(userMsg.singleText()).append("\n\n");
+            } else if (msg instanceof AiMessage aiMsg) {
+                conversationHistory.append("Assistente: ").append(aiMsg.text()).append("\n\n");
+            }
+        }
+        
+        try {
+            // Gera o resumo usando a IA
+            Log.infof("🤖 Gerando resumo para %d mensagens antigas...", oldMessages.size());
+            String summary = summaryAgent.summarizeMessages(conversationHistory.toString());
+            
+            // Calcula tokens depois da compactação
+            int tokensAfter = estimateTokens(summary);
+            int tokensSaved = tokensBefore - tokensAfter;
+            
+            // Cria nova lista de mensagens: [SystemMessage com resumo] + [mensagens recentes]
+            List<ChatMessage> compactedMessages = new ArrayList<>();
+            
+            // Adiciona o resumo como SystemMessage
+            SystemMessage summaryMessage = SystemMessage.from(
+                "📋 Resumo da conversa anterior (gerado automaticamente em " + 
+                LocalDateTime.now().toString() + "):\n\n" + summary
+            );
+            compactedMessages.add(summaryMessage);
+            
+            // Adiciona as mensagens recentes
+            compactedMessages.addAll(recentMessages);
+            
+            // Atualiza no Redis
+            chatMemoryStore.updateMessages(memoryId, compactedMessages);
+            
+            int messagesAfter = compactedMessages.size();
+            
+            Log.infof("✅ Sessão %s compactada: %d → %d mensagens (~%d tokens economizados)", 
+                     memoryId, messagesBefore, messagesAfter, tokensSaved);
+            
+            return new CompactionStats(true, messagesBefore, messagesAfter, tokensSaved, "Compactação realizada com sucesso");
+            
+        } catch (Exception e) {
+            Log.errorf(e, "❌ Erro ao resumir mensagens da sessão %s", memoryId);
+            return new CompactionStats(false, messagesBefore, messagesBefore, 0, "Erro ao compactar: " + e.getMessage());
         }
     }
     
@@ -175,4 +266,15 @@ public class ChatMemoryCompactionService {
     private int estimateTokens(String text) {
         return text.length() / 4;
     }
+    
+    /**
+     * Estatísticas de compactação
+     */
+    public record CompactionStats(
+        boolean success,
+        int messagesBefore,
+        int messagesAfter,
+        int tokensSaved,
+        String message
+    ) {}
 }
