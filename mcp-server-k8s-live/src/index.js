@@ -8,6 +8,8 @@ import { buildLiveData } from "./tools/live.js";
 import { toolsRegistry } from "./tools/registry.js";
 import { K8S_API_URL } from "./utils/k8s.js";
 
+import { register, collectDefaultMetrics } from 'prom-client';
+
 // Inicializa o servidor MCP (apenas wiring)
 const server = new Server({
   name: "mcp-server-k8s-live",
@@ -22,6 +24,14 @@ const K8S_CLUSTER_NAME = process.env.K8S_CLUSTER_NAME || (K8S_API_URL ? (() => {
 // Helpers
 function getToolsList() {
   return { tools: toolsRegistry.map(t => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })) };
+}
+
+// Inicia coleta de métricas padrão (Prometheus)
+try {
+  collectDefaultMetrics({ labels: { cluster: K8S_CLUSTER_NAME } });
+  console.error('[MCP] Prometheus metrics collection enabled');
+} catch (e) {
+  console.error('[MCP] Could not enable Prometheus metrics:', e);
 }
 
 async function executeToolCall(name, args) {
@@ -100,6 +110,20 @@ const httpServer = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && pathname === '/healthz') {
       return sendJson(res, 200, { status: 'ok' });
+    }
+
+    // Prometheus metrics endpoint
+    if (req.method === 'GET' && pathname === '/metrics') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      try {
+        res.setHeader('Content-Type', register.contentType);
+        const metrics = await register.metrics();
+        res.writeHead(200);
+        return res.end(metrics);
+      } catch (e) {
+        console.error('[MCP] Error collecting metrics:', e);
+        return sendJson(res, 500, { error: 'Erro ao coletar métricas' });
+      }
     }
 
     // JSON-RPC over HTTP (streamable)

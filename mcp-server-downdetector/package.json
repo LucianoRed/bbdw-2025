@@ -1,7 +1,7 @@
 {
-  "name": "mcp-server-k8s-live",
+  "name": "mcp-server-downdetector",
   "version": "0.1.0",
-  "description": "MCP server para dados live de nodes/pods do Kubernetes (binpacking-live)",
+  "description": "MCP server para verificar status de serviços e websites (estilo Downdetector)",
   "type": "module",
   "main": "src/index.js",
   "engines": {
@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^0.6.0",
+    "axios": "^1.6.0",
     "prom-client": "^15.0.0"
   }
 }

@@ -1,0 +1,27 @@
+# MCP Server Downdetector
+
+Este servidor MCP fornece ferramentas para verificar o status de websites e serviços, similar ao conceito do Downdetector.
+
+## Ferramentas
+
+### `check_status`
+Verifica se um website está acessível.
+- **Input**: `url` (string), `timeout` (number, opcional)
+- **Output**: Status (UP/DOWN), código HTTP, latência.
+
+## Métricas
+O servidor exporta métricas Prometheus em `/metrics`.
+
+## Como rodar
+
+### Localmente
+```bash
+npm install
+npm start
+```
+
+### Docker
+```bash
+docker build -t mcp-server-downdetector .
+docker run -p 3000:3000 mcp-server-downdetector
+```
