@@ -6,9 +6,10 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { register, collectDefaultMetrics } from 'prom-client';
 
 import { checkStatusTool } from "./tools/status.js";
+import { downdetectorTool } from "./tools/downdetector.js";
 
 // Registro de ferramentas
-const toolsRegistry = [checkStatusTool];
+const toolsRegistry = [checkStatusTool, downdetectorTool];
 
 // Inicializa o servidor MCP
 const server = new Server({
