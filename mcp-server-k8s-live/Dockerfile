@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Apenas manifestos para cache de dependências
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Etapa de execução
 FROM node:20-alpine AS runner
