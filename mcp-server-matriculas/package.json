@@ -1,6 +1,7 @@
 {
   "name": "mcp-server-matriculas",
   "version": "1.0.0",
+  "type": "module",
   "description": "Sistema de matriculas escolar com interface MCP e Web",
   "main": "src/index.js",
   "scripts": {
