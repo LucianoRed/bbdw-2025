@@ -80,7 +80,7 @@ const TOOLS = [
   },
   {
     name: "matricular_aluno",
-    description: "Realiza a matrícula de um novo aluno.",
+    description: `Realiza a matrícula de um novo aluno (anos permitidos: ${ALLOWED_YEARS.join(', ')}).`,
     inputSchema: {
       type: "object",
       properties: {
@@ -228,7 +228,7 @@ const httpServer = http.createServer(async (req, res) => {
               protocolVersion: '2024-11-05',
               capabilities: { tools: { listChanged: true } },
               serverInfo: { name: 'mcp-server-matriculas', version: '1.0.0' },
-              instructions: 'Servidor MCP para um sistema simples de matrículas escolares (listar/buscar/matricular).',
+              instructions: `Servidor MCP para um sistema simples de matrículas escolares (listar/buscar/matricular). Importante: o campo 'year' aceita apenas ${ALLOWED_YEARS.join(', ')}.`,
             },
           };
         } else if (request.method === 'notifications/initialized') {
