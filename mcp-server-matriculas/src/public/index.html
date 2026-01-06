@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Matrículas</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f4f4f9; }
+        h1 { color: #333; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input, button { padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; }
+        .search-container { display: flex; gap: 10px; }
+        .search-container input { flex-grow: 1; }
+    </style>
+</head>
+<body>
+    <h1>Sistema de Matrículas</h1>
+
+    <div class="card">
+        <h2>Nova Matrícula</h2>
+        <form id="enrollForm">
+            <input type="text" id="name" placeholder="Nome Completo" required style="width: 100%; box-sizing: border-box;">
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="dob" placeholder="Data de Nascimento (DD/MM/AAAA)" required style="flex: 1;">
+                <input type="text" id="year" placeholder="Ano/Série Desejada" required style="flex: 1;">
+            </div>
+            <button type="submit">Matricular Aluno</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Alunos Matriculados</h2>
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Buscar por nome...">
+            <button onclick="searchStudents()">Buscar</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Nascimento</th>
+                    <th>Ano/Série</th>
+                </tr>
+            </thead>
+            <tbody id="studentsTable">
+                <!-- Dados serão inseridos aqui -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const API_URL = '/api/students';
+
+        async function loadStudents(query = '') {
+            const url = query ? `${API_URL}?q=${encodeURIComponent(query)}` : API_URL;
+            try {
+                const response = await fetch(url);
+                const students = await response.json();
+                renderTable(students);
+            } catch (error) {
+                console.error('Erro ao carregar alunos:', error);
+            }
+        }
+
+        function renderTable(students) {
+            const tbody = document.getElementById('studentsTable');
+            tbody.innerHTML = '';
+            students.forEach(student => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${student.id}</td>
+                    <td>${student.name}</td>
+                    <td>${student.dob}</td>
+                    <td>${student.year}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('enrollForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+            const dob = document.getElementById('dob').value;
+            const year = document.getElementById('year').value;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, dob, year })
+                });
+                
+                if (response.ok) {
+                    alert('Matrícula realizada com sucesso!');
+                    document.getElementById('enrollForm').reset();
+                    loadStudents();
+                } else {
+                    alert('Erro ao realizar matrícula.');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+            }
+        });
+
+        function searchStudents() {
+            const query = document.getElementById('searchInput').value;
+            loadStudents(query);
+        }
+
+        // Carregar inicialmente
+        loadStudents();
+    </script>
+</body>
+</html>
