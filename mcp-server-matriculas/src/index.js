@@ -1,8 +1,8 @@
 import express from 'express';
-import bodyParser from 'body-parser';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import http from 'http';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
@@ -24,7 +24,10 @@ app.use(cors());
 // O endpoint /messages do Express precisa lidar com isso.
 
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json()); // Para a API REST da Web UI
+// IMPORTANTE: não use body parsing global aqui.
+// Os endpoints MCP precisam do stream original do request (para SSE / handlePostMessage).
+// Vamos aplicar JSON parsing apenas em /api.
+app.use('/api', express.json());
 
 // --- API Endpoints para a interface Web ---
 app.get('/api/students', (req, res) => {
@@ -160,27 +163,181 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// --- MCP SSE Transport Configuration ---
-let transport; // Variável para armazenar o transporte SSE ativo (simplificado, para multi-sessão real precisaria de um Map)
+// --- Transportes MCP ---
+const ENABLE_STDIO = (process.env.ENABLE_STDIO || 'true').toLowerCase() !== 'false';
+if (ENABLE_STDIO) {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error('[MCP] STDIO transport enabled');
+}
 
-app.get('/sse', async (req, res) => {
-    console.log("Nova conexão SSE recebida");
-    transport = new SSEServerTransport("/messages", res);
-    await server.connect(transport);
-});
+function getToolsList() {
+  return {
+    tools: TOOLS.map(t => ({
+      name: t.name,
+      description: t.description,
+      inputSchema: t.inputSchema,
+    })),
+  };
+}
 
-app.post('/messages', async (req, res) => {
-    console.log("Nova mensagem recebida no endpoint /messages");
-    if (transport) {
-      await transport.handlePostMessage(req, res);
-    } else {
-      res.status(404).json({ error: "Session not found" });
+async function executeToolCall(name, args) {
+  try {
+    switch (name) {
+      case 'listar_alunos': {
+        const students = db.getAll();
+        return { content: [{ type: 'text', text: JSON.stringify(students, null, 2) }] };
+      }
+      case 'matricular_aluno': {
+        const { name: studentName, dob, year } = args || {};
+        if (!studentName || !dob || !year) throw new Error("Parâmetros 'name', 'dob' e 'year' são obrigatórios.");
+        const student = db.add({ name: studentName, dob, year });
+        return { content: [{ type: 'text', text: `Aluno matriculado com sucesso: ID ${student.id} - ${student.name}` }] };
+      }
+      case 'buscar_aluno': {
+        const { query } = args || {};
+        if (!query) throw new Error("Parâmetro 'query' é obrigatório.");
+        const results = db.search(query);
+        if (!results.length) return { content: [{ type: 'text', text: 'Nenhum aluno encontrado.' }] };
+        return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
+      }
+      default:
+        return { content: [{ type: 'text', text: `Ferramenta não encontrada: ${name}` }], isError: true };
     }
+  } catch (e) {
+    return { content: [{ type: 'text', text: `Erro ao executar ferramenta: ${e?.message || 'Erro desconhecido'}` }], isError: true };
+  }
+}
+
+function sendJson(res, status, data) {
+  const body = JSON.stringify(data);
+  res.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': Buffer.byteLength(body),
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Expose-Headers': 'mcp-protocol-version, mcp-session-id',
+  });
+  res.end(body);
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => resolve(body));
+    req.on('error', reject);
+  });
+}
+
+// SSE sessions (multi-sessão)
+const sseSessions = new Map();
+
+const httpServer = http.createServer(async (req, res) => {
+  try {
+    if (!req.url) return sendJson(res, 400, { error: 'Bad request' });
+    const u = new URL(req.url, 'http://localhost');
+    const pathname = u.pathname;
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, mcp-protocol-version, mcp-session-id, Authorization',
+        'Access-Control-Expose-Headers': 'mcp-protocol-version, mcp-session-id',
+      });
+      return res.end();
+    }
+
+    if (req.method === 'GET' && pathname === '/healthz') {
+      return sendJson(res, 200, { status: 'ok' });
+    }
+
+    // JSON-RPC over HTTP (igual aos outros MCPs do repo)
+    if (req.method === 'POST' && pathname === '/mcp') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Expose-Headers', 'mcp-protocol-version, mcp-session-id');
+      res.setHeader('Content-Type', 'application/json');
+      try {
+        const body = await readBody(req);
+        const request = JSON.parse(body);
+        let response;
+
+        if (request.method === 'initialize') {
+          response = {
+            jsonrpc: '2.0',
+            id: request.id,
+            result: {
+              protocolVersion: '2024-11-05',
+              capabilities: { tools: { listChanged: true } },
+              serverInfo: { name: 'mcp-server-matriculas', version: '1.0.0' },
+              instructions: 'Servidor MCP para um sistema simples de matrículas escolares (listar/buscar/matricular).',
+            },
+          };
+        } else if (request.method === 'notifications/initialized') {
+          res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+          return res.end();
+        } else if (request.method && request.method.startsWith('notifications/')) {
+          res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+          return res.end();
+        } else if (request.method === 'ping') {
+          response = { jsonrpc: '2.0', id: request.id, result: {} };
+        } else if (request.method === 'tools/list') {
+          response = { jsonrpc: '2.0', id: request.id, result: getToolsList() };
+        } else if (request.method === 'tools/call') {
+          const result = await executeToolCall(request.params?.name, request.params?.arguments || {});
+          response = { jsonrpc: '2.0', id: request.id, result };
+        } else {
+          response = { jsonrpc: '2.0', id: request.id, error: { code: -32601, message: 'Method not found' } };
+        }
+
+        return sendJson(res, 200, response);
+      } catch (e) {
+        const errorResponse = { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error', data: e?.message } };
+        return sendJson(res, 400, errorResponse);
+      }
+    }
+
+    // SSE endpoint (padrão do repo: /mcp/sse e /mcp/messages)
+    if (req.method === 'GET' && (pathname === '/mcp/sse' || pathname === '/sse')) {
+      const endpoint = '/mcp/messages';
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Expose-Headers', 'mcp-protocol-version, mcp-session-id');
+      const sse = new SSEServerTransport(endpoint, res);
+      await sse.start();
+      await server.connect(sse);
+      sseSessions.set(sse.sessionId, sse);
+      sse.onclose = () => { sseSessions.delete(sse.sessionId); };
+      return;
+    }
+
+    if (req.method === 'POST' && (pathname === '/mcp/messages' || pathname === '/messages')) {
+      const sessionId = u.searchParams.get('sessionId') || '';
+      const sse = sseSessions.get(sessionId);
+      if (!sse) {
+        res.writeHead(404, {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Expose-Headers': 'mcp-protocol-version, mcp-session-id',
+        });
+        return res.end('Unknown session');
+      }
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Expose-Headers', 'mcp-protocol-version, mcp-session-id');
+      return sse.handlePostMessage(req, res);
+    }
+
+    // Demais rotas: delega para o Express (UI web + API)
+    return app(req, res);
+  } catch (e) {
+    return sendJson(res, 500, { error: 'Erro interno' });
+  }
 });
 
-// Inicia o servidor HTTP
-app.listen(HTTP_PORT, () => {
-  console.error(`Server running at http://localhost:${HTTP_PORT}`);
-  console.error(`Web Interface: http://localhost:${HTTP_PORT}`);
-  console.error(`MCP SSE Endpoint: http://localhost:${HTTP_PORT}/sse`);
+httpServer.listen(HTTP_PORT, () => {
+  console.error(`[MCP] HTTP server listening on :${HTTP_PORT}`);
+  console.error(`[MCP] Web UI: http://localhost:${HTTP_PORT}`);
+  console.error(`[MCP] Available endpoints:`);
+  console.error(`[MCP]   - POST http://localhost:${HTTP_PORT}/mcp (Streamable HTTP/JSON-RPC)`);
+  console.error(`[MCP]   - GET  http://localhost:${HTTP_PORT}/mcp/sse (SSE transport)`);
+  console.error(`[MCP]   - POST http://localhost:${HTTP_PORT}/mcp/messages (SSE messages)`);
+  console.error(`[MCP]   - GET  http://localhost:${HTTP_PORT}/healthz (Health check)`);
 });
