@@ -7,7 +7,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import db from './db.js';
+import db, { ALLOWED_YEARS } from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,7 +44,13 @@ app.post('/api/students', (req, res) => {
   if (!name || !dob || !year) {
     return res.status(400).json({ error: 'Dados incompletos' });
   }
-  const newStudent = db.add({ name, dob, year });
+
+  const yearNumber = Number(year);
+  if (!Number.isInteger(yearNumber) || !ALLOWED_YEARS.includes(yearNumber)) {
+    return res.status(400).json({ error: `Ano inválido. Use apenas: ${ALLOWED_YEARS.join(', ')}.` });
+  }
+
+  const newStudent = db.add({ name, dob, year: yearNumber });
   res.status(201).json(newStudent);
 });
 
@@ -80,7 +86,7 @@ const TOOLS = [
       properties: {
         name: { type: "string", description: "Nome completo do aluno" },
         dob: { type: "string", description: "Data de nascimento (DD/MM/AAAA)" },
-        year: { type: "string", description: "Ano ou série desejada (ex: '2º Ano Ensino Médio')" }
+        year: { type: "integer", enum: ALLOWED_YEARS, description: "Ano desejado (apenas 5, 6, 7 ou 8)" }
       },
       required: ["name", "dob", "year"]
     }
@@ -103,64 +109,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return { tools: TOOLS };
 });
 
-// Handler para executar ferramentas
+// Handler para executar ferramentas (STDIO/SSE também usa isso)
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-
-  try {
-    switch (name) {
-      case "listar_alunos": {
-        const students = db.getAll();
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify(students, null, 2)
-          }]
-        };
-      }
-      case "matricular_aluno": {
-        const { name, dob, year } = args;
-        if (!name || !dob || !year) {
-           throw new Error("Parâmetros 'name', 'dob' e 'year' são obrigatórios.");
-        }
-        const student = db.add({ name, dob, year });
-        return {
-          content: [{
-            type: "text",
-            text: `Aluno matriculado com sucesso: ID ${student.id} - ${student.name}`
-          }]
-        };
-      }
-      case "buscar_aluno": {
-        const { query } = args;
-        if (!query) {
-           throw new Error("Parâmetro 'query' é obrigatório.");
-        }
-        const results = db.search(query);
-        if (results.length === 0) {
-          return {
-            content: [{ type: "text", text: "Nenhum aluno encontrado." }]
-          };
-        }
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify(results, null, 2)
-          }]
-        };
-      }
-      default:
-        return {
-           content: [{ type: "text", text: `Ferramenta não encontrada: ${name}` }],
-           isError: true
-        };
-    }
-  } catch (error) {
-    return {
-      content: [{ type: "text", text: `Erro ao executar ferramenta: ${error.message}` }],
-      isError: true
-    };
-  }
+  return await executeToolCall(name, args || {});
 });
 
 // --- Transportes MCP ---
@@ -191,7 +143,13 @@ async function executeToolCall(name, args) {
       case 'matricular_aluno': {
         const { name: studentName, dob, year } = args || {};
         if (!studentName || !dob || !year) throw new Error("Parâmetros 'name', 'dob' e 'year' são obrigatórios.");
-        const student = db.add({ name: studentName, dob, year });
+
+        const yearNumber = Number(year);
+        if (!Number.isInteger(yearNumber) || !ALLOWED_YEARS.includes(yearNumber)) {
+          throw new Error(`Ano inválido. Use apenas: ${ALLOWED_YEARS.join(', ')}.`);
+        }
+
+        const student = db.add({ name: studentName, dob, year: yearNumber });
         return { content: [{ type: 'text', text: `Aluno matriculado com sucesso: ID ${student.id} - ${student.name}` }] };
       }
       case 'buscar_aluno': {

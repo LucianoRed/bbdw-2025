@@ -7,18 +7,20 @@ const __dirname = path.dirname(__filename);
 
 const DATA_FILE = path.join(__dirname, '..', 'data', 'students.json');
 
+export const ALLOWED_YEARS = [5, 6, 7, 8];
+
 // Dados iniciais (10 alunos)
 const INITIAL_DATA = [
-  { id: 1, name: "Ana Silva", dob: "15/03/2008", year: "2º Ano Ensino Médio" },
-  { id: 2, name: "Bruno Santos", dob: "22/07/2009", year: "1º Ano Ensino Médio" },
-  { id: 3, name: "Carla Oliveira", dob: "10/11/2010", year: "9º Ano Ensino Fundamental" },
-  { id: 4, name: "Daniel Costa", dob: "05/01/2008", year: "2º Ano Ensino Médio" },
-  { id: 5, name: "Eduarda Lima", dob: "30/09/2007", year: "3º Ano Ensino Médio" },
-  { id: 6, name: "Felipe Pereira", dob: "12/04/2009", year: "1º Ano Ensino Médio" },
-  { id: 7, name: "Gabriela Souza", dob: "18/08/2010", year: "9º Ano Ensino Fundamental" },
-  { id: 8, name: "Henrique Alves", dob: "25/12/2008", year: "2º Ano Ensino Médio" },
-  { id: 9, name: "Isabela Martins", dob: "03/06/2007", year: "3º Ano Ensino Médio" },
-  { id: 10, name: "João Ferreira", dob: "14/02/2011", year: "8º Ano Ensino Fundamental" }
+  { id: 1, name: "Ana Silva", dob: "15/03/2013", year: 7 },
+  { id: 2, name: "Bruno Santos", dob: "22/07/2014", year: 6 },
+  { id: 3, name: "Carla Oliveira", dob: "10/11/2012", year: 8 },
+  { id: 4, name: "Daniel Costa", dob: "05/01/2015", year: 5 },
+  { id: 5, name: "Eduarda Lima", dob: "30/09/2013", year: 7 },
+  { id: 6, name: "Felipe Pereira", dob: "12/04/2014", year: 6 },
+  { id: 7, name: "Gabriela Souza", dob: "18/08/2015", year: 5 },
+  { id: 8, name: "Henrique Alves", dob: "25/12/2012", year: 8 },
+  { id: 9, name: "Isabela Martins", dob: "03/06/2015", year: 5 },
+  { id: 10, name: "João Ferreira", dob: "14/02/2013", year: 7 }
 ];
 
 function loadData() {
