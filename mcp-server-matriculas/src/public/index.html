@@ -4,115 +4,440 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Matrículas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        :root { color-scheme: light; }
-        * { box-sizing: border-box; }
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --success: #10b981;
+            --error: #ef4444;
+            --bg-gradient-start: #f8fafc;
+            --bg-gradient-end: #e0e7ff;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 15px rgba(99, 102, 241, 0.15);
+            --shadow-lg: 0 10px 40px rgba(99, 102, 241, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-10px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 980px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 24px;
-            background-color: #f4f4f9;
-            color: #222;
+            animation: fadeInUp 0.6s ease-out;
         }
-        h1 { margin: 0 0 18px; color: #333; font-size: 28px; letter-spacing: -0.3px; }
-        .subtitle { margin: 0 0 18px; color: #666; }
-        .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
-        @media (min-width: 900px) { .grid { grid-template-columns: 380px 1fr; align-items: start; } }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+        }
+
+        h1 i {
+            margin-right: 12px;
+            -webkit-text-fill-color: var(--primary);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+
+        @media (min-width: 900px) {
+            .grid {
+                grid-template-columns: 420px 1fr;
+                align-items: start;
+            }
+        }
+
         .card {
-            background: white;
-            padding: 18px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            border: 1px solid rgba(0,0,0,0.06);
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            padding: 32px;
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            animation: fadeInUp 1s ease-out;
         }
-        .card h2 { margin: 0 0 12px; font-size: 18px; color: #333; }
-        label { display: block; font-size: 12px; color: #555; margin: 10px 0 6px; }
-        input, select, button {
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(99, 102, 241, 0.25);
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h2 i {
+            color: var(--primary);
+            font-size: 1.3rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #475569;
+            margin: 16px 0 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input, select {
             width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-            background: #fff;
+            padding: 14px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            background: white;
+            transition: all 0.3s ease;
+            font-family: inherit;
         }
-        input:focus, select:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,0.15); }
-        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .actions { display: flex; gap: 10px; margin-top: 12px; }
-        .actions button { width: auto; }
-        button { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: 600; }
-        button:hover { background-color: #0056b3; }
-        button.secondary { background: #fff; color: #007bff; border: 1px solid rgba(0,123,255,0.35); }
-        button.secondary:hover { background: rgba(0,123,255,0.06); }
-        .status { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 13px; display: none; }
-        .status.ok { display: block; background: rgba(40,167,69,0.10); border: 1px solid rgba(40,167,69,0.25); color: #1f7a35; }
-        .status.err { display: block; background: rgba(220,53,69,0.10); border: 1px solid rgba(220,53,69,0.25); color: #a61d2d; }
-        .toolbar { display: flex; gap: 10px; align-items: center; }
-        .toolbar input { flex: 1; }
-        .toolbar button { width: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 14px; }
-        th { background-color: #f8f9fa; color: #555; font-weight: 600; }
-        .muted { color: #666; font-size: 12px; }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            transform: scale(1.01);
+        }
+
+        input::placeholder {
+            color: #94a3b8;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        button {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        button[type="submit"] {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            flex: 1;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        button[type="submit"]:hover {
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+            transform: translateY(-2px);
+        }
+
+        button.secondary {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        button.secondary:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .status {
+            margin-top: 16px;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            display: none;
+            animation: slideIn 0.4s ease-out;
+            font-weight: 500;
+        }
+
+        .status i {
+            margin-right: 8px;
+        }
+
+        .status.ok {
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border: 2px solid var(--success);
+            color: #065f46;
+        }
+
+        .status.err {
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border: 2px solid var(--error);
+            color: #991b1b;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .toolbar input {
+            flex: 1;
+        }
+
+        .toolbar button {
+            width: auto;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 14px 24px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: white;
+        }
+
+        thead {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        }
+
+        th {
+            text-align: left;
+            padding: 16px;
+            color: white;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        th:first-child {
+            border-top-left-radius: 12px;
+        }
+
+        th:last-child {
+            border-top-right-radius: 12px;
+        }
+
+        tbody tr {
+            transition: all 0.2s ease;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        tbody tr:hover {
+            background: #f8fafc;
+            transform: scale(1.01);
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.95rem;
+            color: #475569;
+        }
+
+        tbody tr:last-child td:first-child {
+            border-bottom-left-radius: 12px;
+        }
+
+        tbody tr:last-child td:last-child {
+            border-bottom-right-radius: 12px;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .muted {
+            color: #94a3b8;
+            font-size: 0.75rem;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+            color: white;
+        }
+
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
-    <h1>Sistema de Matrículas</h1>
-    <p class="subtitle">Cadastre alunos apenas nos anos 5, 6, 7 e 8.</p>
-
-    <div class="grid">
-        <div class="card">
-            <h2>Nova Matrícula</h2>
-            <form id="enrollForm">
-                <label for="name">Nome completo</label>
-                <input type="text" id="name" placeholder="Ex: Maria da Silva" autocomplete="name" required>
-
-                <div class="row">
-                    <div>
-                        <label for="dob">Data de nascimento</label>
-                        <input type="text" id="dob" placeholder="DD/MM/AAAA" inputmode="numeric" required>
-                    </div>
-                    <div>
-                        <label for="year">Ano</label>
-                        <select id="year" required>
-                            <option value="" selected disabled>Selecione</option>
-                            <option value="5">5º ano</option>
-                            <option value="6">6º ano</option>
-                            <option value="7">7º ano</option>
-                            <option value="8">8º ano</option>
-                        </select>
-                        <div class="muted">Apenas 5, 6, 7 e 8.</div>
-                    </div>
-                </div>
-
-                <div class="actions">
-                    <button type="submit">Matricular</button>
-                    <button type="button" class="secondary" id="resetBtn">Limpar</button>
-                </div>
-
-                <div id="status" class="status"></div>
-            </form>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-graduation-cap"></i>Sistema de Matrículas</h1>
+            <p class="subtitle">Gerencie matrículas dos anos 5º, 6º, 7º e 8º com facilidade</p>
         </div>
 
-        <div class="card">
-            <h2>Alunos Matriculados</h2>
-            <div class="toolbar">
-                <input type="text" id="searchInput" placeholder="Buscar por nome...">
-                <button type="button" onclick="searchStudents()">Buscar</button>
+        <div class="grid">
+            <div class="card">
+                <h2><i class="fas fa-user-plus"></i> Nova Matrícula</h2>
+                <form id="enrollForm">
+                    <label for="name"><i class="fas fa-user"></i> Nome completo</label>
+                    <input type="text" id="name" placeholder="Ex: Maria da Silva" autocomplete="name" required>
+
+                    <div class="row">
+                        <div>
+                            <label for="dob"><i class="fas fa-calendar"></i> Data de nascimento</label>
+                            <input type="text" id="dob" placeholder="DD/MM/AAAA" inputmode="numeric" required>
+                        </div>
+                        <div>
+                            <label for="year"><i class="fas fa-book-open"></i> Ano</label>
+                            <select id="year" required>
+                                <option value="" selected disabled>Selecione o ano</option>
+                                <option value="5">5º ano</option>
+                                <option value="6">6º ano</option>
+                                <option value="7">7º ano</option>
+                                <option value="8">8º ano</option>
+                            </select>
+                            <div class="muted">Apenas anos: 5, 6, 7 e 8</div>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <button type="submit">
+                            <i class="fas fa-check-circle"></i> Matricular
+                        </button>
+                        <button type="button" class="secondary" id="resetBtn">
+                            <i class="fas fa-eraser"></i> Limpar
+                        </button>
+                    </div>
+
+                    <div id="status" class="status"></div>
+                </form>
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 70px;">ID</th>
-                        <th>Nome</th>
-                        <th style="width: 170px;">Nascimento</th>
-                        <th style="width: 120px;">Ano</th>
-                    </tr>
-                </thead>
-                <tbody id="studentsTable">
-                    <!-- Dados serão inseridos aqui -->
-                </tbody>
-            </table>
+
+            <div class="card">
+                <h2><i class="fas fa-users"></i> Alunos Matriculados</h2>
+                <div class="toolbar">
+                    <input type="text" id="searchInput" placeholder="🔍 Buscar por nome...">
+                    <button type="button" onclick="searchStudents()">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 70px;"><i class="fas fa-hashtag"></i> ID</th>
+                                <th><i class="fas fa-user"></i> Nome</th>
+                                <th style="width: 170px;"><i class="fas fa-birthday-cake"></i> Nascimento</th>
+                                <th style="width: 120px;"><i class="fas fa-graduation-cap"></i> Ano</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTable">
+                            <!-- Dados serão inseridos aqui -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -121,13 +446,14 @@
 
         function showStatus(kind, message) {
             const el = document.getElementById('status');
+            const icon = kind === 'ok' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-exclamation-circle"></i>';
             el.className = `status ${kind}`;
-            el.textContent = message;
+            el.innerHTML = icon + ' ' + message;
         }
 
         function formatYear(value) {
             const n = Number(value);
-            if ([5,6,7,8].includes(n)) return `${n}º ano`;
+            if ([5,6,7,8].includes(n)) return `<span class="badge">${n}º ano</span>`;
             return String(value || '');
         }
 
@@ -145,10 +471,17 @@
         function renderTable(students) {
             const tbody = document.getElementById('studentsTable');
             tbody.innerHTML = '';
-            students.forEach(student => {
+            
+            if (students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 32px; color: #94a3b8;">Nenhum aluno matriculado</td></tr>';
+                return;
+            }
+            
+            students.forEach((student, index) => {
                 const tr = document.createElement('tr');
+                tr.style.animationDelay = `${index * 0.05}s`;
                 tr.innerHTML = `
-                    <td>${student.id}</td>
+                    <td><strong>${student.id}</strong></td>
                     <td>${student.name}</td>
                     <td>${student.dob}</td>
                     <td>${formatYear(student.year)}</td>
@@ -163,6 +496,11 @@
             const dob = document.getElementById('dob').value;
             const year = Number(document.getElementById('year').value);
 
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="loading"></span> Processando...';
+            submitBtn.disabled = true;
+
             try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
@@ -173,7 +511,7 @@
                 if (response.ok) {
                     showStatus('ok', 'Matrícula realizada com sucesso!');
                     document.getElementById('enrollForm').reset();
-                    loadStudents();
+                    await loadStudents();
                 } else {
                     const payload = await response.json().catch(() => null);
                     showStatus('err', payload?.error || 'Erro ao realizar matrícula.');
@@ -181,6 +519,9 @@
             } catch (error) {
                 console.error('Erro:', error);
                 showStatus('err', 'Erro de rede ao realizar matrícula.');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
             }
         });
 
@@ -188,13 +529,20 @@
             document.getElementById('enrollForm').reset();
             const el = document.getElementById('status');
             el.className = 'status';
-            el.textContent = '';
+            el.innerHTML = '';
         });
 
         function searchStudents() {
             const query = document.getElementById('searchInput').value;
             loadStudents(query);
         }
+
+        // Busca ao pressionar Enter no campo de busca
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchStudents();
+            }
+        });
 
         // Carregar inicialmente
         loadStudents();
