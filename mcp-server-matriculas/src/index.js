@@ -40,8 +40,8 @@ app.get('/api/students', (req, res) => {
 });
 
 app.post('/api/students', (req, res) => {
-  const { name, dob, year } = req.body;
-  if (!name || !dob || !year) {
+  const { name, cpf, dob, year } = req.body;
+  if (!name || !cpf || !dob || !year) {
     return res.status(400).json({ error: 'Dados incompletos' });
   }
 
@@ -50,7 +50,7 @@ app.post('/api/students', (req, res) => {
     return res.status(400).json({ error: `Ano inválido. Use apenas: ${ALLOWED_YEARS.join(', ')}.` });
   }
 
-  const newStudent = db.add({ name, dob, year: yearNumber });
+  const newStudent = db.add({ name, cpf, dob, year: yearNumber });
   res.status(201).json(newStudent);
 });
 
@@ -85,10 +85,11 @@ const TOOLS = [
       type: "object",
       properties: {
         name: { type: "string", description: "Nome completo do aluno" },
+        cpf: { type: "string", description: "CPF do aluno (formato: 000.000.000-00)" },
         dob: { type: "string", description: "Data de nascimento (DD/MM/AAAA)" },
         year: { type: "integer", enum: ALLOWED_YEARS, description: "Ano desejado (apenas 5, 6, 7 ou 8)" }
       },
-      required: ["name", "dob", "year"]
+      required: ["name", "cpf", "dob", "year"]
     }
   },
   {
@@ -141,15 +142,15 @@ async function executeToolCall(name, args) {
         return { content: [{ type: 'text', text: JSON.stringify(students, null, 2) }] };
       }
       case 'matricular_aluno': {
-        const { name: studentName, dob, year } = args || {};
-        if (!studentName || !dob || !year) throw new Error("Parâmetros 'name', 'dob' e 'year' são obrigatórios.");
+        const { name: studentName, cpf, dob, year } = args || {};
+        if (!studentName || !cpf || !dob || !year) throw new Error("Parâmetros 'name', 'cpf', 'dob' e 'year' são obrigatórios.");
 
         const yearNumber = Number(year);
         if (!Number.isInteger(yearNumber) || !ALLOWED_YEARS.includes(yearNumber)) {
           throw new Error(`Ano inválido. Use apenas: ${ALLOWED_YEARS.join(', ')}.`);
         }
 
-        const student = db.add({ name: studentName, dob, year: yearNumber });
+        const student = db.add({ name: studentName, cpf, dob, year: yearNumber });
         return { content: [{ type: 'text', text: `Aluno matriculado com sucesso: ID ${student.id} - ${student.name}` }] };
       }
       case 'buscar_aluno': {

@@ -383,6 +383,9 @@
                     <label for="name"><i class="fas fa-user"></i> Nome completo</label>
                     <input type="text" id="name" placeholder="Ex: Maria da Silva" autocomplete="name" required>
 
+                    <label for="cpf"><i class="fas fa-id-card"></i> CPF</label>
+                    <input type="text" id="cpf" placeholder="000.000.000-00" maxlength="14" required>
+
                     <div class="row">
                         <div>
                             <label for="dob"><i class="fas fa-calendar"></i> Data de nascimento</label>
@@ -428,8 +431,9 @@
                             <tr>
                                 <th style="width: 70px;"><i class="fas fa-hashtag"></i> ID</th>
                                 <th><i class="fas fa-user"></i> Nome</th>
-                                <th style="width: 170px;"><i class="fas fa-birthday-cake"></i> Nascimento</th>
-                                <th style="width: 120px;"><i class="fas fa-graduation-cap"></i> Ano</th>
+                                <th style="width: 150px;"><i class="fas fa-id-card"></i> CPF</th>
+                                <th style="width: 130px;"><i class="fas fa-birthday-cake"></i> Nascimento</th>
+                                <th style="width: 100px;"><i class="fas fa-graduation-cap"></i> Ano</th>
                             </tr>
                         </thead>
                         <tbody id="studentsTable">
@@ -443,6 +447,22 @@
 
     <script>
         const API_URL = '/api/students';
+
+        // Máscara de CPF
+        document.getElementById('cpf').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 11) value = value.slice(0, 11);
+            
+            if (value.length > 9) {
+                e.target.value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+            } else if (value.length > 6) {
+                e.target.value = value.replace(/(\d{3})(\d{3})(\d{0,3})/, '$1.$2.$3');
+            } else if (value.length > 3) {
+                e.target.value = value.replace(/(\d{3})(\d{0,3})/, '$1.$2');
+            } else {
+                e.target.value = value;
+            }
+        });
 
         function showStatus(kind, message) {
             const el = document.getElementById('status');
@@ -473,7 +493,7 @@
             tbody.innerHTML = '';
             
             if (students.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 32px; color: #94a3b8;">Nenhum aluno matriculado</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 32px; color: #94a3b8;">Nenhum aluno matriculado</td></tr>';
                 return;
             }
             
@@ -483,6 +503,7 @@
                 tr.innerHTML = `
                     <td><strong>${student.id}</strong></td>
                     <td>${student.name}</td>
+                    <td>${student.cpf || 'N/A'}</td>
                     <td>${student.dob}</td>
                     <td>${formatYear(student.year)}</td>
                 `;
@@ -493,6 +514,7 @@
         document.getElementById('enrollForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('name').value;
+            const cpf = document.getElementById('cpf').value;
             const dob = document.getElementById('dob').value;
             const year = Number(document.getElementById('year').value);
 
@@ -505,7 +527,7 @@
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, dob, year })
+                    body: JSON.stringify({ name, cpf, dob, year })
                 });
 
                 if (response.ok) {
