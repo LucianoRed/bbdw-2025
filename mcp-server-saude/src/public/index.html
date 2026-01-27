@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Saúde Escolar</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --primary-light: #34d399;
+            --secondary: #06b6d4;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --bg-gradient-start: #f0fdf4;
+            --bg-gradient-end: #cffafe;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 15px rgba(16, 185, 129, 0.15);
+            --shadow-lg: 0 10px 40px rgba(16, 185, 129, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-10px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+        }
+
+        h1 i {
+            margin-right: 12px;
+            -webkit-text-fill-color: var(--primary);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+
+        @media (min-width: 1024px) {
+            .grid {
+                grid-template-columns: 480px 1fr;
+                align-items: start;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            padding: 32px;
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(16, 185, 129, 0.25);
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h2 i {
+            color: var(--primary);
+            font-size: 1.3rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #475569;
+            margin: 16px 0 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            background: white;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+            transform: scale(1.01);
+        }
+
+        input::placeholder, textarea::placeholder {
+            color: #94a3b8;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .diseases-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .disease-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .disease-option:hover {
+            border-color: var(--primary);
+            background: #f0fdf4;
+        }
+
+        .disease-option input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .disease-option.selected {
+            border-color: var(--primary);
+            background: #d1fae5;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        button {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        button[type="submit"] {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            flex: 1;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        button[type="submit"]:hover {
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+            transform: translateY(-2px);
+        }
+
+        button.secondary {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        button.secondary:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .status {
+            margin-top: 16px;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            display: none;
+            animation: slideIn 0.4s ease-out;
+            font-weight: 500;
+        }
+
+        .status i {
+            margin-right: 8px;
+        }
+
+        .status.ok {
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border: 2px solid var(--success);
+            color: #065f46;
+        }
+
+        .status.err {
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border: 2px solid var(--error);
+            color: #991b1b;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .toolbar input {
+            flex: 1;
+        }
+
+        .toolbar button {
+            width: auto;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 14px 24px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: white;
+        }
+
+        thead {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        }
+
+        th {
+            text-align: left;
+            padding: 16px;
+            color: white;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        th:first-child {
+            border-top-left-radius: 12px;
+        }
+
+        th:last-child {
+            border-top-right-radius: 12px;
+        }
+
+        tbody tr {
+            transition: all 0.2s ease;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        tbody tr:hover {
+            background: #f0fdf4;
+            transform: scale(1.01);
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.95rem;
+            color: #475569;
+        }
+
+        tbody tr:last-child td:first-child {
+            border-bottom-left-radius: 12px;
+        }
+
+        tbody tr:last-child td:last-child {
+            border-bottom-right-radius: 12px;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            margin: 2px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+            color: white;
+        }
+
+        .badge.critical {
+            background: linear-gradient(135deg, #fca5a5 0%, #ef4444 100%);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .muted {
+            color: #94a3b8;
+            font-size: 0.75rem;
+            margin-top: 4px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-heartbeat"></i>Sistema de Saúde Escolar</h1>
+            <p class="subtitle">Gestão de registros de saúde e condições médicas dos alunos</p>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2><i class="fas fa-file-medical"></i> Novo Registro de Saúde</h2>
+                <form id="healthForm">
+                    <label for="studentName"><i class="fas fa-user"></i> Nome do aluno</label>
+                    <input type="text" id="studentName" placeholder="Ex: Maria da Silva" required>
+
+                    <label for="cpf"><i class="fas fa-id-card"></i> CPF</label>
+                    <input type="text" id="cpf" placeholder="000.000.000-00" maxlength="14" required>
+
+                    <label><i class="fas fa-disease"></i> Condições de Saúde</label>
+                    <div class="diseases-selector" id="diseasesSelector">
+                        <!-- Será preenchido dinamicamente -->
+                    </div>
+
+                    <label for="medications"><i class="fas fa-pills"></i> Medicações</label>
+                    <input type="text" id="medications" placeholder="Ex: Insulina, Bombinha">
+
+                    <label for="observations"><i class="fas fa-notes-medical"></i> Observações</label>
+                    <textarea id="observations" placeholder="Instruções especiais, cuidados necessários..."></textarea>
+
+                    <label for="emergencyContact"><i class="fas fa-phone"></i> Contato de Emergência</label>
+                    <input type="tel" id="emergencyContact" placeholder="(00) 00000-0000">
+
+                    <div class="actions">
+                        <button type="submit">
+                            <i class="fas fa-save"></i> Salvar Registro
+                        </button>
+                        <button type="button" class="secondary" id="resetBtn">
+                            <i class="fas fa-eraser"></i> Limpar
+                        </button>
+                    </div>
+
+                    <div id="status" class="status"></div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-clipboard-list"></i> Registros de Saúde</h2>
+                <div class="toolbar">
+                    <input type="text" id="searchInput" placeholder="🔍 Buscar por nome ou CPF...">
+                    <button type="button" onclick="searchRecords()">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;"><i class="fas fa-hashtag"></i> ID</th>
+                                <th><i class="fas fa-user"></i> Aluno</th>
+                                <th style="width: 130px;"><i class="fas fa-id-card"></i> CPF</th>
+                                <th><i class="fas fa-disease"></i> Condições</th>
+                                <th style="width: 120px;"><i class="fas fa-phone"></i> Emergência</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordsTable">
+                            <!-- Dados serão inseridos aqui -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/health-records';
+        const DISEASES_URL = '/api/diseases';
+        let availableDiseases = [];
+
+        // Carregar lista de doenças
+        async function loadDiseases() {
+            try {
+                const response = await fetch(DISEASES_URL);
+                availableDiseases = await response.json();
+                renderDiseasesSelector();
+            } catch (error) {
+                console.error('Erro ao carregar doenças:', error);
+            }
+        }
+
+        function renderDiseasesSelector() {
+            const container = document.getElementById('diseasesSelector');
+            container.innerHTML = '';
+            availableDiseases.forEach(disease => {
+                const div = document.createElement('div');
+                div.className = 'disease-option';
+                div.innerHTML = `
+                    <input type="checkbox" id="disease_${disease}" value="${disease}">
+                    <label for="disease_${disease}" style="margin: 0; cursor: pointer; font-weight: normal; text-transform: none;">${disease}</label>
+                `;
+                div.onclick = function(e) {
+                    if (e.target.type !== 'checkbox') {
+                        const checkbox = this.querySelector('input[type="checkbox"]');
+                        checkbox.checked = !checkbox.checked;
+                    }
+                    this.classList.toggle('selected', this.querySelector('input[type="checkbox"]').checked);
+                };
+                container.appendChild(div);
+            });
+        }
+
+        // Máscara de CPF
+        document.getElementById('cpf').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 11) value = value.slice(0, 11);
+            
+            if (value.length > 9) {
+                e.target.value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+            } else if (value.length > 6) {
+                e.target.value = value.replace(/(\d{3})(\d{3})(\d{0,3})/, '$1.$2.$3');
+            } else if (value.length > 3) {
+                e.target.value = value.replace(/(\d{3})(\d{0,3})/, '$1.$2');
+            } else {
+                e.target.value = value;
+            }
+        });
+
+        function showStatus(kind, message) {
+            const el = document.getElementById('status');
+            const icon = kind === 'ok' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-exclamation-circle"></i>';
+            el.className = `status ${kind}`;
+            el.innerHTML = icon + ' ' + message;
+        }
+
+        async function loadRecords(query = '') {
+            const url = query ? `${API_URL}?q=${encodeURIComponent(query)}` : API_URL;
+            try {
+                const response = await fetch(url);
+                const records = await response.json();
+                renderTable(records);
+            } catch (error) {
+                console.error('Erro ao carregar registros:', error);
+            }
+        }
+
+        function renderTable(records) {
+            const tbody = document.getElementById('recordsTable');
+            tbody.innerHTML = '';
+            
+            if (records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 32px; color: #94a3b8;">Nenhum registro de saúde cadastrado</td></tr>';
+                return;
+            }
+            
+            records.forEach((record, index) => {
+                const tr = document.createElement('tr');
+                tr.style.animationDelay = `${index * 0.05}s`;
+                
+                const diseaseBadges = record.diseases.map(d => {
+                    const critical = ['Diabetes Tipo 1', 'Epilepsia', 'Anemia Falciforme'].includes(d);
+                    return `<span class="badge ${critical ? 'critical' : ''}">${d}</span>`;
+                }).join(' ');
+                
+                tr.innerHTML = `
+                    <td><strong>${record.id}</strong></td>
+                    <td>${record.studentName}</td>
+                    <td>${record.cpf || 'N/A'}</td>
+                    <td>${diseaseBadges}</td>
+                    <td>${record.emergencyContact || '-'}</td>
+                `;
+                
+                tr.title = `Medicações: ${record.medications || 'Nenhuma'}\nObservações: ${record.observations || 'Nenhuma'}`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('healthForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const studentName = document.getElementById('studentName').value;
+            const cpf = document.getElementById('cpf').value;
+            const medications = document.getElementById('medications').value;
+            const observations = document.getElementById('observations').value;
+            const emergencyContact = document.getElementById('emergencyContact').value;
+            
+            // Coletar doenças selecionadas
+            const selectedDiseases = Array.from(document.querySelectorAll('#diseasesSelector input[type="checkbox"]:checked'))
+                .map(cb => cb.value);
+            
+            if (selectedDiseases.length === 0) {
+                showStatus('err', 'Selecione pelo menos uma condição de saúde.');
+                return;
+            }
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="loading"></span> Processando...';
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        studentName, 
+                        cpf, 
+                        diseases: selectedDiseases,
+                        medications,
+                        observations,
+                        emergencyContact
+                    })
+                });
+
+                if (response.ok) {
+                    showStatus('ok', 'Registro de saúde criado com sucesso!');
+                    document.getElementById('healthForm').reset();
+                    document.querySelectorAll('.disease-option').forEach(opt => opt.classList.remove('selected'));
+                    await loadRecords();
+                } else {
+                    const payload = await response.json().catch(() => null);
+                    showStatus('err', payload?.error || 'Erro ao criar registro.');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showStatus('err', 'Erro de rede ao criar registro.');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            document.getElementById('healthForm').reset();
+            document.querySelectorAll('.disease-option').forEach(opt => opt.classList.remove('selected'));
+            const el = document.getElementById('status');
+            el.className = 'status';
+            el.innerHTML = '';
+        });
+
+        function searchRecords() {
+            const query = document.getElementById('searchInput').value;
+            loadRecords(query);
+        }
+
+        // Busca ao pressionar Enter
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchRecords();
+            }
+        });
+
+        // Carregar inicialmente
+        loadDiseases();
+        loadRecords();
+    </script>
+</body>
+</html>
