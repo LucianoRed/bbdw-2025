@@ -1,0 +1,27 @@
+---
+# Role: setup-rbac — cria ServiceAccount e RBAC para MCP servers de K8s
+- name: "Criar ServiceAccount {{ sa_name }}"
+  command: "oc create sa {{ sa_name }} -n {{ namespace }}"
+  register: sa_result
+  failed_when: false
+  changed_when: "'already exists' not in sa_result.stderr"
+
+- name: "Conceder permissão cluster-reader ao SA"
+  command: "oc adm policy add-cluster-role-to-user cluster-reader system:serviceaccount:{{ namespace }}:{{ sa_name }}"
+  failed_when: false
+
+- name: "Conceder permissão view ao SA"
+  command: "oc adm policy add-role-to-user view system:serviceaccount:{{ namespace }}:{{ sa_name }} -n {{ namespace }}"
+  failed_when: false
+
+- name: "Obter token do ServiceAccount"
+  command: "oc create token {{ sa_name }} -n {{ namespace }} --duration=87600h"
+  register: sa_token
+  changed_when: false
+
+- name: "Registrar informações do RBAC"
+  set_fact:
+    rbac_result:
+      service_account: "{{ sa_name }}"
+      namespace: "{{ namespace }}"
+      token: "{{ sa_token.stdout }}"

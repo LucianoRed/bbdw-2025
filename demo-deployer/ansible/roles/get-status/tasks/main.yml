@@ -1,0 +1,33 @@
+---
+# Role: get-status — obtém status de todos os componentes deployados
+- name: "Listar todos os Deployments"
+  command: "oc get deploy,dc -n {{ namespace }} -o json"
+  register: deployments_raw
+  changed_when: false
+  failed_when: false
+
+- name: "Listar todas as Rotas"
+  command: "oc get routes -n {{ namespace }} -o json"
+  register: routes_raw
+  changed_when: false
+  failed_when: false
+
+- name: "Listar todos os Services"
+  command: "oc get svc -n {{ namespace }} -o json"
+  register: services_raw
+  changed_when: false
+  failed_when: false
+
+- name: "Listar todos os Pods"
+  command: "oc get pods -n {{ namespace }} -o json"
+  register: pods_raw
+  changed_when: false
+  failed_when: false
+
+- name: "Registrar status geral"
+  set_fact:
+    cluster_status:
+      deployments: "{{ deployments_raw.stdout | default('{}') }}"
+      routes: "{{ routes_raw.stdout | default('{}') }}"
+      services: "{{ services_raw.stdout | default('{}') }}"
+      pods: "{{ pods_raw.stdout | default('{}') }}"

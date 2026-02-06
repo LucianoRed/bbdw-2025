@@ -1,0 +1,63 @@
+---
+# Playbook: deploy-all.yml
+# Deploy completo de todos os componentes da demo
+- name: "Deploy completo da demo BBDW 2025"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    namespace: "{{ namespace | default('bbdw-demo') }}"
+    git_repo_url: "{{ git_repo_url }}"
+    sa_name: "mcp-sa"
+    components:
+      - { name: "mcp-server-k8s-live",      context_dir: "mcp-server-k8s-live" }
+      - { name: "mcp-server-k8s-security",  context_dir: "mcp-server-k8s-security" }
+      - { name: "mcp-server-downdetector",   context_dir: "mcp-server-downdetector" }
+      - { name: "mcp-server-saude",          context_dir: "mcp-server-saude" }
+      - { name: "mcp-server-matriculas",     context_dir: "mcp-server-matriculas" }
+      - { name: "imagem-crash",              context_dir: "imagem-crash" }
+      - { name: "agent-ai",                  context_dir: "agent-ai" }
+  
+  tasks:
+    # 1. Setup namespace
+    - name: "Login e setup do namespace"
+      include_role:
+        name: common
+
+    # 2. Deploy Redis
+    - name: "Deploy do Redis"
+      include_role:
+        name: deploy-redis
+
+    # 3. Setup RBAC
+    - name: "Setup RBAC para MCP servers"
+      include_role:
+        name: setup-rbac
+
+    # 4. Deploy de cada componente
+    - name: "Deploy do componente {{ item.name }}"
+      include_role:
+        name: deploy-app
+      vars:
+        app_name: "{{ item.name }}"
+        context_dir: "{{ item.context_dir }}"
+        env_vars: "{{ item.env_vars | default([]) }}"
+      loop: "{{ components }}"
+
+    # 5. Configurar variáveis do agent-ai
+    - name: "Configurar agent-ai com endpoints dos MCP servers"
+      command: >
+        oc set env dc/agent-ai
+        REDIS_URL=redis://redis.{{ namespace }}.svc.cluster.local:6379
+        -n {{ namespace }}
+      failed_when: false
+
+    # 6. Obter status final
+    - name: "Obter status final"
+      include_role:
+        name: get-status
+
+    - name: "Resultado final"
+      debug:
+        msg: "{{ cluster_status | to_json }}"
+      tags: [result]

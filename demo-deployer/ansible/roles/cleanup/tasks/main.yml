@@ -1,0 +1,19 @@
+---
+# Role: cleanup — remove todos os recursos do namespace
+- name: "Deletar todos os recursos do namespace {{ namespace }}"
+  command: "oc delete all --all -n {{ namespace }}"
+  failed_when: false
+
+- name: "Deletar PVCs"
+  command: "oc delete pvc --all -n {{ namespace }}"
+  failed_when: false
+
+- name: "Deletar ConfigMaps e Secrets criados"
+  command: "oc delete configmap,secret --all -n {{ namespace }}"
+  failed_when: false
+
+- name: "Registrar resultado do cleanup"
+  set_fact:
+    cleanup_result:
+      namespace: "{{ namespace }}"
+      status: "cleaned"

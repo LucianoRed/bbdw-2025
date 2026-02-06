@@ -1,0 +1,17 @@
+---
+# Playbook: cleanup.yml
+# Remove todos os recursos do namespace
+- name: "Limpeza do namespace"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    namespace: "{{ namespace | default('bbdw-demo') }}"
+  roles:
+    - common
+    - cleanup
+  post_tasks:
+    - name: "Resultado do cleanup"
+      debug:
+        msg: "{{ cleanup_result | to_json }}"
+      tags: [result]

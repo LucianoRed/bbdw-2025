@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo Deployer — BBDW 2025</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2333;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --success: #3fb950;
+      --warning: #d29922;
+      --danger: #f85149;
+      --purple: #bc8cff;
+      --infra: #58a6ff;
+      --mcp: #bc8cff;
+      --demo: #d29922;
+      --core: #3fb950;
+      --radius: 10px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header h1 { font-size: 24px; font-weight: 700; }
+    .header h1 span { color: var(--accent); }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+    .status-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      display: inline-block; margin-right: 6px;
+    }
+    .status-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .status-dot.disconnected { background: var(--danger); }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover { background: var(--bg-card-hover); border-color: var(--accent); }
+    .btn-primary { background: #238636; border-color: #2ea043; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-danger { background: #da3633; border-color: #f85149; }
+    .btn-danger:hover { background: #f85149; }
+    .btn-accent { background: #1f6feb; border-color: #388bfd; }
+    .btn-accent:hover { background: #388bfd; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+    /* Layout */
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+    /* Config Panel */
+    .config-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .config-panel h2 { font-size: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .config-grid.full { grid-template-columns: 1fr; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-group input {
+      padding: 8px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+    .form-group input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,0.2); }
+
+    /* Action Bar */
+    .action-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .action-bar .spacer { flex: 1; }
+
+    /* Components Grid */
+    .components-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    /* Component Card */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .card-icon { font-size: 28px; }
+    .card-title { font-size: 15px; font-weight: 600; }
+    .card-category {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .cat-infra { background: rgba(88,166,255,0.15); color: var(--infra); }
+    .cat-mcp { background: rgba(188,140,255,0.15); color: var(--mcp); }
+    .cat-demo { background: rgba(210,153,34,0.15); color: var(--demo); }
+    .cat-core { background: rgba(63,185,80,0.15); color: var(--core); }
+    .card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px; }
+    .card-footer { display: flex; align-items: center; justify-content: space-between; }
+
+    /* Status badge */
+    .badge {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+    .badge-not-deployed { background: rgba(139,148,158,0.15); color: var(--text-muted); }
+    .badge-deploying { background: rgba(210,153,34,0.15); color: var(--warning); }
+    .badge-deployed { background: rgba(63,185,80,0.15); color: var(--success); }
+    .badge-failed { background: rgba(248,81,73,0.15); color: var(--danger); }
+
+    /* Progress bar on card */
+    .card-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: var(--accent);
+      transition: width 0.3s;
+    }
+    .card-progress.deploying {
+      animation: progress-pulse 1.5s ease-in-out infinite;
+      width: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--purple), var(--accent));
+      background-size: 200% 100%;
+    }
+    @keyframes progress-pulse {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    /* Route link */
+    .route-link {
+      color: var(--accent);
+      font-size: 12px;
+      text-decoration: none;
+      font-family: 'SF Mono', monospace;
+    }
+    .route-link:hover { text-decoration: underline; }
+
+    /* Log Panel */
+    .log-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 24px;
+    }
+    .log-header {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .log-header h3 { font-size: 14px; }
+    .log-content {
+      padding: 16px 20px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .log-content .log-ok { color: var(--success); }
+    .log-content .log-err { color: var(--danger); }
+    .log-content .log-changed { color: var(--warning); }
+
+    /* Details Panel (overlay) */
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 200;
+      justify-content: center;
+      align-items: center;
+    }
+    .overlay.active { display: flex; }
+    .detail-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 90%;
+      max-width: 800px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 28px;
+    }
+    .detail-panel h2 { margin-bottom: 16px; }
+    .detail-info { margin-bottom: 16px; }
+    .detail-row { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .detail-label { min-width: 120px; color: var(--text-muted); font-size: 13px; font-weight: 600; }
+    .detail-value { font-size: 13px; flex: 1; }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 13px;
+      box-shadow: var(--shadow);
+      animation: slideIn 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toast.success { border-left: 3px solid var(--success); }
+    .toast.error { border-left: 3px solid var(--danger); }
+    .toast.info { border-left: 3px solid var(--accent); }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Deploy Details page */
+    .deploy-details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px;
+    }
+    .detail-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .detail-card h4 {
+      font-size: 14px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .detail-card .info-row {
+      font-size: 12px;
+      padding: 4px 0;
+      display: flex;
+      gap: 8px;
+    }
+    .detail-card .info-label {
+      color: var(--text-muted);
+      min-width: 80px;
+      font-weight: 600;
+    }
+    .detail-card .info-value {
+      font-family: 'SF Mono', monospace;
+      word-break: break-all;
+    }
+
+    @media (max-width: 768px) {
+      .config-grid { grid-template-columns: 1fr; }
+      .components-grid { grid-template-columns: 1fr; }
+      .header { flex-direction: column; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <h1>🚀 <span>Demo Deployer</span> — BBDW 2025</h1>
+    <div class="header-actions">
+      <span><span class="status-dot disconnected" id="wsStatus"></span> <span id="wsLabel">Desconectado</span></span>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" data-tab="deploy" onclick="switchTab('deploy')">⚡ Deploy</div>
+      <div class="tab" data-tab="details" onclick="switchTab('details')">📋 Detalhes</div>
+      <div class="tab" data-tab="logs" onclick="switchTab('logs')">📜 Logs</div>
+    </div>
+
+    <!-- TAB: Deploy -->
+    <div class="tab-content active" id="tab-deploy">
+      <!-- Config -->
+      <div class="config-panel">
+        <h2>⚙️ Configuração do Cluster</h2>
+        <div class="config-grid">
+          <div class="form-group">
+            <label>OpenShift API URL</label>
+            <input type="text" id="ocpApiUrl" placeholder="https://api.cluster.example.com:6443">
+          </div>
+          <div class="form-group">
+            <label>Token</label>
+            <input type="password" id="ocpToken" placeholder="sha256~xxxx...">
+          </div>
+          <div class="form-group">
+            <label>Namespace</label>
+            <input type="text" id="namespace" value="bbdw-demo">
+          </div>
+          <div class="form-group">
+            <label>Git Repo URL</label>
+            <input type="text" id="gitRepoUrl" placeholder="https://github.com/usuario/bbdw-2025.git">
+          </div>
+        </div>
+        <div style="margin-top: 14px; display: flex; gap: 10px;">
+          <button class="btn btn-accent" onclick="saveConfig()">💾 Salvar Config</button>
+          <button class="btn" onclick="testConnection()">🔌 Testar Conexão</button>
+        </div>
+      </div>
+
+      <!-- Action Bar -->
+      <div class="action-bar">
+        <button class="btn btn-primary" onclick="deployAllComponents()">🚀 Deploy Completo</button>
+        <button class="btn" onclick="refreshClusterStatus()">🔄 Atualizar Status</button>
+        <div class="spacer"></div>
+        <button class="btn btn-danger" onclick="cleanupAll()">🗑️ Limpar Tudo</button>
+      </div>
+
+      <!-- Components Grid -->
+      <div class="components-grid" id="componentsGrid"></div>
+    </div>
+
+    <!-- TAB: Detalhes -->
+    <div class="tab-content" id="tab-details">
+      <h2 style="margin-bottom: 16px;">📋 Detalhes dos Deploys</h2>
+      <div class="deploy-details-grid" id="detailsGrid"></div>
+    </div>
+
+    <!-- TAB: Logs -->
+    <div class="tab-content" id="tab-logs">
+      <div class="log-panel">
+        <div class="log-header">
+          <h3>📜 Logs em Tempo Real</h3>
+          <button class="btn btn-sm" onclick="clearLogs()">Limpar</button>
+        </div>
+        <div class="log-content" id="logContent">Aguardando ações...\n</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Overlay -->
+  <div class="overlay" id="detailOverlay" onclick="closeDetail(event)">
+    <div class="detail-panel" id="detailPanel" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 id="detailTitle">Detalhes</h2>
+        <button class="btn btn-sm" onclick="closeDetail()">✕</button>
+      </div>
+      <div id="detailBody"></div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div class="toast-container" id="toasts"></div>
+
+<script>
+  // ---- State ----
+  let state = { config: {}, components: {}, definitions: [] };
+  let ws = null;
+  let logBuffer = '';
+
+  // ---- Init ----
+  window.addEventListener('load', async () => {
+    await fetchState();
+    connectWebSocket();
+  });
+
+  // ---- API Calls ----
+  async function fetchState() {
+    try {
+      const res = await fetch('/api/state');
+      state = await res.json();
+      renderComponents();
+      renderDetails();
+      // Preenche config no form
+      if (state.config) {
+        document.getElementById('ocpApiUrl').value = state.config.ocpApiUrl || '';
+        document.getElementById('namespace').value = state.config.namespace || 'bbdw-demo';
+        document.getElementById('gitRepoUrl').value = state.config.gitRepoUrl || '';
+      }
+    } catch (e) {
+      showToast('Erro ao carregar estado', 'error');
+    }
+  }
+
+  async function saveConfig() {
+    const config = {
+      ocpApiUrl: document.getElementById('ocpApiUrl').value,
+      ocpToken: document.getElementById('ocpToken').value,
+      namespace: document.getElementById('namespace').value,
+      gitRepoUrl: document.getElementById('gitRepoUrl').value,
+    };
+    try {
+      await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
+      showToast('Configuração salva!', 'success');
+    } catch (e) {
+      showToast('Erro ao salvar config', 'error');
+    }
+  }
+
+  async function testConnection() {
+    await saveConfig();
+    showToast('Testando conexão...', 'info');
+    try {
+      const res = await fetch('/api/refresh', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Conexão OK! Cluster acessível.', 'success');
+      } else {
+        showToast('Falha na conexão. Verifique URL e Token.', 'error');
+      }
+    } catch (e) {
+      showToast('Erro ao testar conexão', 'error');
+    }
+  }
+
+  async function deployComponent(id) {
+    try {
+      const res = await fetch(`/api/deploy/${id}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      showToast(`Deploy de "${id}" iniciado`, 'info');
+    } catch (e) {
+      showToast(`Erro: ${e.message}`, 'error');
+    }
+  }
+
+  async function deployAllComponents() {
+    if (!confirm('Iniciar deploy completo de todos os componentes?')) return;
+    try {
+      await fetch('/api/deploy-all', { method: 'POST' });
+      showToast('Deploy completo iniciado!', 'info');
+    } catch (e) {
+      showToast(`Erro: ${e.message}`, 'error');
+    }
+  }
+
+  async function refreshClusterStatus() {
+    showToast('Atualizando status...', 'info');
+    try {
+      await fetch('/api/refresh', { method: 'POST' });
+      await fetchState();
+      showToast('Status atualizado', 'success');
+    } catch (e) {
+      showToast('Erro ao atualizar', 'error');
+    }
+  }
+
+  async function cleanupAll() {
+    if (!confirm('⚠️ ATENÇÃO: Isso vai remover TODOS os recursos do namespace. Continuar?')) return;
+    try {
+      const res = await fetch('/api/cleanup', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Cleanup concluído!', 'success');
+        await fetchState();
+      } else {
+        showToast('Cleanup falhou', 'error');
+      }
+    } catch (e) {
+      showToast('Erro no cleanup', 'error');
+    }
+  }
+
+  // ---- WebSocket ----
+  function connectWebSocket() {
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+    ws.onopen = () => {
+      document.getElementById('wsStatus').className = 'status-dot connected';
+      document.getElementById('wsLabel').textContent = 'Conectado';
+    };
+
+    ws.onclose = () => {
+      document.getElementById('wsStatus').className = 'status-dot disconnected';
+      document.getElementById('wsLabel').textContent = 'Desconectado';
+      setTimeout(connectWebSocket, 3000);
+    };
+
+    ws.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data);
+        handleWsEvent(event);
+      } catch (err) { /* ignore */ }
+    };
+  }
+
+  function handleWsEvent(event) {
+    switch (event.type) {
+      case 'init':
+        state = event.data;
+        renderComponents();
+        renderDetails();
+        break;
+
+      case 'component-update':
+        state.components[event.componentId] = event.data;
+        renderComponents();
+        renderDetails();
+        break;
+
+      case 'job-output':
+        appendLog(event.data);
+        break;
+
+      case 'job-start':
+        showToast(`Deploy "${event.componentId}" iniciado`, 'info');
+        break;
+
+      case 'job-complete':
+        if (event.success) {
+          showToast(`Deploy "${event.componentId}" concluído ✓`, 'success');
+        } else {
+          showToast(`Deploy "${event.componentId}" falhou ✗`, 'error');
+        }
+        fetchState();
+        break;
+
+      case 'job-error':
+        showToast(`Erro em "${event.componentId}": ${event.error}`, 'error');
+        break;
+
+      case 'config-update':
+        state.config = event.data;
+        break;
+    }
+  }
+
+  // ---- Rendering ----
+  function renderComponents() {
+    const grid = document.getElementById('componentsGrid');
+    if (!state.definitions || state.definitions.length === 0) return;
+
+    grid.innerHTML = state.definitions
+      .sort((a, b) => a.order - b.order)
+      .map(comp => {
+        const cs = state.components[comp.id] || { status: 'not-deployed' };
+        const statusClass = cs.status.replace(' ', '-');
+        const isDeploying = cs.status === 'deploying';
+        const isDeployed = cs.status === 'deployed';
+
+        return `
+          <div class="card" data-id="${comp.id}">
+            <div class="card-header">
+              <span class="card-icon">${comp.icon}</span>
+              <div>
+                <div class="card-title">${comp.name}</div>
+                <span class="card-category cat-${comp.category}">${comp.category}</span>
+              </div>
+            </div>
+            <div class="card-desc">${comp.description}</div>
+            <div class="card-footer">
+              <span class="badge badge-${statusClass}">${formatStatus(cs.status)}</span>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                ${isDeployed && cs.route ? `<a class="route-link" href="http://${cs.route}" target="_blank">🔗 ${cs.route}</a>` : ''}
+                <button class="btn btn-sm ${isDeploying ? '' : 'btn-primary'}"
+                        onclick="deployComponent('${comp.id}')"
+                        ${isDeploying ? 'disabled' : ''}>
+                  ${isDeploying ? '⏳ ...' : '▶ Deploy'}
+                </button>
+                <button class="btn btn-sm" onclick="showDetail('${comp.id}')">📋</button>
+              </div>
+            </div>
+            ${isDeploying ? '<div class="card-progress deploying"></div>' : ''}
+            ${isDeployed ? '<div class="card-progress" style="width:100%; background: var(--success);"></div>' : ''}
+            ${cs.status === 'failed' ? '<div class="card-progress" style="width:100%; background: var(--danger);"></div>' : ''}
+          </div>
+        `;
+      }).join('');
+  }
+
+  function renderDetails() {
+    const grid = document.getElementById('detailsGrid');
+    if (!state.definitions) return;
+
+    grid.innerHTML = state.definitions
+      .sort((a, b) => a.order - b.order)
+      .map(comp => {
+        const cs = state.components[comp.id] || { status: 'not-deployed' };
+        return `
+          <div class="detail-card">
+            <h4>${comp.icon} ${comp.name} <span class="badge badge-${cs.status.replace(' ','-')}" style="font-size:10px;">${formatStatus(cs.status)}</span></h4>
+            <div class="info-row"><span class="info-label">ID:</span><span class="info-value">${comp.id}</span></div>
+            <div class="info-row"><span class="info-label">Categoria:</span><span class="info-value">${comp.category}</span></div>
+            ${cs.route ? `<div class="info-row"><span class="info-label">Rota:</span><span class="info-value"><a class="route-link" href="http://${cs.route}" target="_blank">${cs.route}</a></span></div>` : ''}
+            ${cs.startedAt ? `<div class="info-row"><span class="info-label">Início:</span><span class="info-value">${new Date(cs.startedAt).toLocaleString('pt-BR')}</span></div>` : ''}
+            ${cs.finishedAt ? `<div class="info-row"><span class="info-label">Fim:</span><span class="info-value">${new Date(cs.finishedAt).toLocaleString('pt-BR')}</span></div>` : ''}
+            ${cs.error ? `<div class="info-row"><span class="info-label" style="color:var(--danger)">Erro:</span><span class="info-value" style="color:var(--danger)">${cs.error}</span></div>` : ''}
+            ${comp.port ? `<div class="info-row"><span class="info-label">Porta:</span><span class="info-value">${comp.port}</span></div>` : ''}
+          </div>
+        `;
+      }).join('');
+  }
+
+  function formatStatus(status) {
+    const map = {
+      'not-deployed': '⭕ Não deployado',
+      'deploying': '🔄 Deployando...',
+      'deployed': '✅ Deployado',
+      'failed': '❌ Falhou',
+    };
+    return map[status] || status;
+  }
+
+  // ---- Detail Overlay ----
+  function showDetail(id) {
+    const comp = state.definitions.find(c => c.id === id);
+    const cs = state.components[id] || {};
+    document.getElementById('detailTitle').textContent = `${comp.icon} ${comp.name}`;
+    document.getElementById('detailBody').innerHTML = `
+      <div class="detail-info">
+        <div class="detail-row"><span class="detail-label">Status:</span><span class="detail-value">${formatStatus(cs.status)}</span></div>
+        <div class="detail-row"><span class="detail-label">Categoria:</span><span class="detail-value">${comp.category}</span></div>
+        ${cs.route ? `<div class="detail-row"><span class="detail-label">Rota:</span><span class="detail-value"><a class="route-link" href="http://${cs.route}" target="_blank">${cs.route}</a></span></div>` : ''}
+        ${comp.port ? `<div class="detail-row"><span class="detail-label">Porta:</span><span class="detail-value">${comp.port}</span></div>` : ''}
+        ${cs.startedAt ? `<div class="detail-row"><span class="detail-label">Início:</span><span class="detail-value">${new Date(cs.startedAt).toLocaleString('pt-BR')}</span></div>` : ''}
+        ${cs.finishedAt ? `<div class="detail-row"><span class="detail-label">Fim:</span><span class="detail-value">${new Date(cs.finishedAt).toLocaleString('pt-BR')}</span></div>` : ''}
+        ${cs.error ? `<div class="detail-row"><span class="detail-label" style="color:var(--danger)">Erro:</span><span class="detail-value" style="color:var(--danger)">${cs.error}</span></div>` : ''}
+        <div class="detail-row"><span class="detail-label">Descrição:</span><span class="detail-value">${comp.description}</span></div>
+      </div>
+      ${cs.logs ? `
+      <div class="log-panel" style="margin-top:16px;">
+        <div class="log-header"><h3>Logs do Deploy</h3></div>
+        <div class="log-content" style="max-height:300px;">${colorizeLogs(cs.logs)}</div>
+      </div>
+      ` : ''}
+    `;
+    document.getElementById('detailOverlay').classList.add('active');
+  }
+
+  function closeDetail(e) {
+    if (!e || e.target.id === 'detailOverlay') {
+      document.getElementById('detailOverlay').classList.remove('active');
+    }
+  }
+
+  // ---- Tabs ----
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.toggle('active', tc.id === `tab-${tab}`));
+    if (tab === 'details') renderDetails();
+  }
+
+  // ---- Logs ----
+  function appendLog(text) {
+    logBuffer += text;
+    const logEl = document.getElementById('logContent');
+    logEl.innerHTML = colorizeLogs(logBuffer);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function clearLogs() {
+    logBuffer = '';
+    document.getElementById('logContent').innerHTML = 'Logs limpos.\n';
+  }
+
+  function colorizeLogs(text) {
+    return text
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/(ok:.*)/gi, '<span class="log-ok">$1</span>')
+      .replace(/(changed:.*)/gi, '<span class="log-changed">$1</span>')
+      .replace(/(fatal|failed|error|FAILED)(.*)$/gim, '<span class="log-err">$1$2</span>');
+  }
+
+  // ---- Toasts ----
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toasts');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = message;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,16 @@
+---
+# Role: common — garante namespace e login no OpenShift
+- name: Login no OpenShift via token
+  command: >
+    oc login {{ ocp_api_url }} --token={{ ocp_token }} --insecure-skip-tls-verify=true
+  changed_when: true
+
+- name: Criar namespace {{ namespace }} (se não existir)
+  command: oc new-project {{ namespace }}
+  register: ns_result
+  failed_when: false
+  changed_when: "'already exists' not in ns_result.stderr"
+
+- name: Selecionar projeto {{ namespace }}
+  command: oc project {{ namespace }}
+  changed_when: false

@@ -1,0 +1,18 @@
+---
+# Playbook: deploy-component.yml
+# Deploy genérico de um componente da demo
+# Params: ocp_api_url, ocp_token, namespace, app_name, git_repo_url, context_dir, env_vars
+- name: "Deploy do componente {{ app_name }}"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    namespace: "{{ namespace | default('bbdw-demo') }}"
+  roles:
+    - common
+    - deploy-app
+  post_tasks:
+    - name: "Resultado do deploy"
+      debug:
+        msg: "{{ deploy_result | to_json }}"
+      tags: [result]

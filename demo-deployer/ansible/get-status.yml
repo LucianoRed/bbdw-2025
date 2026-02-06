@@ -1,0 +1,17 @@
+---
+# Playbook: get-status.yml
+# Obtém status de todos os recursos no namespace
+- name: "Status dos componentes"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    namespace: "{{ namespace | default('bbdw-demo') }}"
+  roles:
+    - common
+    - get-status
+  post_tasks:
+    - name: "Status do cluster"
+      debug:
+        msg: "{{ cluster_status | to_json }}"
+      tags: [result]

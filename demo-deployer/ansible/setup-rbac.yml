@@ -1,0 +1,18 @@
+---
+# Playbook: setup-rbac.yml
+# Cria ServiceAccount + RBAC para os MCP servers de K8s
+- name: "Setup RBAC para MCP Servers"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    namespace: "{{ namespace | default('bbdw-demo') }}"
+    sa_name: "{{ sa_name | default('mcp-sa') }}"
+  roles:
+    - common
+    - setup-rbac
+  post_tasks:
+    - name: "Resultado do RBAC"
+      debug:
+        msg: "{{ rbac_result | to_json }}"
+      tags: [result]

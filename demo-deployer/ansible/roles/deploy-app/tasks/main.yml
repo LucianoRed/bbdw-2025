@@ -1,0 +1,55 @@
+---
+# Role: deploy-app — deploy genérico de uma app a partir de Dockerfile no Git
+- name: "Verificar se BuildConfig {{ app_name }} já existe"
+  command: "oc get bc {{ app_name }} -n {{ namespace }}"
+  register: bc_check
+  failed_when: false
+  changed_when: false
+
+- name: "Criar BuildConfig + ImageStream + Deployment para {{ app_name }}"
+  command: >
+    oc new-app
+    --name={{ app_name }}
+    --strategy=docker
+    --context-dir={{ context_dir | default(app_name) }}
+    {{ git_repo_url }}
+    -n {{ namespace }}
+  when: bc_check.rc != 0
+  register: new_app_result
+
+- name: "Aguardar build {{ app_name }}"
+  command: "oc logs -f bc/{{ app_name }} -n {{ namespace }}"
+  when: bc_check.rc != 0
+  changed_when: false
+  failed_when: false
+
+- name: "Configurar variáveis de ambiente"
+  command: "oc set env dc/{{ app_name }} {{ item.key }}={{ item.value }} -n {{ namespace }}"
+  loop: "{{ env_vars | default([]) }}"
+  when: env_vars is defined and env_vars | length > 0
+  failed_when: false
+
+- name: "Verificar se rota existe"
+  command: "oc get route {{ app_name }} -n {{ namespace }}"
+  register: route_check
+  failed_when: false
+  changed_when: false
+
+- name: "Expor serviço {{ app_name }}"
+  command: "oc expose svc/{{ app_name }} -n {{ namespace }}"
+  when: route_check.rc != 0
+  failed_when: false
+
+- name: "Obter rota de {{ app_name }}"
+  command: "oc get route {{ app_name }} -n {{ namespace }} -o jsonpath='{.spec.host}'"
+  register: route_host
+  changed_when: false
+  failed_when: false
+
+- name: "Registrar informações do deploy"
+  set_fact:
+    deploy_result:
+      app_name: "{{ app_name }}"
+      namespace: "{{ namespace }}"
+      route: "{{ route_host.stdout | default('N/A') }}"
+      status: "deployed"

@@ -1,0 +1,32 @@
+---
+# Role: deploy-redis — deploy do Redis para o agent-ai
+- name: "Verificar se Redis já existe"
+  command: "oc get dc/redis -n {{ namespace }}"
+  register: redis_check
+  failed_when: false
+  changed_when: false
+
+- name: "Deploy do Redis"
+  command: >
+    oc new-app redis:6
+    --name=redis
+    -n {{ namespace }}
+    -e REDIS_PASSWORD={{ redis_password | default('redis123') }}
+  when: redis_check.rc != 0
+
+- name: "Aguardar Redis estar pronto"
+  command: "oc rollout status dc/redis -n {{ namespace }} --timeout=120s"
+  when: redis_check.rc != 0
+  changed_when: false
+
+- name: "Obter service ClusterIP do Redis"
+  command: "oc get svc redis -n {{ namespace }} -o jsonpath='{.spec.clusterIP}'"
+  register: redis_ip
+  changed_when: false
+
+- name: "Registrar informações do Redis"
+  set_fact:
+    redis_result:
+      service: "redis.{{ namespace }}.svc.cluster.local"
+      port: 6379
+      status: "deployed"

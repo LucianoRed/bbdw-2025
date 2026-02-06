@@ -1,0 +1,17 @@
+---
+# Playbook: deploy-redis.yml
+# Deploy do Redis para o agent-ai
+- name: "Deploy do Redis"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    namespace: "{{ namespace | default('bbdw-demo') }}"
+  roles:
+    - common
+    - deploy-redis
+  post_tasks:
+    - name: "Resultado do deploy Redis"
+      debug:
+        msg: "{{ redis_result | to_json }}"
+      tags: [result]
