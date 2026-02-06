@@ -41,6 +41,27 @@ if (process.argv.includes("--stdio")) {
 
   app.use(cors());
   app.use(express.json());
+
+  // ---- Basic Auth ----
+  const AUTH_USER = process.env.AUTH_USER || "admin";
+  const AUTH_PASS = process.env.AUTH_PASS || "redhat";
+
+  function basicAuth(req, res, next) {
+    // Excluir health checks da autenticação
+    if (req.path === "/healthz" || req.path === "/live") return next();
+
+    const auth = req.headers.authorization;
+    if (!auth || !auth.startsWith("Basic ")) {
+      res.set("WWW-Authenticate", 'Basic realm="Demo Deployer"');
+      return res.status(401).send("Autenticação necessária");
+    }
+    const [user, pass] = Buffer.from(auth.split(" ")[1], "base64").toString().split(":");
+    if (user === AUTH_USER && pass === AUTH_PASS) return next();
+    res.set("WWW-Authenticate", 'Basic realm="Demo Deployer"');
+    return res.status(401).send("Credenciais inválidas");
+  }
+
+  app.use(basicAuth);
   app.use(express.static(path.join(__dirname, "public")));
 
   // ---- REST API ----
