@@ -223,11 +223,18 @@ export async function deployComponent(componentId) {
           if (routeMatch) route = routeMatch[1];
 
           if (!stepResult.success) {
-            finalResult.success = false;
-            onOutput(`\n❌ Etapa "${step.name}" falhou!\n`);
-            break;
+            // Steps de infraestrutura (Redis, RBAC) não devem abortar o fluxo
+            // Só o step principal (com contextDir) é crítico
+            if (step.contextDir) {
+              finalResult.success = false;
+              onOutput(`\n❌ Etapa "${step.name}" falhou!\n`);
+              break;
+            } else {
+              onOutput(`\n⚠️ Etapa "${step.name}" falhou (não-crítico, continuando...)\n`);
+            }
+          } else {
+            onOutput(`✅ Etapa "${step.name}" concluída\n`);
           }
-          onOutput(`✅ Etapa "${step.name}" concluída\n`);
         }
       } else {
         // Deploy simples (sem subSteps)

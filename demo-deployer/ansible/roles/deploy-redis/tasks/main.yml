@@ -1,21 +1,10 @@
 ---
 # Role: deploy-redis — deploy do Redis para o agent-ai
-- name: "Verificar se Redis já existe (Deployment)"
-  command: "oc get deploy redis -n {{ namespace }}"
-  register: redis_deploy_check
+- name: "Verificar se Redis já existe"
+  shell: "oc get deploy redis -n {{ namespace }} -o name 2>/dev/null || oc get dc redis -n {{ namespace }} -o name 2>/dev/null"
+  register: redis_check
   failed_when: false
   changed_when: false
-
-- name: "Verificar se Redis já existe (DeploymentConfig)"
-  command: "oc get dc redis -n {{ namespace }}"
-  register: redis_dc_check
-  failed_when: false
-  changed_when: false
-  when: redis_deploy_check.rc != 0
-
-- name: "Definir se Redis já existe"
-  set_fact:
-    redis_exists: "{{ redis_deploy_check.rc == 0 or (redis_dc_check.rc | default(1)) == 0 }}"
 
 - name: "Deploy do Redis"
   command: >
@@ -23,16 +12,26 @@
     --name=redis
     -n {{ namespace }}
     -e REDIS_PASSWORD={{ redis_password | default('redis123') }}
-  when: not redis_exists
+  when: redis_check.stdout | default('') | length == 0
+  failed_when: false
+  register: redis_new_app
+
+- name: "Aguardar criação do recurso Redis"
+  pause:
+    seconds: 5
+  when: redis_check.stdout | default('') | length == 0
 
 - name: "Detectar tipo de recurso Redis"
   shell: "oc get deploy redis -n {{ namespace }} -o name 2>/dev/null || oc get dc redis -n {{ namespace }} -o name 2>/dev/null"
   register: redis_resource
   changed_when: false
   failed_when: false
+  retries: 5
+  delay: 3
+  until: redis_resource.stdout | default('') | length > 0
 
 - name: "Aguardar Redis estar pronto"
-  command: "oc rollout status {{ redis_resource.stdout }} -n {{ namespace }} --timeout=120s"
+  command: "oc rollout status {{ redis_resource.stdout }} -n {{ namespace }} --timeout=180s"
   when: redis_resource.stdout | default('') | length > 0
   changed_when: false
   failed_when: false
@@ -41,6 +40,7 @@
   command: "oc get svc redis -n {{ namespace }} -o jsonpath='{.spec.clusterIP}'"
   register: redis_ip
   changed_when: false
+  failed_when: false
 
 - name: "Registrar informações do Redis"
   set_fact:
