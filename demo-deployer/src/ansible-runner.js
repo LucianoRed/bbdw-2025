@@ -36,7 +36,16 @@ export function runPlaybook(playbook, extraVars = {}, onOutput = null) {
     // Sempre no modo verbose
     args.push("-v");
 
-    console.log(`[Ansible] Executando: ansible-playbook ${playbook} (extra-vars via arquivo)`);
+    // Logar comando completo (sanitiza tokens)
+    const sanitizedArgs = args.map(a => {
+      if (typeof a === 'string' && a.startsWith('@')) return a; // arquivo de vars
+      return a;
+    });
+    const sanitizedVars = extraVars ? { ...extraVars } : {};
+    if (sanitizedVars.ocp_token) sanitizedVars.ocp_token = '***';
+    if (sanitizedVars.sa_token) sanitizedVars.sa_token = '***';
+    console.log(`[Ansible] ▶ ansible-playbook ${sanitizedArgs.join(' ')}`);
+    console.log(`[Ansible]   extra-vars: ${JSON.stringify(sanitizedVars)}`);
 
     const proc = spawn("ansible-playbook", args, {
       cwd: ANSIBLE_DIR,

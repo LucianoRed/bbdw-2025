@@ -624,20 +624,28 @@
     }
   }
 
+  let cleanupRunning = false;
+
   async function cleanupAll() {
     if (!confirm('⚠️ ATENÇÃO: Isso vai remover TODOS os recursos e namespaces da demo. Continuar?')) return;
+    cleanupRunning = true;
     showModal('🗑️ Limpando tudo...', 'Excluindo namespaces e todos os recursos. Isso pode levar alguns minutos...');
     try {
       const res = await fetch('/api/cleanup', { method: 'POST' });
       const data = await res.json();
+      // O modal será fechado pelo evento cleanup-complete via WebSocket
+      // Mas como fallback:
+      if (!cleanupRunning) return;
+      cleanupRunning = false;
       hideModal();
       if (data.success) {
         showToast('Cleanup concluído! Todos os namespaces foram excluídos.', 'success');
-        await fetchState();
       } else {
-        showToast('Cleanup falhou', 'error');
+        showToast('Cleanup parcial: ' + (data.output || 'verifique os logs'), 'error');
       }
+      await fetchState();
     } catch (e) {
+      cleanupRunning = false;
       hideModal();
       showToast('Erro no cleanup', 'error');
     }
@@ -727,6 +735,31 @@
 
       case 'config-update':
         state.config = event.data;
+        break;
+
+      case 'cleanup-output':
+        appendLog(event.data);
+        // Atualiza o modal com a última linha relevante
+        if (cleanupRunning && event.data.trim()) {
+          const lines = event.data.trim().split('\n');
+          const lastLine = lines[lines.length - 1];
+          if (lastLine.includes('═══') || lastLine.includes('✅') || lastLine.includes('⚠️') || lastLine.includes('🗑️')) {
+            updateModal('🗑️ Limpando tudo...', lastLine);
+          }
+        }
+        break;
+
+      case 'cleanup-complete':
+        if (cleanupRunning) {
+          cleanupRunning = false;
+          hideModal();
+          if (event.success) {
+            showToast('Cleanup concluído! ' + (event.summary || ''), 'success');
+          } else {
+            showToast('Cleanup parcial: ' + (event.summary || 'verifique os logs'), 'error');
+          }
+          fetchState();
+        }
         break;
     }
   }

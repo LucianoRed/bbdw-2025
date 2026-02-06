@@ -428,13 +428,29 @@ export async function cleanup() {
 
   // Limpa cada namespace individualmente
   const namespaces = [...new Set(COMPONENTS.map((c) => c.namespace || c.id))];
+  const results = [];
+  let allOutput = "";
+
+  const onOutput = (line) => {
+    allOutput += line;
+    broadcast({ type: "cleanup-output", data: line });
+  };
+
+  onOutput(`\n🗑️ Iniciando cleanup de ${namespaces.length} namespaces...\n`);
 
   for (const ns of namespaces) {
-    await runPlaybook("cleanup.yml", {
+    onOutput(`\n═══ Excluindo namespace: ${ns} ═══\n`);
+    const result = await runPlaybook("cleanup.yml", {
       ocp_api_url: ocpApiUrl,
       ocp_token: ocpToken,
       namespace: ns,
-    });
+    }, onOutput);
+    results.push({ namespace: ns, success: result.success, exitCode: result.exitCode });
+    if (result.success) {
+      onOutput(`✅ Namespace "${ns}" excluído com sucesso\n`);
+    } else {
+      onOutput(`⚠️ Falha ao excluir namespace "${ns}" (exit code: ${result.exitCode})\n`);
+    }
   }
 
   // Reset estado
@@ -454,7 +470,14 @@ export async function cleanup() {
   delete deployState.config.saToken;
   saveState();
 
-  return { success: true, output: `Cleanup de ${namespaces.length} namespaces excluídos: ${namespaces.join(", ")}` };
+  const failed = results.filter(r => !r.success);
+  const summary = failed.length > 0
+    ? `Cleanup parcial: ${results.length - failed.length}/${results.length} namespaces excluídos. Falhas: ${failed.map(f => f.namespace).join(", ")}`
+    : `Cleanup completo: ${namespaces.length} namespaces excluídos: ${namespaces.join(", ")}`;
+  onOutput(`\n${summary}\n`);
+
+  broadcast({ type: "cleanup-complete", success: failed.length === 0, summary });
+  return { success: failed.length === 0, output: summary, details: results };
 }
 
 export function getJob(jobId) {
