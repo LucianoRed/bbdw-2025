@@ -115,4 +115,81 @@ docker run --rm -p 8000:8000 llama-stack:cpu
 - Ajustar agentes para decisões automatizadas de escalabilidade (MachineSets, eviction de pods) com confirmação humana.
 - Integrar testes automatizados (Java e Node) e pipelines de CI/CD conforme práticas da equipe.
 
+---
+
+## Demo Deployer
+
+Aplicação web para deploy automatizado de todos os componentes da demo no OpenShift, com automação via **Ansible** e integração **MCP Server**. Permite deployar cada componente com um clique pela interface ou via chamadas MCP.
+
+### Deploy no OpenShift
+
+```bash
+# 1. Criar projeto
+oc new-project demo-deployer
+
+# 2. Criar a app a partir do Dockerfile
+oc new-app --name=demo-deployer \
+  --strategy=docker \
+  --context-dir=demo-deployer \
+  https://github.com/LucianoRed/bbdw-2025.git
+
+# 3. Acompanhar o build
+oc logs -f bc/demo-deployer
+
+# 4. Criar PVC para persistência de estado
+oc create -f - <<EOF
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: demo-deployer-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+EOF
+
+# 5. Montar PVC no deployment
+oc set volume deployment/demo-deployer \
+  --add \
+  --name=demo-deployer-data \
+  --type=pvc \
+  --claim-name=demo-deployer-data \
+  --mount-path=/app/data
+
+# 6. Expor a rota
+oc expose svc/demo-deployer
+
+# 7. Anotar rota com TLS
+oc annotate route demo-deployer kubernetes.io/tls-acme=true --overwrite
+
+# 8. Pegar a URL
+oc get route demo-deployer -o jsonpath='{.spec.host}'
+```
+
+### Funcionalidades
+- **Dashboard Web** — Interface para gerenciar deploys com status em tempo real (WebSocket)
+- **Ansible Automation** — Playbooks para deploy de cada componente (namespace, Redis, RBAC, MCP servers, Agent AI)
+- **MCP Server** — 8 tools acessíveis via SSE (`/mcp/sse`) ou STDIO para integração com IA
+- **Persistência** — Estado salvo em PVC, sobrevive a restarts do pod
+
+### MCP Server — Tools Disponíveis
+
+| Tool | Descrição |
+|------|-----------|
+| `configure` | Configura API URL, token, namespace e git URL |
+| `get_status` | Estado de todos os componentes |
+| `list_components` | Lista componentes disponíveis |
+| `deploy_component` | Deploy de um componente específico |
+| `deploy_all` | Deploy completo de todos |
+| `get_component_details` | Detalhes e logs de um componente |
+| `refresh_cluster_status` | Consulta status real no cluster |
+| `cleanup` | Remove todos os recursos |
+
+### Container
+A imagem inclui **Node.js**, **Ansible Core**, **oc CLI**, **kubectl**, **Python 3** e **Git** sobre base **Red Hat UBI 9 Minimal**.
+
+Para mais detalhes, veja o [README do demo-deployer](demo-deployer/README.md).
+
 
