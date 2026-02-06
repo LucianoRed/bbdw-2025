@@ -321,25 +321,92 @@ function waitForJob(jobId) {
 
 /**
  * Obtém status de todos os componentes no cluster.
+ * Verifica se cada namespace existe e se há pods/deployments rodando.
  */
 export async function refreshStatus() {
   const { ocpApiUrl, ocpToken } = deployState.config;
   if (!ocpApiUrl || !ocpToken) return { error: "OCP não configurado" };
 
-  // Coleta status de todos os namespaces dos componentes
-  const namespaces = [...new Set(COMPONENTS.map((c) => c.namespace || c.id))];
-  const results = {};
+  // Login primeiro
+  await runOcCommand(["login", ocpApiUrl, `--token=${ocpToken}`, "--insecure-skip-tls-verify=true"], ocpApiUrl, ocpToken);
 
-  for (const ns of namespaces) {
-    const result = await runPlaybook("get-status.yml", {
-      ocp_api_url: ocpApiUrl,
-      ocp_token: ocpToken,
+  // Para cada componente, verifica diretamente no cluster
+  for (const compDef of COMPONENTS) {
+    const ns = compDef.namespace || compDef.id;
+    const appName = compDef.id;
+
+    // Verificar se o namespace existe
+    const nsCheck = await runOcCommand(["get", "project", ns, "-o", "name"], ocpApiUrl, ocpToken);
+    if (!nsCheck.success) {
+      // Namespace não existe → componente não está deployado
+      updateComponent(appName, {
+        status: "not-deployed",
+        route: null,
+        namespace: null,
+        error: null,
+      });
+      continue;
+    }
+
+    // Verificar se há deployments/pods do app
+    const dcCheck = await runOcCommand(
+      ["get", "deploy,dc,buildconfig", "-n", ns, "-o", "name"],
+      ocpApiUrl, ocpToken
+    );
+
+    if (!dcCheck.success || !dcCheck.output.trim()) {
+      // Namespace existe mas sem deployments
+      updateComponent(appName, {
+        status: "not-deployed",
+        route: null,
+        namespace: ns,
+        error: null,
+      });
+      continue;
+    }
+
+    // Verificar pods rodando
+    const podCheck = await runOcCommand(
+      ["get", "pods", "-n", ns, "-o", "jsonpath={.items[*].status.phase}"],
+      ocpApiUrl, ocpToken
+    );
+    const phases = (podCheck.output || "").trim().split(/\s+/).filter(Boolean);
+    const hasRunning = phases.some((p) => p === "Running");
+    const allFailed = phases.length > 0 && phases.every((p) => p === "CrashLoopBackOff" || p === "Error" || p === "Failed");
+
+    // Verificar rota
+    let route = null;
+    const routeCheck = await runOcCommand(
+      ["get", "route", appName, "-n", ns, "-o", "jsonpath={.spec.host}"],
+      ocpApiUrl, ocpToken
+    );
+    if (routeCheck.success && routeCheck.output.trim()) {
+      route = `https://${routeCheck.output.trim()}`;
+    }
+
+    let status;
+    if (hasRunning) {
+      status = "deployed";
+    } else if (allFailed) {
+      status = "failed";
+    } else if (phases.length > 0) {
+      // Pods existem mas não Running (Building, Pending, etc)
+      status = "deploying";
+    } else {
+      // Sem pods mas tem deployment/bc → pode estar buildando
+      status = "deploying";
+    }
+
+    updateComponent(appName, {
+      status,
+      route,
       namespace: ns,
+      error: allFailed ? "Pods em falha. Verifique os logs." : null,
     });
-    results[ns] = { success: result.success, raw: result.output };
   }
 
-  return { success: true, namespaces: results };
+  broadcast({ type: "refresh-complete" });
+  return { success: true };
 }
 
 /**
@@ -373,7 +440,11 @@ export async function cleanup() {
     });
   });
 
-  return { success: true, output: `Cleanup de ${namespaces.length} namespaces concluído: ${namespaces.join(", ")}` };
+  // Limpa SA token (RBAC foi deletado junto com o namespace)
+  delete deployState.config.saToken;
+  saveState();
+
+  return { success: true, output: `Cleanup de ${namespaces.length} namespaces excluídos: ${namespaces.join(", ")}` };
 }
 
 export function getJob(jobId) {

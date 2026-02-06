@@ -1,14 +1,18 @@
 ---
 # Playbook: cleanup.yml
-# Remove todos os recursos do namespace
+# Remove o namespace inteiro (e todos os recursos dentro)
 - name: "Limpeza do namespace"
   hosts: localhost
   connection: local
   gather_facts: false
   vars:
     namespace: "{{ namespace | default('bbdw-demo') }}"
+  pre_tasks:
+    - name: Login no OpenShift via token
+      command: >
+        oc login {{ ocp_api_url }} --token={{ ocp_token }} --insecure-skip-tls-verify=true
+      changed_when: true
   roles:
-    - common
     - cleanup
   post_tasks:
     - name: "Resultado do cleanup"
