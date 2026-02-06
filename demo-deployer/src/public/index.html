@@ -342,6 +342,53 @@
       .components-grid { grid-template-columns: 1fr; }
       .header { flex-direction: column; gap: 12px; }
     }
+
+    /* Modal overlay */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .modal-box .modal-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      display: block;
+    }
+    .modal-box h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .modal-box p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+    .modal-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      margin: 0 auto;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -434,6 +481,16 @@
   <!-- Toasts -->
   <div class="toast-container" id="toasts"></div>
 
+  <!-- Modal de loading -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+      <span class="modal-icon" id="modalIcon"></span>
+      <h3 id="modalTitle"></h3>
+      <p id="modalMessage"></p>
+      <div class="modal-spinner"></div>
+    </div>
+  </div>
+
 <script>
   // ---- State ----
   let state = { config: {}, components: {}, definitions: [] };
@@ -457,6 +514,12 @@
       if (state.config) {
         document.getElementById('ocpApiUrl').value = state.config.ocpApiUrl || '';
         document.getElementById('gitRepoUrl').value = state.config.gitRepoUrl || '';
+        // Indicar que o token já está salvo no servidor
+        const tokenInput = document.getElementById('ocpToken');
+        if (state.config.ocpToken === '***') {
+          tokenInput.value = '';
+          tokenInput.placeholder = '🔒 Token salvo (deixe vazio para manter)';
+        }
       }
     } catch (e) {
       showToast('Erro ao carregar estado', 'error');
@@ -526,17 +589,20 @@
   }
 
   async function cleanupAll() {
-    if (!confirm('⚠️ ATENÇÃO: Isso vai remover TODOS os recursos de TODOS os namespaces da demo. Continuar?')) return;
+    if (!confirm('⚠️ ATENÇÃO: Isso vai remover TODOS os recursos e namespaces da demo. Continuar?')) return;
+    showModal('🗑️ Limpando tudo...', 'Excluindo namespaces e todos os recursos. Isso pode levar alguns minutos...');
     try {
       const res = await fetch('/api/cleanup', { method: 'POST' });
       const data = await res.json();
+      hideModal();
       if (data.success) {
-        showToast('Cleanup concluído!', 'success');
+        showToast('Cleanup concluído! Todos os namespaces foram excluídos.', 'success');
         await fetchState();
       } else {
         showToast('Cleanup falhou', 'error');
       }
     } catch (e) {
+      hideModal();
       showToast('Erro no cleanup', 'error');
     }
   }
@@ -742,6 +808,17 @@
       .replace(/(ok:.*)/gi, '<span class="log-ok">$1</span>')
       .replace(/(changed:.*)/gi, '<span class="log-changed">$1</span>')
       .replace(/(fatal|failed|error|FAILED)(.*)$/gim, '<span class="log-err">$1$2</span>');
+  }
+
+  // ---- Modal ----
+  function showModal(title, message, icon = '🔄') {
+    document.getElementById('modalIcon').textContent = icon;
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalMessage').textContent = message;
+    document.getElementById('modalOverlay').classList.add('active');
+  }
+  function hideModal() {
+    document.getElementById('modalOverlay').classList.remove('active');
   }
 
   // ---- Toasts ----

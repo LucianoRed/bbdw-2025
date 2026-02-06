@@ -111,6 +111,10 @@ export function getConfig() {
 }
 
 export function setConfig(config) {
+  // Não sobreescrever o token se vier mascarado ou vazio
+  if (!config.ocpToken || config.ocpToken === "***") {
+    delete config.ocpToken;
+  }
   Object.assign(deployState.config, config);
   broadcast({ type: "config-update", data: getConfig() });
   saveState();
