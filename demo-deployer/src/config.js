@@ -98,6 +98,9 @@ export const COMPONENTS = [
     port: 8080,
     envVars: [
       { key: "REDIS_URL", value: "redis://redis:6379" },
+      { key: "K8S_API_URL", value: "{{ocp_api_url}}" },
+      { key: "K8S_BEARER_TOKEN", value: "{{sa_token}}" },
+      { key: "K8S_SKIP_TLS_VERIFY", value: "true" },
     ],
     subSteps: [
       { id: "redis", name: "Redis", playbook: "deploy-redis.yml" },
