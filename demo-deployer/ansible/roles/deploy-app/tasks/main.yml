@@ -23,10 +23,16 @@
   changed_when: false
   failed_when: false
 
+- name: "Detectar tipo de recurso (Deployment ou DeploymentConfig)"
+  shell: "oc get deploy {{ app_name }} -n {{ namespace }} -o name 2>/dev/null || oc get dc {{ app_name }} -n {{ namespace }} -o name 2>/dev/null"
+  register: resource_type
+  changed_when: false
+  failed_when: false
+
 - name: "Configurar variáveis de ambiente"
-  command: "oc set env dc/{{ app_name }} {{ item.key }}={{ item.value }} -n {{ namespace }}"
+  command: "oc set env {{ resource_type.stdout }} {{ item.key }}={{ item.value }} -n {{ namespace }}"
   loop: "{{ env_vars | default([]) }}"
-  when: env_vars is defined and env_vars | length > 0
+  when: env_vars is defined and env_vars | length > 0 and resource_type.stdout | default('') | length > 0
   failed_when: false
 
 - name: "Verificar se rota existe"
