@@ -36,9 +36,22 @@ RUN npm install --production
 COPY src/ ./src/
 COPY ansible/ ./ansible/
 
+# Diretório de dados persistentes (montar PVC aqui)
+RUN mkdir -p /app/data && chmod 777 /app/data
+VOLUME /app/data
+
+# Diretórios do Ansible e home (OpenShift roda com UID aleatório sem home)
+RUN mkdir -p /app/.ansible/tmp && chmod -R 777 /app/.ansible \
+    && mkdir -p /app/.kube && chmod 777 /app/.kube
+
 # Variáveis de ambiente padrão
 ENV PORT=3000
 ENV NODE_ENV=production
+ENV DATA_DIR=/app/data
+ENV HOME=/app
+ENV ANSIBLE_LOCAL_TEMP=/app/.ansible/tmp
+ENV ANSIBLE_REMOTE_TEMP=/app/.ansible/tmp
+ENV KUBECONFIG=/app/.kube/config
 
 # Expor porta
 EXPOSE 3000

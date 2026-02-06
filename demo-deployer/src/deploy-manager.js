@@ -3,8 +3,51 @@
 // ============================================================
 
 import { v4 as uuid } from "uuid";
+import fs from "fs";
+import path from "path";
 import { runPlaybook, runOcCommand } from "./ansible-runner.js";
 import { COMPONENTS } from "./config.js";
+
+// ---- Persistência em disco ----
+const DATA_DIR = process.env.DATA_DIR || path.resolve(process.cwd(), "data");
+const STATE_FILE = path.join(DATA_DIR, "state.json");
+
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+function loadState() {
+  try {
+    if (fs.existsSync(STATE_FILE)) {
+      const raw = fs.readFileSync(STATE_FILE, "utf-8");
+      const saved = JSON.parse(raw);
+      console.log(`[State] Carregado de ${STATE_FILE}`);
+      return saved;
+    }
+  } catch (e) {
+    console.error(`[State] Erro ao carregar: ${e.message}`);
+  }
+  return null;
+}
+
+function saveState() {
+  try {
+    ensureDataDir();
+    // Salva tudo exceto logs (muito grandes) e jobs antigos
+    const toSave = {
+      config: deployState.config,
+      components: {},
+    };
+    for (const [id, comp] of Object.entries(deployState.components)) {
+      toSave.components[id] = { ...comp, logs: "" }; // não salva logs pesados
+    }
+    fs.writeFileSync(STATE_FILE, JSON.stringify(toSave, null, 2));
+  } catch (e) {
+    console.error(`[State] Erro ao salvar: ${e.message}`);
+  }
+}
 
 // Estado global dos deploys
 const deployState = {
@@ -12,13 +55,13 @@ const deployState = {
     ocpApiUrl: "",
     ocpToken: "",
     namespace: "bbdw-demo",
-    gitRepoUrl: "https://github.com/SEU_USUARIO/bbdw-2025.git",
+    gitRepoUrl: "https://github.com/LucianoRed/bbdw-2025.git",
   },
   components: {},  // id -> { status, route, logs, startedAt, finishedAt, error }
   jobs: {},        // jobId -> { componentId, status, logs, startedAt, finishedAt }
 };
 
-// Inicializa estado dos componentes
+// Inicializa estado dos componentes com defaults
 COMPONENTS.forEach((c) => {
   deployState.components[c.id] = {
     status: "not-deployed",
@@ -29,6 +72,19 @@ COMPONENTS.forEach((c) => {
     error: null,
   };
 });
+
+// Restaura estado salvo (se existir)
+const saved = loadState();
+if (saved) {
+  if (saved.config) Object.assign(deployState.config, saved.config);
+  if (saved.components) {
+    for (const [id, comp] of Object.entries(saved.components)) {
+      if (deployState.components[id]) {
+        Object.assign(deployState.components[id], comp);
+      }
+    }
+  }
+}
 
 // Listeners para WebSocket
 const wsListeners = new Set();
@@ -45,6 +101,7 @@ function broadcast(event) {
 function updateComponent(id, updates) {
   Object.assign(deployState.components[id], updates);
   broadcast({ type: "component-update", componentId: id, data: deployState.components[id] });
+  saveState();
 }
 
 // ---- API Pública ----
@@ -56,6 +113,7 @@ export function getConfig() {
 export function setConfig(config) {
   Object.assign(deployState.config, config);
   broadcast({ type: "config-update", data: getConfig() });
+  saveState();
   return getConfig();
 }
 

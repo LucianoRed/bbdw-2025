@@ -35,7 +35,14 @@ export function runPlaybook(playbook, extraVars = {}, onOutput = null) {
 
     const proc = spawn("ansible-playbook", args, {
       cwd: ANSIBLE_DIR,
-      env: { ...process.env, ANSIBLE_FORCE_COLOR: "false", ANSIBLE_NOCOLOR: "true" },
+      env: {
+        ...process.env,
+        ANSIBLE_FORCE_COLOR: "false",
+        ANSIBLE_NOCOLOR: "true",
+        HOME: process.env.HOME || "/app",
+        ANSIBLE_LOCAL_TEMP: process.env.ANSIBLE_LOCAL_TEMP || "/app/.ansible/tmp",
+        ANSIBLE_REMOTE_TEMP: process.env.ANSIBLE_REMOTE_TEMP || "/app/.ansible/tmp",
+      },
     });
 
     let output = "";

@@ -1,0 +1,43 @@
+---
+# Role: attach-pvc — cria PVC e monta no deployment
+- name: "Verificar se PVC {{ pvc_name }} já existe"
+  command: "oc get pvc {{ pvc_name }} -n {{ namespace }}"
+  register: pvc_check
+  failed_when: false
+  changed_when: false
+
+- name: "Criar PVC {{ pvc_name }}"
+  command: >
+    oc create -f - -n {{ namespace }}
+  args:
+    stdin: |
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: {{ pvc_name }}
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ pvc_size | default('1Gi') }}
+  when: pvc_check.rc != 0
+
+- name: "Montar PVC no deployment {{ app_name }}"
+  command: >
+    oc set volume deployment/{{ app_name }}
+    --add
+    --name={{ pvc_name }}
+    --type=pvc
+    --claim-name={{ pvc_name }}
+    --mount-path={{ pvc_mount_path | default('/app/data') }}
+    -n {{ namespace }}
+  failed_when: false
+
+- name: "Registrar informações do PVC"
+  set_fact:
+    pvc_result:
+      name: "{{ pvc_name }}"
+      size: "{{ pvc_size | default('1Gi') }}"
+      mount_path: "{{ pvc_mount_path | default('/app/data') }}"
+      status: "attached"
