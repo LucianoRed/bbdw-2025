@@ -41,9 +41,18 @@ export function runPlaybook(playbook, extraVars = {}, onOutput = null) {
       if (typeof a === 'string' && a.startsWith('@')) return a; // arquivo de vars
       return a;
     });
-    const sanitizedVars = extraVars ? { ...extraVars } : {};
+    const sanitizedVars = extraVars ? JSON.parse(JSON.stringify(extraVars)) : {};
     if (sanitizedVars.ocp_token) sanitizedVars.ocp_token = '***';
     if (sanitizedVars.sa_token) sanitizedVars.sa_token = '***';
+    // Sanitizar tokens dentro de env_vars
+    if (Array.isArray(sanitizedVars.env_vars)) {
+      sanitizedVars.env_vars = sanitizedVars.env_vars.map(ev => {
+        if (ev.key && /token|bearer|password|secret/i.test(ev.key)) {
+          return { ...ev, value: '***' };
+        }
+        return ev;
+      });
+    }
     console.log(`[Ansible] ▶ ansible-playbook ${sanitizedArgs.join(' ')}`);
     console.log(`[Ansible]   extra-vars: ${JSON.stringify(sanitizedVars)}`);
 
