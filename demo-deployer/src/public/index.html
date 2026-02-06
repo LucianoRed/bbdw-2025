@@ -441,6 +441,7 @@
       <div class="action-bar">
         <button class="btn btn-primary" onclick="deployAllComponents()">🚀 Deploy Completo</button>
         <button class="btn" onclick="refreshClusterStatus()">🔄 Atualizar Status</button>
+        <button class="btn" onclick="refreshAllTokens()">🔑 Atualizar Tokens</button>
         <div class="spacer"></div>
         <button class="btn btn-danger" onclick="cleanupAll()">🗑️ Limpar Tudo</button>
       </div>
@@ -563,6 +564,25 @@
       if (data.error) throw new Error(data.error);
       showToast(`Deploy de "${id}" iniciado`, 'info');
     } catch (e) {
+      showToast(`Erro: ${e.message}`, 'error');
+    }
+  }
+
+  async function refreshAllTokens() {
+    showModal('🔑 Atualizando tokens...', 'Atualizando K8S_BEARER_TOKEN em todos os deployments...', '🔑');
+    try {
+      const res = await fetch('/api/refresh-tokens', { method: 'POST' });
+      const data = await res.json();
+      hideModal();
+      if (data.success) {
+        const updated = data.results.filter(r => r.status === 'updated').length;
+        const skipped = data.results.filter(r => r.status === 'skipped').length;
+        showToast(`Tokens atualizados! ${updated} atualizado(s), ${skipped} ignorado(s).`, 'success');
+      } else {
+        showToast('Falha ao atualizar tokens', 'error');
+      }
+    } catch (e) {
+      hideModal();
       showToast(`Erro: ${e.message}`, 'error');
     }
   }

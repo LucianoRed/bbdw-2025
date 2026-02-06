@@ -20,6 +20,7 @@ import {
   deployAll,
   refreshStatus,
   cleanup,
+  refreshTokens,
   getComponentState,
   getJob,
   addWsListener,
@@ -93,6 +94,16 @@ if (process.argv.includes("--stdio")) {
   app.post("/api/cleanup", async (req, res) => {
     try {
       const result = await cleanup();
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Atualizar tokens em todos os deployments
+  app.post("/api/refresh-tokens", async (req, res) => {
+    try {
+      const result = await refreshTokens();
       res.json(result);
     } catch (e) {
       res.status(500).json({ error: e.message });

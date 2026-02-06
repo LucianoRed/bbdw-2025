@@ -459,3 +459,48 @@ export async function cleanup() {
 export function getJob(jobId) {
   return deployState.jobs[jobId] || null;
 }
+
+/**
+ * Atualiza o K8S_BEARER_TOKEN em todos os deployments que usam token.
+ * Usa o token da configuração atual (ocpToken ou saToken).
+ */
+export async function refreshTokens() {
+  const { ocpApiUrl, ocpToken } = deployState.config;
+  if (!ocpApiUrl || !ocpToken) throw new Error("OCP não configurado");
+
+  // Login
+  await runOcCommand(["login", ocpApiUrl, `--token=${ocpToken}`, "--insecure-skip-tls-verify=true"], ocpApiUrl, ocpToken);
+
+  const token = deployState.config.saToken || ocpToken;
+  const results = [];
+
+  for (const compDef of COMPONENTS) {
+    // Só atualiza componentes que têm K8S_BEARER_TOKEN nas envVars
+    const hasToken = compDef.envVars?.some((ev) => ev.key === "K8S_BEARER_TOKEN");
+    if (!hasToken) continue;
+
+    const ns = compDef.namespace || compDef.id;
+    const appName = compDef.id;
+
+    // Verificar se o deployment existe
+    const dcCheck = await runOcCommand(
+      ["get", "deploy,dc", appName, "-n", ns, "-o", "name"],
+      ocpApiUrl, ocpToken
+    );
+    if (!dcCheck.success || !dcCheck.output.trim()) {
+      results.push({ id: appName, status: "skipped", reason: "não deployado" });
+      continue;
+    }
+
+    // Atualizar token
+    const resourceName = dcCheck.output.trim().split("\n")[0];
+    const setEnv = await runOcCommand(
+      ["set", "env", resourceName, `K8S_BEARER_TOKEN=${token}`, `K8S_API_URL=${ocpApiUrl}`, "-n", ns],
+      ocpApiUrl, ocpToken
+    );
+
+    results.push({ id: appName, namespace: ns, status: setEnv.success ? "updated" : "failed" });
+  }
+
+  return { success: true, results };
+}
