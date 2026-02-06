@@ -137,8 +137,11 @@ export async function deployComponent(componentId) {
   const compDef = COMPONENTS.find((c) => c.id === componentId);
   if (!compDef) throw new Error(`Componente desconhecido: ${componentId}`);
 
-  const { ocpApiUrl, ocpToken, namespace, gitRepoUrl } = deployState.config;
+  const { ocpApiUrl, ocpToken, gitRepoUrl } = deployState.config;
   if (!ocpApiUrl || !ocpToken) throw new Error("Configure OCP API URL e Token antes de deployar");
+
+  // Cada componente tem seu próprio namespace
+  const namespace = compDef.namespace || compDef.id;
 
   const jobId = uuid();
   deployState.jobs[jobId] = {
@@ -213,6 +216,7 @@ export async function deployComponent(componentId) {
       updateComponent(componentId, {
         status,
         route,
+        namespace,
         finishedAt: new Date().toISOString(),
         error: result.success ? null : "Playbook falhou. Veja os logs.",
       });
@@ -277,54 +281,57 @@ function waitForJob(jobId) {
  * Obtém status de todos os componentes no cluster.
  */
 export async function refreshStatus() {
-  const { ocpApiUrl, ocpToken, namespace } = deployState.config;
+  const { ocpApiUrl, ocpToken } = deployState.config;
   if (!ocpApiUrl || !ocpToken) return { error: "OCP não configurado" };
 
-  const result = await runPlaybook("get-status.yml", {
-    ocp_api_url: ocpApiUrl,
-    ocp_token: ocpToken,
-    namespace,
-  });
+  // Coleta status de todos os namespaces dos componentes
+  const namespaces = [...new Set(COMPONENTS.map((c) => c.namespace || c.id))];
+  const results = {};
 
-  // Tentar parsear a saída JSON
-  try {
-    const match = result.output.match(/cluster_status.*?({[\s\S]*?})\s*$/m);
-    if (match) {
-      return { success: true, raw: result.output };
-    }
-  } catch (e) { /* ignore */ }
+  for (const ns of namespaces) {
+    const result = await runPlaybook("get-status.yml", {
+      ocp_api_url: ocpApiUrl,
+      ocp_token: ocpToken,
+      namespace: ns,
+    });
+    results[ns] = { success: result.success, raw: result.output };
+  }
 
-  return { success: result.success, raw: result.output };
+  return { success: true, namespaces: results };
 }
 
 /**
  * Limpa todos os recursos do namespace.
  */
 export async function cleanup() {
-  const { ocpApiUrl, ocpToken, namespace } = deployState.config;
+  const { ocpApiUrl, ocpToken } = deployState.config;
   if (!ocpApiUrl || !ocpToken) throw new Error("OCP não configurado");
 
-  const result = await runPlaybook("cleanup.yml", {
-    ocp_api_url: ocpApiUrl,
-    ocp_token: ocpToken,
-    namespace,
-  });
+  // Limpa cada namespace individualmente
+  const namespaces = [...new Set(COMPONENTS.map((c) => c.namespace || c.id))];
 
-  if (result.success) {
-    // Reset estado
-    COMPONENTS.forEach((c) => {
-      updateComponent(c.id, {
-        status: "not-deployed",
-        route: null,
-        logs: "",
-        startedAt: null,
-        finishedAt: null,
-        error: null,
-      });
+  for (const ns of namespaces) {
+    await runPlaybook("cleanup.yml", {
+      ocp_api_url: ocpApiUrl,
+      ocp_token: ocpToken,
+      namespace: ns,
     });
   }
 
-  return { success: result.success, output: result.output };
+  // Reset estado
+  COMPONENTS.forEach((c) => {
+    updateComponent(c.id, {
+      status: "not-deployed",
+      route: null,
+      namespace: null,
+      logs: "",
+      startedAt: null,
+      finishedAt: null,
+      error: null,
+    });
+  });
+
+  return { success: true, output: `Cleanup de ${namespaces.length} namespaces concluído: ${namespaces.join(", ")}` };
 }
 
 export function getJob(jobId) {

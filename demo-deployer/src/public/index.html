@@ -376,15 +376,14 @@
             <label>Token</label>
             <input type="password" id="ocpToken" placeholder="sha256~xxxx...">
           </div>
-          <div class="form-group">
-            <label>Namespace</label>
-            <input type="text" id="namespace" value="bbdw-demo">
-          </div>
+        </div>
+        <div class="config-grid" style="margin-top: 12px;">
           <div class="form-group">
             <label>Git Repo URL</label>
             <input type="text" id="gitRepoUrl" placeholder="https://github.com/usuario/bbdw-2025.git">
           </div>
         </div>
+        <p style="font-size: 11px; color: var(--text-muted); margin-top: 10px;">Cada componente será deployado no seu próprio namespace (ex: mcp-server-matriculas → namespace mcp-server-matriculas)</p>
         <div style="margin-top: 14px; display: flex; gap: 10px;">
           <button class="btn btn-accent" onclick="saveConfig()">💾 Salvar Config</button>
           <button class="btn" onclick="testConnection()">🔌 Testar Conexão</button>
@@ -457,7 +456,6 @@
       // Preenche config no form
       if (state.config) {
         document.getElementById('ocpApiUrl').value = state.config.ocpApiUrl || '';
-        document.getElementById('namespace').value = state.config.namespace || 'bbdw-demo';
         document.getElementById('gitRepoUrl').value = state.config.gitRepoUrl || '';
       }
     } catch (e) {
@@ -469,7 +467,6 @@
     const config = {
       ocpApiUrl: document.getElementById('ocpApiUrl').value,
       ocpToken: document.getElementById('ocpToken').value,
-      namespace: document.getElementById('namespace').value,
       gitRepoUrl: document.getElementById('gitRepoUrl').value,
     };
     try {
@@ -529,7 +526,7 @@
   }
 
   async function cleanupAll() {
-    if (!confirm('⚠️ ATENÇÃO: Isso vai remover TODOS os recursos do namespace. Continuar?')) return;
+    if (!confirm('⚠️ ATENÇÃO: Isso vai remover TODOS os recursos de TODOS os namespaces da demo. Continuar?')) return;
     try {
       const res = await fetch('/api/cleanup', { method: 'POST' });
       const data = await res.json();
@@ -631,7 +628,7 @@
                 <span class="card-category cat-${comp.category}">${comp.category}</span>
               </div>
             </div>
-            <div class="card-desc">${comp.description}</div>
+            <div class="card-desc">${comp.description}<br><span style="font-size:11px; color:var(--text-muted);">namespace: <b>${comp.namespace || comp.id}</b></span></div>
             <div class="card-footer">
               <span class="badge badge-${statusClass}">${formatStatus(cs.status)}</span>
               <div style="display: flex; gap: 6px; align-items: center;">
@@ -664,6 +661,7 @@
           <div class="detail-card">
             <h4>${comp.icon} ${comp.name} <span class="badge badge-${cs.status.replace(' ','-')}" style="font-size:10px;">${formatStatus(cs.status)}</span></h4>
             <div class="info-row"><span class="info-label">ID:</span><span class="info-value">${comp.id}</span></div>
+            <div class="info-row"><span class="info-label">Namespace:</span><span class="info-value">${comp.namespace || comp.id}</span></div>
             <div class="info-row"><span class="info-label">Categoria:</span><span class="info-value">${comp.category}</span></div>
             ${cs.route ? `<div class="info-row"><span class="info-label">Rota:</span><span class="info-value"><a class="route-link" href="http://${cs.route}" target="_blank">${cs.route}</a></span></div>` : ''}
             ${cs.startedAt ? `<div class="info-row"><span class="info-label">Início:</span><span class="info-value">${new Date(cs.startedAt).toLocaleString('pt-BR')}</span></div>` : ''}
@@ -693,6 +691,7 @@
     document.getElementById('detailBody').innerHTML = `
       <div class="detail-info">
         <div class="detail-row"><span class="detail-label">Status:</span><span class="detail-value">${formatStatus(cs.status)}</span></div>
+        <div class="detail-row"><span class="detail-label">Namespace:</span><span class="detail-value">${comp.namespace || comp.id}</span></div>
         <div class="detail-row"><span class="detail-label">Categoria:</span><span class="detail-value">${comp.category}</span></div>
         ${cs.route ? `<div class="detail-row"><span class="detail-label">Rota:</span><span class="detail-value"><a class="route-link" href="http://${cs.route}" target="_blank">${cs.route}</a></span></div>` : ''}
         ${comp.port ? `<div class="detail-row"><span class="detail-label">Porta:</span><span class="detail-value">${comp.port}</span></div>` : ''}
