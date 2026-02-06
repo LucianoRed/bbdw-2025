@@ -248,6 +248,11 @@ export async function deployComponent(componentId) {
           }));
         }
 
+        // Porta customizada para a rota (quando não é a padrão)
+        if (compDef.port && compDef.port !== 8080 && compDef.port !== 3000) {
+          extraVars.service_port = compDef.port;
+        }
+
         finalResult = await runPlaybook(compDef.playbook, extraVars, onOutput);
 
         const routeMatch = finalResult.output.match(/"route"\s*:\s*"([^"]+)"/);

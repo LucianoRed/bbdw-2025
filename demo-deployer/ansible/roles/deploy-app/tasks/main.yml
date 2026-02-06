@@ -36,8 +36,13 @@
   changed_when: false
 
 - name: "Expor serviço {{ app_name }}"
+  command: "oc expose svc/{{ app_name }} --port={{ service_port | default('') }} -n {{ namespace }}"
+  when: route_check.rc != 0 and service_port is defined
+  failed_when: false
+
+- name: "Expor serviço {{ app_name }} (porta padrão)"
   command: "oc expose svc/{{ app_name }} -n {{ namespace }}"
-  when: route_check.rc != 0
+  when: route_check.rc != 0 and service_port is not defined
   failed_when: false
 
 - name: "Anotar rota com tls-acme"

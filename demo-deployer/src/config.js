@@ -108,6 +108,18 @@ export const COMPONENTS = [
       { id: "agent-ai-app", name: "Agent AI App", playbook: "deploy-component.yml", contextDir: "agent-ai" },
     ],
   },
+  {
+    id: "mcp-inspector",
+    name: "MCP Inspector",
+    description: "Interface gráfica para testar e depurar servidores MCP",
+    icon: "🔍",
+    category: "infra",
+    order: 7,
+    namespace: "mcp-inspector",
+    playbook: "deploy-component.yml",
+    contextDir: "mcp-inspector",
+    port: 6274,
+  },
 ];
 
 export const CATEGORIES = {
