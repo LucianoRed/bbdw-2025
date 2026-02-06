@@ -4,6 +4,8 @@
 
 import { spawn } from "child_process";
 import path from "path";
+import fs from "fs";
+import os from "os";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -23,15 +25,18 @@ export function runPlaybook(playbook, extraVars = {}, onOutput = null) {
       path.join(ANSIBLE_DIR, playbook),
     ];
 
-    // Adiciona extra-vars
+    // Grava extra-vars em arquivo temporário para evitar problemas de escaping
+    let varsFile = null;
     if (Object.keys(extraVars).length > 0) {
-      args.push("--extra-vars", JSON.stringify(extraVars));
+      varsFile = path.join(os.tmpdir(), `ansible-vars-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+      fs.writeFileSync(varsFile, JSON.stringify(extraVars), "utf-8");
+      args.push("--extra-vars", `@${varsFile}`);
     }
 
     // Sempre no modo verbose
     args.push("-v");
 
-    console.log(`[Ansible] Executando: ansible-playbook ${args.join(" ")}`);
+    console.log(`[Ansible] Executando: ansible-playbook ${playbook} (extra-vars via arquivo)`);
 
     const proc = spawn("ansible-playbook", args, {
       cwd: ANSIBLE_DIR,
@@ -60,6 +65,10 @@ export function runPlaybook(playbook, extraVars = {}, onOutput = null) {
     });
 
     proc.on("close", (code) => {
+      // Limpa arquivo temporário
+      if (varsFile) {
+        try { fs.unlinkSync(varsFile); } catch (_) { /* ignore */ }
+      }
       resolve({
         success: code === 0,
         output,
@@ -68,6 +77,9 @@ export function runPlaybook(playbook, extraVars = {}, onOutput = null) {
     });
 
     proc.on("error", (err) => {
+      if (varsFile) {
+        try { fs.unlinkSync(varsFile); } catch (_) { /* ignore */ }
+      }
       resolve({
         success: false,
         output: `Erro ao executar Ansible: ${err.message}`,
