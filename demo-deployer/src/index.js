@@ -9,6 +9,9 @@ import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 
+// Aceitar certificados auto-assinados da API do OpenShift
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 import {
   getState,
   getConfig,

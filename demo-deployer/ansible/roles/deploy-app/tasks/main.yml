@@ -40,6 +40,10 @@
   when: route_check.rc != 0
   failed_when: false
 
+- name: "Anotar rota com tls-acme"
+  command: "oc annotate route {{ app_name }} kubernetes.io/tls-acme=true --overwrite -n {{ namespace }}"
+  failed_when: false
+
 - name: "Obter rota de {{ app_name }}"
   command: "oc get route {{ app_name }} -n {{ namespace }} -o jsonpath='{.spec.host}'"
   register: route_host
