@@ -165,66 +165,108 @@ export async function deployComponent(componentId) {
   // Executar assincronamente
   (async () => {
     try {
-      const extraVars = {
-        ocp_api_url: ocpApiUrl,
-        ocp_token: ocpToken,
-        namespace,
-      };
-
-      // Adicionar configurações específicas do componente
-      if (compDef.contextDir) {
-        extraVars.app_name = compDef.id;
-        extraVars.git_repo_url = gitRepoUrl;
-        extraVars.context_dir = compDef.contextDir;
-      }
-
-      if (compDef.envVars) {
-        extraVars.env_vars = compDef.envVars.map((ev) => ({
-          key: ev.key,
-          value: ev.value
-            .replace("{{ocp_api_url}}", ocpApiUrl)
-            .replace("{{sa_token}}", deployState.config.saToken || ocpToken),
-        }));
-      }
-
-      if (compDef.id === "rbac") {
-        extraVars.sa_name = "mcp-sa";
-      }
-
       const onOutput = (line) => {
         deployState.jobs[jobId].logs += line;
         deployState.components[componentId].logs += line;
         broadcast({ type: "job-output", jobId, componentId, data: line });
       };
 
-      const result = await runPlaybook(compDef.playbook, extraVars, onOutput);
-
-      // Extrair rota do output (se houver)
+      let finalResult = { success: true, output: "" };
       let route = null;
-      const routeMatch = result.output.match(/"route"\s*:\s*"([^"]+)"/);
-      if (routeMatch) route = routeMatch[1];
 
-      // Extrair token do SA (se RBAC)
-      if (compDef.id === "rbac") {
-        const tokenMatch = result.output.match(/"token"\s*:\s*"([^"]+)"/);
-        if (tokenMatch) {
-          deployState.config.saToken = tokenMatch[1];
+      // Se tem subSteps, executa cada um em sequência
+      if (compDef.subSteps && compDef.subSteps.length > 0) {
+        for (const step of compDef.subSteps) {
+          onOutput(`\n═══ Etapa: ${step.name} ═══\n`);
+
+          const stepVars = {
+            ocp_api_url: ocpApiUrl,
+            ocp_token: ocpToken,
+            namespace,
+            ...(step.extraVars || {}),
+          };
+
+          // Se o step tem contextDir, é um deploy de app
+          if (step.contextDir) {
+            stepVars.app_name = compDef.id;
+            stepVars.git_repo_url = gitRepoUrl;
+            stepVars.context_dir = step.contextDir;
+          }
+
+          // Env vars do componente pai (apenas no step da app)
+          if (step.contextDir && compDef.envVars) {
+            stepVars.env_vars = compDef.envVars.map((ev) => ({
+              key: ev.key,
+              value: ev.value
+                .replace("{{ocp_api_url}}", ocpApiUrl)
+                .replace("{{sa_token}}", deployState.config.saToken || ocpToken),
+            }));
+          }
+
+          const stepResult = await runPlaybook(step.playbook, stepVars, onOutput);
+          finalResult.output += stepResult.output;
+
+          // Extrair token do SA (se RBAC)
+          if (step.id === "rbac") {
+            const tokenMatch = stepResult.output.match(/"token"\s*:\s*"([^"]+)"/);
+            if (tokenMatch) {
+              deployState.config.saToken = tokenMatch[1];
+            }
+          }
+
+          // Extrair rota
+          const routeMatch = stepResult.output.match(/"route"\s*:\s*"([^"]+)"/);
+          if (routeMatch) route = routeMatch[1];
+
+          if (!stepResult.success) {
+            finalResult.success = false;
+            onOutput(`\n❌ Etapa "${step.name}" falhou!\n`);
+            break;
+          }
+          onOutput(`✅ Etapa "${step.name}" concluída\n`);
         }
+      } else {
+        // Deploy simples (sem subSteps)
+        const extraVars = {
+          ocp_api_url: ocpApiUrl,
+          ocp_token: ocpToken,
+          namespace,
+        };
+
+        if (compDef.contextDir) {
+          extraVars.app_name = compDef.id;
+          extraVars.git_repo_url = gitRepoUrl;
+          extraVars.context_dir = compDef.contextDir;
+        }
+
+        if (compDef.envVars) {
+          extraVars.env_vars = compDef.envVars.map((ev) => ({
+            key: ev.key,
+            value: ev.value
+              .replace("{{ocp_api_url}}", ocpApiUrl)
+              .replace("{{sa_token}}", deployState.config.saToken || ocpToken),
+          }));
+        }
+
+        finalResult = await runPlaybook(compDef.playbook, extraVars, onOutput);
+
+        const routeMatch = finalResult.output.match(/"route"\s*:\s*"([^"]+)"/);
+        if (routeMatch) route = routeMatch[1];
       }
 
-      const status = result.success ? "deployed" : "failed";
+      const status = finalResult.success ? "deployed" : "failed";
       updateComponent(componentId, {
         status,
         route,
         namespace,
         finishedAt: new Date().toISOString(),
-        error: result.success ? null : "Playbook falhou. Veja os logs.",
+        error: finalResult.success ? null : "Playbook falhou. Veja os logs.",
       });
 
-      deployState.jobs[jobId].status = result.success ? "completed" : "failed";
+      deployState.jobs[jobId].status = finalResult.success ? "completed" : "failed";
       deployState.jobs[jobId].finishedAt = new Date().toISOString();
 
-      broadcast({ type: "job-complete", jobId, componentId, success: result.success });
+      broadcast({ type: "job-complete", jobId, componentId, success: finalResult.success });
     } catch (err) {
       updateComponent(componentId, {
         status: "failed",
