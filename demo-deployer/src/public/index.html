@@ -497,6 +497,8 @@
   let state = { config: {}, components: {}, definitions: [] };
   let ws = null;
   let logBuffer = '';
+  let pendingModalJob = null;   // id do componente com modal aberta
+  let deployAllRunning = false; // deploy completo em andamento
 
   // ---- Init ----
   window.addEventListener('load', async () => {
@@ -558,12 +560,20 @@
   }
 
   async function deployComponent(id) {
+    const comp = state.definitions?.find(c => c.id === id);
+    const name = comp ? comp.name : id;
+    showModal(`▶ Deployando ${name}...`, 'Aguarde enquanto o build e deploy acontecem no OpenShift...', '🚀');
     try {
       const res = await fetch(`/api/deploy/${id}`, { method: 'POST' });
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      showToast(`Deploy de "${id}" iniciado`, 'info');
+      if (data.error) {
+        hideModal();
+        throw new Error(data.error);
+      }
+      // Modal fica aberta — será fechada pelo WebSocket (job-complete/job-error)
+      pendingModalJob = id;
     } catch (e) {
+      hideModal();
       showToast(`Erro: ${e.message}`, 'error');
     }
   }
@@ -589,21 +599,27 @@
 
   async function deployAllComponents() {
     if (!confirm('Iniciar deploy completo de todos os componentes?')) return;
+    showModal('🚀 Deploy Completo...', 'Deployando todos os componentes em sequência. Isso pode levar vários minutos...', '🚀');
+    deployAllRunning = true;
     try {
       await fetch('/api/deploy-all', { method: 'POST' });
-      showToast('Deploy completo iniciado!', 'info');
+      // Modal fica aberta — será fechada quando todos terminarem via WebSocket
     } catch (e) {
+      hideModal();
+      deployAllRunning = false;
       showToast(`Erro: ${e.message}`, 'error');
     }
   }
 
   async function refreshClusterStatus() {
-    showToast('Atualizando status...', 'info');
+    showModal('🔄 Atualizando status...', 'Consultando o cluster para verificar o estado de cada componente...', '🔄');
     try {
       await fetch('/api/refresh', { method: 'POST' });
       await fetchState();
+      hideModal();
       showToast('Status atualizado', 'success');
     } catch (e) {
+      hideModal();
       showToast('Erro ao atualizar', 'error');
     }
   }
@@ -670,7 +686,11 @@
         break;
 
       case 'job-start':
-        showToast(`Deploy "${event.componentId}" iniciado`, 'info');
+        if (deployAllRunning) {
+          const comp = state.definitions?.find(c => c.id === event.componentId);
+          const name = comp ? comp.name : event.componentId;
+          updateModal(`🚀 Deployando: ${name}...`, `Componente atual: ${name}`);
+        }
         break;
 
       case 'job-complete':
@@ -679,11 +699,30 @@
         } else {
           showToast(`Deploy "${event.componentId}" falhou ✗`, 'error');
         }
+        // Fechar modal de deploy individual
+        if (pendingModalJob === event.componentId) {
+          hideModal();
+          pendingModalJob = null;
+        }
         fetchState();
         break;
 
       case 'job-error':
         showToast(`Erro em "${event.componentId}": ${event.error}`, 'error');
+        if (pendingModalJob === event.componentId) {
+          hideModal();
+          pendingModalJob = null;
+        }
+        break;
+
+      case 'deploy-all-complete':
+      case 'deploy-all-stopped':
+        if (deployAllRunning) {
+          hideModal();
+          deployAllRunning = false;
+          showToast('Deploy completo finalizado!', 'success');
+          fetchState();
+        }
         break;
 
       case 'config-update':
@@ -839,6 +878,12 @@
   }
   function hideModal() {
     document.getElementById('modalOverlay').classList.remove('active');
+  }
+  function updateModal(title, message) {
+    if (document.getElementById('modalOverlay').classList.contains('active')) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalMessage').textContent = message;
+    }
   }
 
   // ---- Toasts ----

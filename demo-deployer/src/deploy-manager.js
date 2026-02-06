@@ -307,10 +307,11 @@ export async function deployAll() {
     // Se falhou, para
     if (deployState.jobs[job.jobId].status === "failed" && comp.required) {
       broadcast({ type: "deploy-all-stopped", reason: `Falha no componente obrigatório: ${comp.name}` });
-      break;
+      return results;
     }
   }
 
+  broadcast({ type: "deploy-all-complete", total: results.length });
   return results;
 }
 
