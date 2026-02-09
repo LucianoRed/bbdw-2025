@@ -155,7 +155,11 @@
     .cat-demo { background: rgba(210,153,34,0.15); color: var(--demo); }
     .cat-core { background: rgba(63,185,80,0.15); color: var(--core); }
     .card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px; }
-    .card-footer { display: flex; align-items: center; justify-content: space-between; }
+    .card-footer { display: flex; flex-direction: column; gap: 8px; }
+    .card-footer-row { display: flex; align-items: center; justify-content: space-between; }
+    .card-actions { display: flex; gap: 6px; align-items: center; }
+    .btn-trash { background: transparent; border: 1px solid #f85149; color: #f85149; padding: 4px 8px; font-size: 14px; cursor: pointer; border-radius: 6px; }
+    .btn-trash:hover { background: #da3633; color: #fff; }
 
     /* Status badge */
     .badge {
@@ -811,17 +815,19 @@
             </div>
             <div class="card-desc">${comp.description}<br><span style="font-size:11px; color:var(--text-muted);">namespace: <b>${comp.namespace || comp.id}</b></span></div>
             <div class="card-footer">
-              <span class="badge badge-${statusClass}">${formatStatus(cs.status)}</span>
-              <div style="display: flex; gap: 6px; align-items: center;">
-                ${isDeployed && cs.route ? `<a class="route-link" href="http://${cs.route}" target="_blank">🔗 ${cs.route}</a>` : ''}
-                <button class="btn btn-sm ${isDeploying ? '' : 'btn-primary'}"
-                        onclick="deployComponent('${comp.id}')"
-                        ${isDeploying ? 'disabled' : ''}>
-                  ${isDeploying ? '⏳ ...' : '▶ Deploy'}
-                </button>
-                ${cs.status !== 'not-deployed' ? `<button class="btn btn-sm btn-danger" onclick="cleanupOne('${comp.id}', '${comp.name}')" title="Remover este componente">🗑️</button>` : ''}
-                <button class="btn btn-sm" onclick="showDetail('${comp.id}')">📋</button>
+              <div class="card-footer-row">
+                <span class="badge badge-${statusClass}">${formatStatus(cs.status)}</span>
+                <div class="card-actions">
+                  <button class="btn btn-sm ${isDeploying ? '' : 'btn-primary'}"
+                          onclick="deployComponent('${comp.id}')"
+                          ${isDeploying ? 'disabled' : ''}>
+                    ${isDeploying ? '⏳ ...' : '▶ Deploy'}
+                  </button>
+                  ${cs.status !== 'not-deployed' ? `<button class="btn-trash" onclick="cleanupOne('${comp.id}', '${comp.name}')" title="Remover este componente">🗑️</button>` : ''}
+                  <button class="btn btn-sm" onclick="showDetail('${comp.id}')">📋</button>
+                </div>
               </div>
+              ${isDeployed && cs.route ? `<div><a class="route-link" href="http://${cs.route}" target="_blank" style="font-size:11px; word-break:break-all;">🔗 ${cs.route}</a></div>` : ''}
             </div>
             ${isDeploying ? '<div class="card-progress deploying"></div>' : ''}
             ${isDeployed ? '<div class="card-progress" style="width:100%; background: var(--success);"></div>' : ''}
