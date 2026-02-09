@@ -365,13 +365,20 @@ export async function refreshStatus() {
       continue;
     }
 
-    // Verificar se há deployments/pods do app
-    const dcCheck = await runOcCommand(
-      ["get", "deploy,dc,buildconfig", "-n", ns, "-o", "name"],
-      ocpApiUrl, ocpToken
-    );
+    // Verificar se há deployments/pods do app (busca cada tipo separado para evitar falhas de sintaxe)
+    let hasResources = false;
+    for (const resType of ["deploy", "dc", "buildconfig"]) {
+      const resCheck = await runOcCommand(
+        ["get", resType, "-n", ns, "-o", "name"],
+        ocpApiUrl, ocpToken
+      );
+      if (resCheck.success && resCheck.output.trim()) {
+        hasResources = true;
+        break;
+      }
+    }
 
-    if (!dcCheck.success || !dcCheck.output.trim()) {
+    if (!hasResources) {
       // Namespace existe mas sem deployments
       updateComponent(appName, {
         status: "not-deployed",
@@ -391,7 +398,7 @@ export async function refreshStatus() {
     const hasRunning = phases.some((p) => p === "Running");
     const allFailed = phases.length > 0 && phases.every((p) => p === "CrashLoopBackOff" || p === "Error" || p === "Failed");
 
-    // Verificar rota
+    // Verificar rota (tenta pelo nome do app; se não achar, busca qualquer rota no namespace)
     let route = null;
     const routeCheck = await runOcCommand(
       ["get", "route", appName, "-n", ns, "-o", "jsonpath={.spec.host}"],
@@ -399,6 +406,15 @@ export async function refreshStatus() {
     );
     if (routeCheck.success && routeCheck.output.trim()) {
       route = `https://${routeCheck.output.trim()}`;
+    } else {
+      // Fallback: busca a primeira rota do namespace
+      const anyRouteCheck = await runOcCommand(
+        ["get", "routes", "-n", ns, "-o", "jsonpath={.items[0].spec.host}"],
+        ocpApiUrl, ocpToken
+      );
+      if (anyRouteCheck.success && anyRouteCheck.output.trim()) {
+        route = `https://${anyRouteCheck.output.trim()}`;
+      }
     }
 
     let status;
