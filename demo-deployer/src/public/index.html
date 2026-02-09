@@ -731,7 +731,7 @@
       if (data.success) {
         showToast('Conexão OK! Cluster acessível.', 'success');
       } else {
-        showToast('Falha na conexão. Verifique URL e Token.', 'error');
+        showToast(data.error || 'Falha na conexão. Verifique URL e Token.', 'error');
       }
     } catch (e) {
       showToast('Erro ao testar conexão', 'error');

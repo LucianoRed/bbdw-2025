@@ -351,10 +351,19 @@ function waitForJob(jobId) {
  */
 export async function refreshStatus() {
   const { ocpApiUrl, ocpToken } = deployState.config;
-  if (!ocpApiUrl || !ocpToken) return { error: "OCP não configurado" };
+  if (!ocpApiUrl || !ocpToken) return { success: false, error: "OCP não configurado" };
 
-  // Login primeiro
-  await runOcCommand(["login", ocpApiUrl, `--token=${ocpToken}`, "--insecure-skip-tls-verify=true"], ocpApiUrl, ocpToken);
+  // Login primeiro — e valida se o token funciona
+  const loginResult = await runOcCommand(["login", ocpApiUrl, `--token=${ocpToken}`, "--insecure-skip-tls-verify=true"], ocpApiUrl, ocpToken);
+  if (!loginResult.success) {
+    const isExpired = (loginResult.output || "").includes("expired") || (loginResult.output || "").includes("invalid");
+    return {
+      success: false,
+      error: isExpired
+        ? "Token expirado ou inválido. Gere um novo token via 'oc login'."
+        : `Falha no login: ${(loginResult.output || "").substring(0, 200)}`,
+    };
+  }
 
   // Para cada componente, verifica diretamente no cluster
   for (const compDef of COMPONENTS) {
