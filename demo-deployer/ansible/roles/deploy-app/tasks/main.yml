@@ -23,6 +23,21 @@
   changed_when: false
   failed_when: false
 
+- name: "Verificar se o build completou com sucesso"
+  shell: "oc get builds -l buildconfig={{ app_name }} -n {{ namespace }} -o jsonpath='{.items[-1:].status.phase}'"
+  register: build_phase
+  changed_when: false
+  failed_when: false
+  retries: 60
+  delay: 10
+  until: build_phase.stdout in ['Complete', 'Failed', 'Error', 'Cancelled']
+  when: bc_check.rc != 0
+
+- name: "Build falhou — exibir erro"
+  fail:
+    msg: "Build do {{ app_name }} falhou com status: {{ build_phase.stdout | default('Unknown') }}"
+  when: bc_check.rc != 0 and build_phase.stdout | default('') not in ['Complete', '']
+
 - name: "Detectar tipo de recurso (Deployment ou DeploymentConfig)"
   shell: "oc get deploy {{ app_name }} -n {{ namespace }} -o name 2>/dev/null || oc get dc {{ app_name }} -n {{ namespace }} -o name 2>/dev/null"
   register: resource_type
@@ -33,6 +48,17 @@
   command: "oc set env {{ resource_type.stdout }} {{ item.key }}={{ item.value }} -n {{ namespace }}"
   loop: "{{ env_vars | default([]) }}"
   when: env_vars is defined and env_vars | length > 0 and resource_type.stdout | default('') | length > 0
+  failed_when: false
+
+- name: "Forçar rollout após configurar env vars"
+  command: "oc rollout restart {{ resource_type.stdout }} -n {{ namespace }}"
+  when: env_vars is defined and env_vars | length > 0 and resource_type.stdout | default('') | length > 0
+  failed_when: false
+
+- name: "Aguardar rollout concluir"
+  command: "oc rollout status {{ resource_type.stdout }} -n {{ namespace }} --timeout=300s"
+  when: env_vars is defined and env_vars | length > 0 and resource_type.stdout | default('') | length > 0
+  changed_when: false
   failed_when: false
 
 - name: "Verificar se rota existe"
@@ -54,6 +80,11 @@
 - name: "Anotar rota com tls-acme"
   command: "oc annotate route {{ app_name }} kubernetes.io/tls-acme=true --overwrite -n {{ namespace }}"
   failed_when: false
+
+- name: "Configurar timeout da rota (para apps com processamento longo)"
+  command: "oc annotate route {{ app_name }} haproxy.router.openshift.io/timeout=600s --overwrite -n {{ namespace }}"
+  failed_when: false
+  when: route_timeout is defined and route_timeout | bool
 
 - name: "Obter rota de {{ app_name }}"
   command: "oc get route {{ app_name }} -n {{ namespace }} -o jsonpath='{.spec.host}'"

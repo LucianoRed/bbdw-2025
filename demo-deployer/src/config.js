@@ -96,6 +96,7 @@ export const COMPONENTS = [
     playbook: "deploy-component.yml",
     contextDir: "agent-ai",
     port: 8080,
+    routeTimeout: true,
     envVars: [
       { key: "REDIS_URL", value: "redis://redis:6379" },
       { key: "K8S_API_URL", value: "{{ocp_api_url}}" },

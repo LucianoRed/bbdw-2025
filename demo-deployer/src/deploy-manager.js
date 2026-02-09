@@ -195,6 +195,10 @@ export async function deployComponent(componentId) {
             stepVars.app_name = compDef.id;
             stepVars.git_repo_url = gitRepoUrl;
             stepVars.context_dir = step.contextDir;
+            // Timeout da rota (para agent-ai etc)
+            if (compDef.routeTimeout) {
+              stepVars.route_timeout = true;
+            }
           }
 
           // Env vars do componente pai (apenas no step da app)
@@ -262,6 +266,11 @@ export async function deployComponent(componentId) {
         // Porta customizada para a rota (quando não é a padrão)
         if (compDef.port && compDef.port !== 8080 && compDef.port !== 3000) {
           extraVars.service_port = compDef.port;
+        }
+
+        // Timeout da rota
+        if (compDef.routeTimeout) {
+          extraVars.route_timeout = true;
         }
 
         finalResult = await runPlaybook(compDef.playbook, extraVars, onOutput);
