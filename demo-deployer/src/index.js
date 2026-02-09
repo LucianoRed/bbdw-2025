@@ -24,10 +24,12 @@ import {
   refreshTokens,
   getComponentState,
   getJob,
+  deployOferta,
+  cleanupOferta,
   addWsListener,
   removeWsListener,
 } from "./deploy-manager.js";
-import { COMPONENTS, CATEGORIES } from "./config.js";
+import { COMPONENTS, CATEGORIES, OFERTAS } from "./config.js";
 import { setupMcpSseEndpoints, startStdioTransport } from "./mcp-server.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -147,6 +149,27 @@ if (process.argv.includes("--stdio")) {
     const job = getJob(req.params.id);
     if (!job) return res.status(404).json({ error: "Job não encontrado" });
     res.json(job);
+  });
+
+  // ---- Ofertas ----
+  app.get("/api/ofertas", (req, res) => res.json(OFERTAS));
+
+  app.post("/api/ofertas/:id/deploy", async (req, res) => {
+    try {
+      deployOferta(req.params.id).catch((e) => console.error("deploy-oferta error:", e));
+      res.json({ message: `Deploy da oferta '${req.params.id}' iniciado` });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/ofertas/:id/cleanup", async (req, res) => {
+    try {
+      const result = await cleanupOferta(req.params.id);
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // ---- MCP SSE Endpoints ----

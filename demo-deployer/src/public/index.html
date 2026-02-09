@@ -78,6 +78,7 @@
     .btn-accent:hover { background: #388bfd; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-lg { padding: 12px 28px; font-size: 15px; font-weight: 600; }
 
     /* Layout */
     .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
@@ -341,10 +342,136 @@
       word-break: break-all;
     }
 
+    /* ========== OFERTAS ========== */
+    .ofertas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .oferta-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      cursor: pointer;
+      transition: all 0.25s;
+      position: relative;
+      overflow: hidden;
+    }
+    .oferta-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .oferta-icon {
+      font-size: 48px;
+      display: block;
+      margin-bottom: 14px;
+    }
+    .oferta-name {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .oferta-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 14px;
+    }
+    .oferta-components {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .oferta-comp-tag {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      background: rgba(88,166,255,0.12);
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    /* ========== TOPOLOGIA ========== */
+    .topology-view {
+      display: none;
+    }
+    .topology-view.active {
+      display: block;
+    }
+    .topology-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .topology-header h2 {
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .topology-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .topology-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 500px;
+      position: relative;
+    }
+    .topology-svg {
+      width: 100%;
+      max-width: 700px;
+      height: 500px;
+    }
+
+    /* Topology status list */
+    .topo-status-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .topo-status-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .topo-status-icon { font-size: 24px; }
+    .topo-status-info { flex: 1; }
+    .topo-status-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .topo-status-state { font-size: 12px; }
+    .topo-status-route {
+      font-size: 11px;
+      color: var(--accent);
+      text-decoration: none;
+      font-family: 'SF Mono', monospace;
+      word-break: break-all;
+    }
+    .topo-status-route:hover { text-decoration: underline; }
+
     @media (max-width: 768px) {
       .config-grid { grid-template-columns: 1fr; }
       .components-grid { grid-template-columns: 1fr; }
+      .ofertas-grid { grid-template-columns: 1fr; }
       .header { flex-direction: column; gap: 12px; }
+      .topology-svg { height: 380px; }
     }
 
     /* Modal overlay */
@@ -359,7 +486,7 @@
     }
     .modal-overlay.active { display: flex; }
     .modal-box {
-      background: var(--card);
+      background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 32px;
@@ -393,6 +520,11 @@
       animation: spin 1s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* SVG animations */
+    @keyframes dash-flow {
+      to { stroke-dashoffset: -20; }
+    }
   </style>
 </head>
 <body>
@@ -408,13 +540,43 @@
   <div class="container">
     <!-- Tabs -->
     <div class="tabs">
-      <div class="tab active" data-tab="deploy" onclick="switchTab('deploy')">⚡ Deploy</div>
+      <div class="tab active" data-tab="ofertas" onclick="switchTab('ofertas')">🎯 Ofertas</div>
+      <div class="tab" data-tab="deploy" onclick="switchTab('deploy')">⚡ Deploy</div>
       <div class="tab" data-tab="details" onclick="switchTab('details')">📋 Detalhes</div>
       <div class="tab" data-tab="logs" onclick="switchTab('logs')">📜 Logs</div>
     </div>
 
+    <!-- TAB: Ofertas -->
+    <div class="tab-content active" id="tab-ofertas">
+      <div id="ofertasList">
+        <h2 style="margin-bottom: 8px;">🎯 Catálogo de Ofertas</h2>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">
+          Selecione uma oferta para visualizar a topologia e deployar todos os componentes de uma vez.
+        </p>
+        <div class="ofertas-grid" id="ofertasGrid"></div>
+      </div>
+      <!-- Topologia (aparece ao clicar numa oferta) -->
+      <div class="topology-view" id="topologyView">
+        <div class="topology-header">
+          <h2>
+            <button class="btn btn-sm" onclick="backToOfertas()">← Voltar</button>
+            <span id="topoTitle"></span>
+          </h2>
+          <div class="topology-actions">
+            <button class="btn btn-primary btn-lg" id="btnDeployOferta" onclick="deployCurrentOferta()">🚀 Deployar Oferta</button>
+            <button class="btn" onclick="refreshClusterStatus()">🔄 Status</button>
+            <button class="btn btn-danger" id="btnCleanupOferta" onclick="cleanupCurrentOferta()">🗑️ Limpar Oferta</button>
+          </div>
+        </div>
+        <div class="topology-container">
+          <svg class="topology-svg" id="topologySvg" viewBox="0 0 700 500"></svg>
+        </div>
+        <div class="topo-status-list" id="topoStatusList"></div>
+      </div>
+    </div>
+
     <!-- TAB: Deploy -->
-    <div class="tab-content active" id="tab-deploy">
+    <div class="tab-content" id="tab-deploy">
       <!-- Config -->
       <div class="config-panel">
         <h2>⚙️ Configuração do Cluster</h2>
@@ -499,14 +661,18 @@
 <script>
   // ---- State ----
   let state = { config: {}, components: {}, definitions: [] };
+  let ofertas = [];
+  let currentOferta = null;
   let ws = null;
   let logBuffer = '';
-  let pendingModalJob = null;   // id do componente com modal aberta
-  let deployAllRunning = false; // deploy completo em andamento
+  let pendingModalJob = null;
+  let deployAllRunning = false;
+  let ofertaDeployRunning = false;
 
   // ---- Init ----
   window.addEventListener('load', async () => {
     await fetchState();
+    await fetchOfertas();
     connectWebSocket();
   });
 
@@ -517,11 +683,10 @@
       state = await res.json();
       renderComponents();
       renderDetails();
-      // Preenche config no form
+      if (currentOferta) renderTopologyStatus();
       if (state.config) {
         document.getElementById('ocpApiUrl').value = state.config.ocpApiUrl || '';
         document.getElementById('gitRepoUrl').value = state.config.gitRepoUrl || '';
-        // Indicar que o token já está salvo no servidor
         const tokenInput = document.getElementById('ocpToken');
         if (state.config.ocpToken === '***') {
           tokenInput.value = '';
@@ -530,6 +695,16 @@
       }
     } catch (e) {
       showToast('Erro ao carregar estado', 'error');
+    }
+  }
+
+  async function fetchOfertas() {
+    try {
+      const res = await fetch('/api/ofertas');
+      ofertas = await res.json();
+      renderOfertas();
+    } catch (e) {
+      console.error('Erro ao carregar ofertas:', e);
     }
   }
 
@@ -566,19 +741,18 @@
   async function deployComponent(id) {
     const comp = state.definitions?.find(c => c.id === id);
     const name = comp ? comp.name : id;
-    showModal(`▶ Deployando ${name}...`, 'Aguarde enquanto o build e deploy acontecem no OpenShift...', '🚀');
+    showModal('▶ Deployando ' + name + '...', 'Aguarde enquanto o build e deploy acontecem no OpenShift...', '🚀');
     try {
-      const res = await fetch(`/api/deploy/${id}`, { method: 'POST' });
+      const res = await fetch('/api/deploy/' + id, { method: 'POST' });
       const data = await res.json();
       if (data.error) {
         hideModal();
         throw new Error(data.error);
       }
-      // Modal fica aberta — será fechada pelo WebSocket (job-complete/job-error)
       pendingModalJob = id;
     } catch (e) {
       hideModal();
-      showToast(`Erro: ${e.message}`, 'error');
+      showToast('Erro: ' + e.message, 'error');
     }
   }
 
@@ -591,13 +765,13 @@
       if (data.success) {
         const updated = data.results.filter(r => r.status === 'updated').length;
         const skipped = data.results.filter(r => r.status === 'skipped').length;
-        showToast(`Tokens atualizados! ${updated} atualizado(s), ${skipped} ignorado(s).`, 'success');
+        showToast('Tokens atualizados! ' + updated + ' atualizado(s), ' + skipped + ' ignorado(s).', 'success');
       } else {
         showToast('Falha ao atualizar tokens', 'error');
       }
     } catch (e) {
       hideModal();
-      showToast(`Erro: ${e.message}`, 'error');
+      showToast('Erro: ' + e.message, 'error');
     }
   }
 
@@ -607,11 +781,10 @@
     deployAllRunning = true;
     try {
       await fetch('/api/deploy-all', { method: 'POST' });
-      // Modal fica aberta — será fechada quando todos terminarem via WebSocket
     } catch (e) {
       hideModal();
       deployAllRunning = false;
-      showToast(`Erro: ${e.message}`, 'error');
+      showToast('Erro: ' + e.message, 'error');
     }
   }
 
@@ -631,25 +804,25 @@
   let cleanupRunning = false;
 
   async function cleanupOne(compId, compName) {
-    if (!confirm(`⚠️ Remover "${compName}" e seu namespace? Continuar?`)) return;
+    if (!confirm('⚠️ Remover "' + compName + '" e seu namespace? Continuar?')) return;
     cleanupRunning = true;
-    showModal(`🗑️ Removendo ${compName}...`, `Excluindo namespace e recursos de ${compName}...`);
+    showModal('🗑️ Removendo ' + compName + '...', 'Excluindo namespace e recursos de ' + compName + '...');
     try {
-      const res = await fetch(`/api/cleanup/${compId}`, { method: 'POST' });
+      const res = await fetch('/api/cleanup/' + compId, { method: 'POST' });
       const data = await res.json();
       if (!cleanupRunning) return;
       cleanupRunning = false;
       hideModal();
       if (data.success) {
-        showToast(`${compName} removido com sucesso!`, 'success');
+        showToast(compName + ' removido com sucesso!', 'success');
       } else {
-        showToast(`Falha ao remover ${compName}: ${data.output || ''}`, 'error');
+        showToast('Falha ao remover ' + compName + ': ' + (data.output || ''), 'error');
       }
       await fetchState();
     } catch (e) {
       cleanupRunning = false;
       hideModal();
-      showToast(`Erro ao remover ${compName}`, 'error');
+      showToast('Erro ao remover ' + compName, 'error');
     }
   }
 
@@ -660,8 +833,6 @@
     try {
       const res = await fetch('/api/cleanup', { method: 'POST' });
       const data = await res.json();
-      // O modal será fechado pelo evento cleanup-complete via WebSocket
-      // Mas como fallback:
       if (!cleanupRunning) return;
       cleanupRunning = false;
       hideModal();
@@ -678,25 +849,221 @@
     }
   }
 
+  // ---- Ofertas ----
+  async function deployCurrentOferta() {
+    if (!currentOferta) return;
+    if (!confirm('Deployar a oferta "' + currentOferta.name + '" com ' + currentOferta.componentIds.length + ' componentes?')) return;
+    ofertaDeployRunning = true;
+    showModal('🚀 Deployando ' + currentOferta.name + '...', 'Deployando todos os componentes da oferta em sequência...', '🚀');
+    try {
+      await fetch('/api/ofertas/' + currentOferta.id + '/deploy', { method: 'POST' });
+    } catch (e) {
+      hideModal();
+      ofertaDeployRunning = false;
+      showToast('Erro: ' + e.message, 'error');
+    }
+  }
+
+  async function cleanupCurrentOferta() {
+    if (!currentOferta) return;
+    if (!confirm('⚠️ Remover todos os componentes da oferta "' + currentOferta.name + '"?')) return;
+    cleanupRunning = true;
+    showModal('🗑️ Limpando ' + currentOferta.name + '...', 'Removendo componentes da oferta...');
+    try {
+      const res = await fetch('/api/ofertas/' + currentOferta.id + '/cleanup', { method: 'POST' });
+      const data = await res.json();
+      cleanupRunning = false;
+      hideModal();
+      if (data.success) {
+        showToast('Oferta "' + currentOferta.name + '" removida!', 'success');
+      } else {
+        showToast('Cleanup parcial. Verifique os logs.', 'error');
+      }
+      await fetchState();
+    } catch (e) {
+      cleanupRunning = false;
+      hideModal();
+      showToast('Erro: ' + e.message, 'error');
+    }
+  }
+
+  function openOferta(ofertaId) {
+    currentOferta = ofertas.find(o => o.id === ofertaId);
+    if (!currentOferta) return;
+    document.getElementById('ofertasList').style.display = 'none';
+    document.getElementById('topologyView').classList.add('active');
+    document.getElementById('topoTitle').textContent = currentOferta.icon + ' ' + currentOferta.name;
+    renderTopology();
+    renderTopologyStatus();
+  }
+
+  function backToOfertas() {
+    currentOferta = null;
+    document.getElementById('topologyView').classList.remove('active');
+    document.getElementById('ofertasList').style.display = 'block';
+  }
+
+  // ---- Render Ofertas Grid ----
+  function renderOfertas() {
+    const grid = document.getElementById('ofertasGrid');
+    grid.innerHTML = ofertas.map(o => {
+      return '<div class="oferta-card" onclick="openOferta(\'' + o.id + '\')" style="border-top: 4px solid ' + o.color + ';">'
+        + '<span class="oferta-icon">' + o.icon + '</span>'
+        + '<div class="oferta-name">' + o.name + '</div>'
+        + '<div class="oferta-desc">' + o.description + '</div>'
+        + '<div class="oferta-components">'
+        + o.topology.nodes.map(n => '<span class="oferta-comp-tag">' + n.icon + ' ' + n.label + '</span>').join('')
+        + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  // ---- Render Topologia SVG ----
+  function renderTopology() {
+    if (!currentOferta) return;
+    var svg = document.getElementById('topologySvg');
+    var t = currentOferta.topology;
+    var cx = 350, cy = 250;
+    var radius = 170;
+    var nodes = t.nodes;
+    var n = nodes.length;
+
+    var html = '';
+
+    // Defs
+    html += '<defs>'
+      + '<filter id="glow"><feGaussianBlur stdDeviation="3" result="coloredBlur"/>'
+      + '<feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
+      + '<filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="rgba(0,0,0,0.5)"/></filter>'
+      + '</defs>';
+
+    // Posições dos nós
+    var positions = nodes.map(function(node, i) {
+      var angle = (2 * Math.PI * i / n) - Math.PI / 2;
+      return {
+        x: cx + radius * Math.cos(angle),
+        y: cy + radius * Math.sin(angle),
+        node: node,
+      };
+    });
+
+    // Linhas de conexão (centro -> nós)
+    positions.forEach(function(p) {
+      var compState = state.components[p.node.componentId] || {};
+      var isDeployed = compState.status === 'deployed';
+      var isDeploying = compState.status === 'deploying';
+      var lineColor = isDeployed ? '#3fb950' : isDeploying ? '#d29922' : '#30363d';
+      var dashAttr = isDeploying ? ' stroke-dasharray="6 4" style="animation: dash-flow 0.8s linear infinite;"' : '';
+
+      html += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p.x + '" y2="' + p.y + '"'
+        + ' stroke="' + lineColor + '" stroke-width="2" stroke-opacity="0.6"' + dashAttr + '/>';
+    });
+
+    // Nó central com animação pulsante
+    html += '<circle cx="' + cx + '" cy="' + cy + '" r="52" fill="' + t.center.color + '" fill-opacity="0.15"'
+      + ' stroke="' + t.center.color + '" stroke-width="2.5" filter="url(#glow)"/>';
+    html += '<circle cx="' + cx + '" cy="' + cy + '" r="52" fill="none"'
+      + ' stroke="' + t.center.color + '" stroke-width="1" stroke-opacity="0.3">'
+      + '<animate attributeName="r" values="52;65;52" dur="3s" repeatCount="indefinite"/>'
+      + '<animate attributeName="stroke-opacity" values="0.3;0;0.3" dur="3s" repeatCount="indefinite"/>'
+      + '</circle>';
+    html += '<text x="' + cx + '" y="' + (cy - 8) + '" text-anchor="middle" font-size="32">' + t.center.icon + '</text>';
+    html += '<text x="' + cx + '" y="' + (cy + 22) + '" text-anchor="middle" fill="' + t.center.color + '"'
+      + ' font-size="13" font-weight="700" font-family="-apple-system, sans-serif">' + t.center.label + '</text>';
+
+    // Nós satélite
+    positions.forEach(function(p) {
+      var compState = state.components[p.node.componentId] || {};
+      var status = compState.status || 'not-deployed';
+      var isDeployed = status === 'deployed';
+      var isDeploying = status === 'deploying';
+      var isFailed = status === 'failed';
+
+      var ringColor = isDeployed ? '#3fb950' : isFailed ? '#f85149' : isDeploying ? '#d29922' : '#30363d';
+      var bgOpacity = isDeployed ? '0.2' : '0.1';
+
+      html += '<circle cx="' + p.x + '" cy="' + p.y + '" r="44" fill="' + p.node.color + '" fill-opacity="' + bgOpacity + '"'
+        + ' stroke="' + ringColor + '" stroke-width="2" filter="url(#shadow)"/>';
+
+      // Pulsing ring quando deploying
+      if (isDeploying) {
+        html += '<circle cx="' + p.x + '" cy="' + p.y + '" r="44" fill="none"'
+          + ' stroke="' + p.node.color + '" stroke-width="1.5">'
+          + '<animate attributeName="r" values="44;58;44" dur="1.5s" repeatCount="indefinite"/>'
+          + '<animate attributeName="stroke-opacity" values="0.5;0;0.5" dur="1.5s" repeatCount="indefinite"/>'
+          + '</circle>';
+      }
+
+      // Status dot
+      var dotColor = isDeployed ? '#3fb950' : isFailed ? '#f85149' : isDeploying ? '#d29922' : '#555';
+      html += '<circle cx="' + (p.x + 30) + '" cy="' + (p.y - 30) + '" r="6" fill="' + dotColor + '" stroke="#0d1117" stroke-width="2"/>';
+
+      html += '<text x="' + p.x + '" y="' + (p.y - 6) + '" text-anchor="middle" font-size="24">' + p.node.icon + '</text>';
+      html += '<text x="' + p.x + '" y="' + (p.y + 16) + '" text-anchor="middle" fill="' + p.node.color + '"'
+        + ' font-size="11" font-weight="600" font-family="-apple-system, sans-serif">' + p.node.label + '</text>';
+    });
+
+    svg.innerHTML = html;
+  }
+
+  // ---- Render Topology Status List ----
+  function renderTopologyStatus() {
+    if (!currentOferta) return;
+    var list = document.getElementById('topoStatusList');
+
+    list.innerHTML = currentOferta.topology.nodes.map(function(node) {
+      var cs = state.components[node.componentId] || { status: 'not-deployed' };
+      var statusClass = cs.status.replace(' ', '-');
+
+      var routeHtml = cs.route
+        ? '<a class="topo-status-route" href="http://' + cs.route + '" target="_blank">🔗 ' + cs.route + '</a>'
+        : '';
+
+      var deployBtnClass = cs.status === 'deploying' ? 'btn btn-sm' : 'btn btn-sm btn-primary';
+      var deployBtnDisabled = cs.status === 'deploying' ? ' disabled' : '';
+      var deployBtnLabel = cs.status === 'deploying' ? '⏳' : '▶';
+
+      var trashBtn = cs.status !== 'not-deployed'
+        ? '<button class="btn-trash" onclick="cleanupOne(\'' + node.componentId + '\', \'' + node.label + '\')" title="Remover">🗑️</button>'
+        : '';
+
+      return '<div class="topo-status-item">'
+        + '<span class="topo-status-icon">' + node.icon + '</span>'
+        + '<div class="topo-status-info">'
+        + '<div class="topo-status-name">' + node.label + '</div>'
+        + '<div class="topo-status-state"><span class="badge badge-' + statusClass + '">' + formatStatus(cs.status) + '</span></div>'
+        + routeHtml
+        + '</div>'
+        + '<div style="display: flex; gap: 6px;">'
+        + '<button class="' + deployBtnClass + '" onclick="deployComponent(\'' + node.componentId + '\')"' + deployBtnDisabled + '>' + deployBtnLabel + '</button>'
+        + trashBtn
+        + '</div>'
+        + '</div>';
+    }).join('');
+
+    // Atualizar SVG também
+    renderTopology();
+  }
+
   // ---- WebSocket ----
   function connectWebSocket() {
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(`${protocol}//${location.host}/ws`);
+    var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(protocol + '//' + location.host + '/ws');
 
-    ws.onopen = () => {
+    ws.onopen = function() {
       document.getElementById('wsStatus').className = 'status-dot connected';
       document.getElementById('wsLabel').textContent = 'Conectado';
     };
 
-    ws.onclose = () => {
+    ws.onclose = function() {
       document.getElementById('wsStatus').className = 'status-dot disconnected';
       document.getElementById('wsLabel').textContent = 'Desconectado';
       setTimeout(connectWebSocket, 3000);
     };
 
-    ws.onmessage = (e) => {
+    ws.onmessage = function(e) {
       try {
-        const event = JSON.parse(e.data);
+        var event = JSON.parse(e.data);
         handleWsEvent(event);
       } catch (err) { /* ignore */ }
     };
@@ -708,12 +1075,14 @@
         state = event.data;
         renderComponents();
         renderDetails();
+        if (currentOferta) renderTopologyStatus();
         break;
 
       case 'component-update':
         state.components[event.componentId] = event.data;
         renderComponents();
         renderDetails();
+        if (currentOferta) renderTopologyStatus();
         break;
 
       case 'job-output':
@@ -722,19 +1091,24 @@
 
       case 'job-start':
         if (deployAllRunning) {
-          const comp = state.definitions?.find(c => c.id === event.componentId);
-          const name = comp ? comp.name : event.componentId;
-          updateModal(`🚀 Deployando: ${name}...`, `Componente atual: ${name}`);
+          var comp = state.definitions ? state.definitions.find(function(c) { return c.id === event.componentId; }) : null;
+          var name = comp ? comp.name : event.componentId;
+          updateModal('🚀 Deployando: ' + name + '...', 'Componente atual: ' + name);
+        }
+        if (ofertaDeployRunning && currentOferta) {
+          var node = currentOferta.topology.nodes.find(function(n) { return n.componentId === event.componentId; });
+          if (node) {
+            updateModal('🚀 Deployando: ' + node.label + '...', 'Componente atual: ' + node.label);
+          }
         }
         break;
 
       case 'job-complete':
         if (event.success) {
-          showToast(`Deploy "${event.componentId}" concluído ✓`, 'success');
+          showToast('Deploy "' + event.componentId + '" concluído ✓', 'success');
         } else {
-          showToast(`Deploy "${event.componentId}" falhou ✗`, 'error');
+          showToast('Deploy "' + event.componentId + '" falhou ✗', 'error');
         }
-        // Fechar modal de deploy individual
         if (pendingModalJob === event.componentId) {
           hideModal();
           pendingModalJob = null;
@@ -743,7 +1117,7 @@
         break;
 
       case 'job-error':
-        showToast(`Erro em "${event.componentId}": ${event.error}`, 'error');
+        showToast('Erro em "' + event.componentId + '": ' + event.error, 'error');
         if (pendingModalJob === event.componentId) {
           hideModal();
           pendingModalJob = null;
@@ -760,18 +1134,47 @@
         }
         break;
 
+      case 'oferta-start':
+        break;
+
+      case 'oferta-complete':
+        if (ofertaDeployRunning) {
+          hideModal();
+          ofertaDeployRunning = false;
+          showToast('Oferta deployada com sucesso! (' + event.total + ' componentes)', 'success');
+          fetchState();
+        }
+        break;
+
+      case 'oferta-stopped':
+        if (ofertaDeployRunning) {
+          hideModal();
+          ofertaDeployRunning = false;
+          showToast('Deploy da oferta parou: ' + event.reason, 'error');
+          fetchState();
+        }
+        break;
+
+      case 'oferta-cleanup-complete':
+        if (cleanupRunning) {
+          cleanupRunning = false;
+          hideModal();
+          showToast(event.summary || 'Cleanup da oferta concluído', event.success ? 'success' : 'error');
+          fetchState();
+        }
+        break;
+
       case 'config-update':
         state.config = event.data;
         break;
 
       case 'cleanup-output':
         appendLog(event.data);
-        // Atualiza o modal com a última linha relevante
         if (cleanupRunning && event.data.trim()) {
-          const lines = event.data.trim().split('\n');
-          const lastLine = lines[lines.length - 1];
-          if (lastLine.includes('═══') || lastLine.includes('✅') || lastLine.includes('⚠️') || lastLine.includes('🗑️')) {
-            updateModal('🗑️ Limpando tudo...', lastLine);
+          var lines = event.data.trim().split('\n');
+          var lastLine = lines[lines.length - 1];
+          if (lastLine.indexOf('═══') >= 0 || lastLine.indexOf('✅') >= 0 || lastLine.indexOf('⚠️') >= 0 || lastLine.indexOf('🗑️') >= 0) {
+            updateModal('🗑️ Limpando...', lastLine);
           }
         }
         break;
@@ -793,76 +1196,89 @@
 
   // ---- Rendering ----
   function renderComponents() {
-    const grid = document.getElementById('componentsGrid');
+    var grid = document.getElementById('componentsGrid');
     if (!state.definitions || state.definitions.length === 0) return;
 
     grid.innerHTML = state.definitions
-      .sort((a, b) => a.order - b.order)
-      .map(comp => {
-        const cs = state.components[comp.id] || { status: 'not-deployed' };
-        const statusClass = cs.status.replace(' ', '-');
-        const isDeploying = cs.status === 'deploying';
-        const isDeployed = cs.status === 'deployed';
+      .sort(function(a, b) { return a.order - b.order; })
+      .map(function(comp) {
+        var cs = state.components[comp.id] || { status: 'not-deployed' };
+        var statusClass = cs.status.replace(' ', '-');
+        var isDeploying = cs.status === 'deploying';
+        var isDeployed = cs.status === 'deployed';
 
-        return `
-          <div class="card" data-id="${comp.id}">
-            <div class="card-header">
-              <span class="card-icon">${comp.icon}</span>
-              <div>
-                <div class="card-title">${comp.name}</div>
-                <span class="card-category cat-${comp.category}">${comp.category}</span>
-              </div>
-            </div>
-            <div class="card-desc">${comp.description}<br><span style="font-size:11px; color:var(--text-muted);">namespace: <b>${comp.namespace || comp.id}</b></span></div>
-            <div class="card-footer">
-              <div class="card-footer-row">
-                <span class="badge badge-${statusClass}">${formatStatus(cs.status)}</span>
-                <div class="card-actions">
-                  <button class="btn btn-sm ${isDeploying ? '' : 'btn-primary'}"
-                          onclick="deployComponent('${comp.id}')"
-                          ${isDeploying ? 'disabled' : ''}>
-                    ${isDeploying ? '⏳ ...' : '▶ Deploy'}
-                  </button>
-                  ${cs.status !== 'not-deployed' ? `<button class="btn-trash" onclick="cleanupOne('${comp.id}', '${comp.name}')" title="Remover este componente">🗑️</button>` : ''}
-                  <button class="btn btn-sm" onclick="showDetail('${comp.id}')">📋</button>
-                </div>
-              </div>
-              ${isDeployed && cs.route ? `<div><a class="route-link" href="http://${cs.route}" target="_blank" style="font-size:11px; word-break:break-all;">🔗 ${cs.route}</a></div>` : ''}
-            </div>
-            ${isDeploying ? '<div class="card-progress deploying"></div>' : ''}
-            ${isDeployed ? '<div class="card-progress" style="width:100%; background: var(--success);"></div>' : ''}
-            ${cs.status === 'failed' ? '<div class="card-progress" style="width:100%; background: var(--danger);"></div>' : ''}
-          </div>
-        `;
+        var routeHtml = (isDeployed && cs.route)
+          ? '<div><a class="route-link" href="http://' + cs.route + '" target="_blank" style="font-size:11px; word-break:break-all;">🔗 ' + cs.route + '</a></div>'
+          : '';
+
+        var trashBtn = cs.status !== 'not-deployed'
+          ? '<button class="btn-trash" onclick="cleanupOne(\'' + comp.id + '\', \'' + comp.name + '\')" title="Remover este componente">🗑️</button>'
+          : '';
+
+        var progressBar = '';
+        if (isDeploying) progressBar = '<div class="card-progress deploying"></div>';
+        else if (isDeployed) progressBar = '<div class="card-progress" style="width:100%; background: var(--success);"></div>';
+        else if (cs.status === 'failed') progressBar = '<div class="card-progress" style="width:100%; background: var(--danger);"></div>';
+
+        return '<div class="card" data-id="' + comp.id + '">'
+          + '<div class="card-header">'
+          + '<span class="card-icon">' + comp.icon + '</span>'
+          + '<div>'
+          + '<div class="card-title">' + comp.name + '</div>'
+          + '<span class="card-category cat-' + comp.category + '">' + comp.category + '</span>'
+          + '</div></div>'
+          + '<div class="card-desc">' + comp.description + '<br><span style="font-size:11px; color:var(--text-muted);">namespace: <b>' + (comp.namespace || comp.id) + '</b></span></div>'
+          + '<div class="card-footer"><div class="card-footer-row">'
+          + '<span class="badge badge-' + statusClass + '">' + formatStatus(cs.status) + '</span>'
+          + '<div class="card-actions">'
+          + '<button class="btn btn-sm ' + (isDeploying ? '' : 'btn-primary') + '" onclick="deployComponent(\'' + comp.id + '\')" ' + (isDeploying ? 'disabled' : '') + '>'
+          + (isDeploying ? '⏳ ...' : '▶ Deploy') + '</button>'
+          + trashBtn
+          + '<button class="btn btn-sm" onclick="showDetail(\'' + comp.id + '\')">📋</button>'
+          + '</div></div>'
+          + routeHtml
+          + '</div>'
+          + progressBar
+          + '</div>';
       }).join('');
   }
 
   function renderDetails() {
-    const grid = document.getElementById('detailsGrid');
+    var grid = document.getElementById('detailsGrid');
     if (!state.definitions) return;
 
     grid.innerHTML = state.definitions
-      .sort((a, b) => a.order - b.order)
-      .map(comp => {
-        const cs = state.components[comp.id] || { status: 'not-deployed' };
-        return `
-          <div class="detail-card">
-            <h4>${comp.icon} ${comp.name} <span class="badge badge-${cs.status.replace(' ','-')}" style="font-size:10px;">${formatStatus(cs.status)}</span></h4>
-            <div class="info-row"><span class="info-label">ID:</span><span class="info-value">${comp.id}</span></div>
-            <div class="info-row"><span class="info-label">Namespace:</span><span class="info-value">${comp.namespace || comp.id}</span></div>
-            <div class="info-row"><span class="info-label">Categoria:</span><span class="info-value">${comp.category}</span></div>
-            ${cs.route ? `<div class="info-row"><span class="info-label">Rota:</span><span class="info-value"><a class="route-link" href="http://${cs.route}" target="_blank">${cs.route}</a></span></div>` : ''}
-            ${cs.startedAt ? `<div class="info-row"><span class="info-label">Início:</span><span class="info-value">${new Date(cs.startedAt).toLocaleString('pt-BR')}</span></div>` : ''}
-            ${cs.finishedAt ? `<div class="info-row"><span class="info-label">Fim:</span><span class="info-value">${new Date(cs.finishedAt).toLocaleString('pt-BR')}</span></div>` : ''}
-            ${cs.error ? `<div class="info-row"><span class="info-label" style="color:var(--danger)">Erro:</span><span class="info-value" style="color:var(--danger)">${cs.error}</span></div>` : ''}
-            ${comp.port ? `<div class="info-row"><span class="info-label">Porta:</span><span class="info-value">${comp.port}</span></div>` : ''}
-          </div>
-        `;
+      .sort(function(a, b) { return a.order - b.order; })
+      .map(function(comp) {
+        var cs = state.components[comp.id] || { status: 'not-deployed' };
+        var routeHtml = cs.route
+          ? '<div class="info-row"><span class="info-label">Rota:</span><span class="info-value"><a class="route-link" href="http://' + cs.route + '" target="_blank">' + cs.route + '</a></span></div>'
+          : '';
+        var startHtml = cs.startedAt
+          ? '<div class="info-row"><span class="info-label">Início:</span><span class="info-value">' + new Date(cs.startedAt).toLocaleString('pt-BR') + '</span></div>'
+          : '';
+        var endHtml = cs.finishedAt
+          ? '<div class="info-row"><span class="info-label">Fim:</span><span class="info-value">' + new Date(cs.finishedAt).toLocaleString('pt-BR') + '</span></div>'
+          : '';
+        var errHtml = cs.error
+          ? '<div class="info-row"><span class="info-label" style="color:var(--danger)">Erro:</span><span class="info-value" style="color:var(--danger)">' + cs.error + '</span></div>'
+          : '';
+        var portHtml = comp.port
+          ? '<div class="info-row"><span class="info-label">Porta:</span><span class="info-value">' + comp.port + '</span></div>'
+          : '';
+
+        return '<div class="detail-card">'
+          + '<h4>' + comp.icon + ' ' + comp.name + ' <span class="badge badge-' + cs.status.replace(' ','-') + '" style="font-size:10px;">' + formatStatus(cs.status) + '</span></h4>'
+          + '<div class="info-row"><span class="info-label">ID:</span><span class="info-value">' + comp.id + '</span></div>'
+          + '<div class="info-row"><span class="info-label">Namespace:</span><span class="info-value">' + (comp.namespace || comp.id) + '</span></div>'
+          + '<div class="info-row"><span class="info-label">Categoria:</span><span class="info-value">' + comp.category + '</span></div>'
+          + routeHtml + startHtml + endHtml + errHtml + portHtml
+          + '</div>';
       }).join('');
   }
 
   function formatStatus(status) {
-    const map = {
+    var map = {
       'not-deployed': '⭕ Não deployado',
       'deploying': '🔄 Deployando...',
       'deployed': '✅ Deployado',
@@ -873,28 +1289,40 @@
 
   // ---- Detail Overlay ----
   function showDetail(id) {
-    const comp = state.definitions.find(c => c.id === id);
-    const cs = state.components[id] || {};
-    document.getElementById('detailTitle').textContent = `${comp.icon} ${comp.name}`;
-    document.getElementById('detailBody').innerHTML = `
-      <div class="detail-info">
-        <div class="detail-row"><span class="detail-label">Status:</span><span class="detail-value">${formatStatus(cs.status)}</span></div>
-        <div class="detail-row"><span class="detail-label">Namespace:</span><span class="detail-value">${comp.namespace || comp.id}</span></div>
-        <div class="detail-row"><span class="detail-label">Categoria:</span><span class="detail-value">${comp.category}</span></div>
-        ${cs.route ? `<div class="detail-row"><span class="detail-label">Rota:</span><span class="detail-value"><a class="route-link" href="http://${cs.route}" target="_blank">${cs.route}</a></span></div>` : ''}
-        ${comp.port ? `<div class="detail-row"><span class="detail-label">Porta:</span><span class="detail-value">${comp.port}</span></div>` : ''}
-        ${cs.startedAt ? `<div class="detail-row"><span class="detail-label">Início:</span><span class="detail-value">${new Date(cs.startedAt).toLocaleString('pt-BR')}</span></div>` : ''}
-        ${cs.finishedAt ? `<div class="detail-row"><span class="detail-label">Fim:</span><span class="detail-value">${new Date(cs.finishedAt).toLocaleString('pt-BR')}</span></div>` : ''}
-        ${cs.error ? `<div class="detail-row"><span class="detail-label" style="color:var(--danger)">Erro:</span><span class="detail-value" style="color:var(--danger)">${cs.error}</span></div>` : ''}
-        <div class="detail-row"><span class="detail-label">Descrição:</span><span class="detail-value">${comp.description}</span></div>
-      </div>
-      ${cs.logs ? `
-      <div class="log-panel" style="margin-top:16px;">
-        <div class="log-header"><h3>Logs do Deploy</h3></div>
-        <div class="log-content" style="max-height:300px;">${colorizeLogs(cs.logs)}</div>
-      </div>
-      ` : ''}
-    `;
+    var comp = state.definitions.find(function(c) { return c.id === id; });
+    var cs = state.components[id] || {};
+    document.getElementById('detailTitle').textContent = comp.icon + ' ' + comp.name;
+
+    var routeHtml = cs.route
+      ? '<div class="detail-row"><span class="detail-label">Rota:</span><span class="detail-value"><a class="route-link" href="http://' + cs.route + '" target="_blank">' + cs.route + '</a></span></div>'
+      : '';
+    var portHtml = comp.port
+      ? '<div class="detail-row"><span class="detail-label">Porta:</span><span class="detail-value">' + comp.port + '</span></div>'
+      : '';
+    var startHtml = cs.startedAt
+      ? '<div class="detail-row"><span class="detail-label">Início:</span><span class="detail-value">' + new Date(cs.startedAt).toLocaleString('pt-BR') + '</span></div>'
+      : '';
+    var endHtml = cs.finishedAt
+      ? '<div class="detail-row"><span class="detail-label">Fim:</span><span class="detail-value">' + new Date(cs.finishedAt).toLocaleString('pt-BR') + '</span></div>'
+      : '';
+    var errHtml = cs.error
+      ? '<div class="detail-row"><span class="detail-label" style="color:var(--danger)">Erro:</span><span class="detail-value" style="color:var(--danger)">' + cs.error + '</span></div>'
+      : '';
+    var logsHtml = cs.logs
+      ? '<div class="log-panel" style="margin-top:16px;"><div class="log-header"><h3>Logs do Deploy</h3></div>'
+        + '<div class="log-content" style="max-height:300px;">' + colorizeLogs(cs.logs) + '</div></div>'
+      : '';
+
+    document.getElementById('detailBody').innerHTML =
+      '<div class="detail-info">'
+      + '<div class="detail-row"><span class="detail-label">Status:</span><span class="detail-value">' + formatStatus(cs.status) + '</span></div>'
+      + '<div class="detail-row"><span class="detail-label">Namespace:</span><span class="detail-value">' + (comp.namespace || comp.id) + '</span></div>'
+      + '<div class="detail-row"><span class="detail-label">Categoria:</span><span class="detail-value">' + comp.category + '</span></div>'
+      + routeHtml + portHtml + startHtml + endHtml + errHtml
+      + '<div class="detail-row"><span class="detail-label">Descrição:</span><span class="detail-value">' + comp.description + '</span></div>'
+      + '</div>'
+      + logsHtml;
+
     document.getElementById('detailOverlay').classList.add('active');
   }
 
@@ -906,15 +1334,19 @@
 
   // ---- Tabs ----
   function switchTab(tab) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.toggle('active', tc.id === `tab-${tab}`));
+    document.querySelectorAll('.tab').forEach(function(t) { t.classList.toggle('active', t.dataset.tab === tab); });
+    document.querySelectorAll('.tab-content').forEach(function(tc) { tc.classList.toggle('active', tc.id === 'tab-' + tab); });
     if (tab === 'details') renderDetails();
+    if (tab === 'ofertas') {
+      renderOfertas();
+      if (currentOferta) renderTopologyStatus();
+    }
   }
 
   // ---- Logs ----
   function appendLog(text) {
     logBuffer += text;
-    const logEl = document.getElementById('logContent');
+    var logEl = document.getElementById('logContent');
     logEl.innerHTML = colorizeLogs(logBuffer);
     logEl.scrollTop = logEl.scrollHeight;
   }
@@ -933,7 +1365,8 @@
   }
 
   // ---- Modal ----
-  function showModal(title, message, icon = '🔄') {
+  function showModal(title, message, icon) {
+    icon = icon || '🔄';
     document.getElementById('modalIcon').textContent = icon;
     document.getElementById('modalTitle').textContent = title;
     document.getElementById('modalMessage').textContent = message;
@@ -950,13 +1383,14 @@
   }
 
   // ---- Toasts ----
-  function showToast(message, type = 'info') {
-    const container = document.getElementById('toasts');
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
+  function showToast(message, type) {
+    type = type || 'info';
+    var container = document.getElementById('toasts');
+    var toast = document.createElement('div');
+    toast.className = 'toast ' + type;
     toast.innerHTML = message;
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
+    setTimeout(function() { toast.remove(); }, 5000);
   }
 </script>
 

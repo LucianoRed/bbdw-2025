@@ -6,7 +6,7 @@ import { v4 as uuid } from "uuid";
 import fs from "fs";
 import path from "path";
 import { runPlaybook, runOcCommand } from "./ansible-runner.js";
-import { COMPONENTS } from "./config.js";
+import { COMPONENTS, OFERTAS } from "./config.js";
 
 // ---- Persistência em disco ----
 const DATA_DIR = process.env.DATA_DIR || path.resolve(process.cwd(), "data");
@@ -563,6 +563,67 @@ export async function cleanupComponent(componentId) {
 
   broadcast({ type: "cleanup-complete", success: result.success, summary: `${compDef.name} removido` });
   return { success: result.success, output: `Cleanup de ${compDef.name} (${ns}): ${result.success ? 'OK' : 'falhou'}` };
+}
+
+/**
+ * Deploy de uma oferta (pacote de componentes).
+ * Deploys são executados em sequência segundo a order dos componentes.
+ */
+export async function deployOferta(ofertaId) {
+  const oferta = OFERTAS.find((o) => o.id === ofertaId);
+  if (!oferta) throw new Error(`Oferta desconhecida: ${ofertaId}`);
+
+  const sorted = oferta.componentIds
+    .map((cid) => COMPONENTS.find((c) => c.id === cid))
+    .filter(Boolean)
+    .sort((a, b) => a.order - b.order);
+
+  broadcast({ type: "oferta-start", ofertaId, total: sorted.length });
+  const results = [];
+
+  for (const comp of sorted) {
+    const job = await deployComponent(comp.id);
+    await waitForJob(job.jobId);
+    results.push({ componentId: comp.id, jobId: job.jobId });
+
+    const jobState = deployState.jobs[job.jobId];
+    if (jobState && jobState.status === "failed") {
+      broadcast({ type: "oferta-stopped", ofertaId, reason: `Falha no componente: ${comp.name}` });
+      return results;
+    }
+  }
+
+  broadcast({ type: "oferta-complete", ofertaId, total: results.length });
+  return results;
+}
+
+/**
+ * Cleanup de uma oferta (exclui os namespaces dos componentes da oferta).
+ */
+export async function cleanupOferta(ofertaId) {
+  const oferta = OFERTAS.find((o) => o.id === ofertaId);
+  if (!oferta) throw new Error(`Oferta desconhecida: ${ofertaId}`);
+
+  const results = [];
+  for (const cid of oferta.componentIds) {
+    try {
+      const result = await cleanupComponent(cid);
+      results.push({ componentId: cid, ...result });
+    } catch (e) {
+      results.push({ componentId: cid, success: false, output: e.message });
+    }
+  }
+
+  const failed = results.filter((r) => !r.success);
+  broadcast({
+    type: "oferta-cleanup-complete",
+    ofertaId,
+    success: failed.length === 0,
+    summary: failed.length === 0
+      ? `Oferta "${oferta.name}" removida com sucesso`
+      : `Cleanup parcial: ${failed.map((f) => f.componentId).join(", ")} falharam`,
+  });
+  return { success: failed.length === 0, results };
 }
 
 export function getJob(jobId) {

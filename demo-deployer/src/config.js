@@ -129,3 +129,29 @@ export const CATEGORIES = {
   demo: { label: "Demo", color: "#FF9800" },
   core: { label: "Core", color: "#4CAF50" },
 };
+
+// ============================================================
+// Ofertas — pacotes pré-definidos de componentes para demos
+// ============================================================
+
+export const OFERTAS = [
+  {
+    id: "demo-governo",
+    name: "Demo para Governo",
+    description: "Demonstração completa para o setor público: agente de IA com acesso a dados de saúde e matrículas escolares.",
+    icon: "🏛️",
+    color: "#1976D2",
+    // Componentes que fazem parte desta oferta (devem existir em COMPONENTS)
+    componentIds: ["agent-ai", "mcp-inspector", "mcp-server-matriculas", "mcp-server-saude"],
+    // Nodos na topologia (centro + satélites)
+    topology: {
+      center: { label: "Governo", icon: "🏛️", color: "#1976D2" },
+      nodes: [
+        { componentId: "agent-ai",              label: "Agent AI",    icon: "🤖", color: "#4CAF50" },
+        { componentId: "mcp-inspector",         label: "MCP Inspector", icon: "🔍", color: "#FF9800" },
+        { componentId: "mcp-server-matriculas", label: "Matrículas",  icon: "🎓", color: "#9C27B0" },
+        { componentId: "mcp-server-saude",      label: "Saúde",       icon: "🏥", color: "#E91E63" },
+      ],
+    },
+  },
+];

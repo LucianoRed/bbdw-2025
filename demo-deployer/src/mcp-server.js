@@ -18,8 +18,10 @@ import {
   refreshStatus,
   cleanup,
   getComponentState,
+  deployOferta,
+  cleanupOferta,
 } from "./deploy-manager.js";
-import { COMPONENTS } from "./config.js";
+import { COMPONENTS, OFERTAS } from "./config.js";
 
 // ---- Definição das tools ----
 
@@ -129,6 +131,50 @@ const tools = [
       properties: {},
     },
   },
+  {
+    name: "list_ofertas",
+    description:
+      "Lista todas as ofertas disponíveis (pacotes de componentes pron­os para demo). " +
+      "Cada oferta contém um conjunto de componentes pré-selecionados para um cenário específico.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    name: "deploy_oferta",
+    description:
+      "Faz o deploy de uma oferta completa (pacote de componentes). " +
+      "Ofertas disponíveis: " + OFERTAS.map(o => `${o.id} (${o.name})`).join(", ") + ".",
+    inputSchema: {
+      type: "object",
+      properties: {
+        oferta_id: {
+          type: "string",
+          description: "ID da oferta para deploy",
+          enum: OFERTAS.map((o) => o.id),
+        },
+      },
+      required: ["oferta_id"],
+    },
+  },
+  {
+    name: "cleanup_oferta",
+    description:
+      "Remove todos os componentes de uma oferta específica. " +
+      "ATENÇÃO: esta ação é destrutiva.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        oferta_id: {
+          type: "string",
+          description: "ID da oferta para cleanup",
+          enum: OFERTAS.map((o) => o.id),
+        },
+      },
+      required: ["oferta_id"],
+    },
+  },
 ];
 
 // ---- Handlers ----
@@ -235,6 +281,52 @@ async function handleToolCall(name, args) {
             text: result.success
               ? "Cleanup concluído. Todos os recursos foram removidos."
               : `Cleanup falhou: ${result.output}`,
+          },
+        ],
+      };
+    }
+
+    case "list_ofertas":
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              OFERTAS.map((o) => ({
+                id: o.id,
+                name: o.name,
+                description: o.description,
+                components: o.componentIds,
+              })),
+              null,
+              2
+            ),
+          },
+        ],
+      };
+
+    case "deploy_oferta": {
+      deployOferta(args.oferta_id).catch((e) => console.error("deploy_oferta error:", e));
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Deploy da oferta '${args.oferta_id}' iniciado. ` +
+              `Use get_status para acompanhar o progresso.`,
+          },
+        ],
+      };
+    }
+
+    case "cleanup_oferta": {
+      const result = await cleanupOferta(args.oferta_id);
+      return {
+        content: [
+          {
+            type: "text",
+            text: result.success
+              ? `Oferta '${args.oferta_id}' removida com sucesso.`
+              : `Cleanup parcial da oferta '${args.oferta_id}'.`,
           },
         ],
       };
