@@ -6,12 +6,11 @@
   failed_when: false
   changed_when: false
 
-- name: "Deploy do Redis"
+- name: "Deploy do Redis Stack (com RediSearch para embeddings)"
   command: >
-    oc new-app redis:6
+    oc new-app docker.io/redis/redis-stack-server:latest
     --name=redis
     -n {{ namespace }}
-    -e REDIS_PASSWORD={{ redis_password | default('redis123') }}
   when: redis_check.stdout | default('') | length == 0
   failed_when: false
   register: redis_new_app
