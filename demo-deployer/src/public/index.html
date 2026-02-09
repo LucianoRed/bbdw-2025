@@ -819,7 +819,7 @@
                         ${isDeploying ? 'disabled' : ''}>
                   ${isDeploying ? '⏳ ...' : '▶ Deploy'}
                 </button>
-                ${isDeployed || cs.status === 'failed' ? `<button class="btn btn-sm btn-danger" onclick="cleanupOne('${comp.id}', '${comp.name}')" title="Remover este componente">🗑️</button>` : ''}
+                ${cs.status !== 'not-deployed' ? `<button class="btn btn-sm btn-danger" onclick="cleanupOne('${comp.id}', '${comp.name}')" title="Remover este componente">🗑️</button>` : ''}
                 <button class="btn btn-sm" onclick="showDetail('${comp.id}')">📋</button>
               </div>
             </div>
