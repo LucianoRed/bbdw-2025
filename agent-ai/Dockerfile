@@ -5,6 +5,9 @@ FROM registry.access.redhat.com/ubi9/openjdk-21:1.23 AS builder
 USER root
 WORKDIR /build
 
+# Instalar gzip (necessário para Maven descompactar dependências)
+RUN microdnf install -y gzip tar && microdnf clean all
+
 # Copiar pom.xml e baixar dependências primeiro (cache de layer)
 COPY pom.xml mvnw ./
 COPY .mvn .mvn
