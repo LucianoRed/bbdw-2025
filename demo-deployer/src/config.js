@@ -155,4 +155,21 @@ export const OFERTAS = [
       ],
     },
   },
+  {
+    id: "demo-aiops",
+    name: "Demo para AIOps",
+    description: "Demonstração de AIOps: agente de IA com visibilidade completa do cluster Kubernetes — métricas, segurança e troubleshooting inteligente.",
+    icon: "🧠",
+    color: "#00897B",
+    componentIds: ["agent-ai", "mcp-inspector", "mcp-server-k8s-live", "mcp-server-k8s-security"],
+    topology: {
+      center: { label: "AIOps", icon: "🧠", color: "#00897B" },
+      nodes: [
+        { componentId: "agent-ai",                label: "Agent AI",      icon: "🤖", color: "#4CAF50" },
+        { componentId: "mcp-inspector",           label: "MCP Inspector", icon: "🔍", color: "#FF9800" },
+        { componentId: "mcp-server-k8s-live",     label: "K8s Live",      icon: "📊", color: "#2196F3" },
+        { componentId: "mcp-server-k8s-security", label: "K8s Security",  icon: "🛡️", color: "#E91E63" },
+      ],
+    },
+  },
 ];
