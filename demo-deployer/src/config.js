@@ -102,6 +102,7 @@ export const COMPONENTS = [
       { key: "K8S_API_URL", value: "{{ocp_api_url}}" },
       { key: "K8S_BEARER_TOKEN", value: "{{sa_token}}" },
       { key: "K8S_SKIP_TLS_VERIFY", value: "true" },
+      { key: "OPENAI_API_KEY", value: "{{openai_api_key}}" },
     ],
     subSteps: [
       { id: "redis", name: "Redis", playbook: "deploy-redis.yml" },

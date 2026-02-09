@@ -54,6 +54,7 @@ const deployState = {
   config: {
     ocpApiUrl: "",
     ocpToken: "",
+    openaiApiKey: "",
     namespace: "bbdw-demo",
     gitRepoUrl: "https://github.com/LucianoRed/bbdw-2025.git",
   },
@@ -107,13 +108,20 @@ function updateComponent(id, updates) {
 // ---- API Pública ----
 
 export function getConfig() {
-  return { ...deployState.config, ocpToken: deployState.config.ocpToken ? "***" : "" };
+  return {
+    ...deployState.config,
+    ocpToken: deployState.config.ocpToken ? "***" : "",
+    openaiApiKey: deployState.config.openaiApiKey ? "***" : "",
+  };
 }
 
 export function setConfig(config) {
-  // Não sobreescrever o token se vier mascarado ou vazio
+  // Não sobreescrever segredos se vierem mascarados ou vazios
   if (!config.ocpToken || config.ocpToken === "***") {
     delete config.ocpToken;
+  }
+  if (!config.openaiApiKey || config.openaiApiKey === "***") {
+    delete config.openaiApiKey;
   }
   Object.assign(deployState.config, config);
   broadcast({ type: "config-update", data: getConfig() });
@@ -207,7 +215,8 @@ export async function deployComponent(componentId) {
               key: ev.key,
               value: ev.value
                 .replace("{{ocp_api_url}}", ocpApiUrl)
-                .replace("{{sa_token}}", deployState.config.saToken || ocpToken),
+                .replace("{{sa_token}}", deployState.config.saToken || ocpToken)
+                .replace("{{openai_api_key}}", deployState.config.openaiApiKey || ""),
             }));
           }
 
@@ -259,7 +268,8 @@ export async function deployComponent(componentId) {
             key: ev.key,
             value: ev.value
               .replace("{{ocp_api_url}}", ocpApiUrl)
-              .replace("{{sa_token}}", deployState.config.saToken || ocpToken),
+              .replace("{{sa_token}}", deployState.config.saToken || ocpToken)
+              .replace("{{openai_api_key}}", deployState.config.openaiApiKey || ""),
           }));
         }
 

@@ -595,6 +595,10 @@
             <label>Git Repo URL</label>
             <input type="text" id="gitRepoUrl" placeholder="https://github.com/usuario/bbdw-2025.git">
           </div>
+          <div class="form-group">
+            <label>OpenAI API Key</label>
+            <input type="password" id="openaiApiKey" placeholder="sk-...">
+          </div>
         </div>
         <p style="font-size: 11px; color: var(--text-muted); margin-top: 10px;">Cada componente será deployado no seu próprio namespace (ex: mcp-server-matriculas → namespace mcp-server-matriculas)</p>
         <div style="margin-top: 14px; display: flex; gap: 10px;">
@@ -692,6 +696,11 @@
           tokenInput.value = '';
           tokenInput.placeholder = '🔒 Token salvo (deixe vazio para manter)';
         }
+        const openaiInput = document.getElementById('openaiApiKey');
+        if (state.config.openaiApiKey === '***') {
+          openaiInput.value = '';
+          openaiInput.placeholder = '🔒 Key salva (deixe vazio para manter)';
+        }
       }
     } catch (e) {
       showToast('Erro ao carregar estado', 'error');
@@ -713,6 +722,7 @@
       ocpApiUrl: document.getElementById('ocpApiUrl').value,
       ocpToken: document.getElementById('ocpToken').value,
       gitRepoUrl: document.getElementById('gitRepoUrl').value,
+      openaiApiKey: document.getElementById('openaiApiKey').value,
     };
     try {
       await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
