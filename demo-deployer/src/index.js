@@ -20,6 +20,7 @@ import {
   deployAll,
   refreshStatus,
   cleanup,
+  cleanupComponent,
   refreshTokens,
   getComponentState,
   getJob,
@@ -111,10 +112,20 @@ if (process.argv.includes("--stdio")) {
     res.json(result);
   });
 
-  // Cleanup
+  // Cleanup total
   app.post("/api/cleanup", async (req, res) => {
     try {
       const result = await cleanup();
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Cleanup individual
+  app.post("/api/cleanup/:id", async (req, res) => {
+    try {
+      const result = await cleanupComponent(req.params.id);
       res.json(result);
     } catch (e) {
       res.status(500).json({ error: e.message });

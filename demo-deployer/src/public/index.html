@@ -626,6 +626,29 @@
 
   let cleanupRunning = false;
 
+  async function cleanupOne(compId, compName) {
+    if (!confirm(`⚠️ Remover "${compName}" e seu namespace? Continuar?`)) return;
+    cleanupRunning = true;
+    showModal(`🗑️ Removendo ${compName}...`, `Excluindo namespace e recursos de ${compName}...`);
+    try {
+      const res = await fetch(`/api/cleanup/${compId}`, { method: 'POST' });
+      const data = await res.json();
+      if (!cleanupRunning) return;
+      cleanupRunning = false;
+      hideModal();
+      if (data.success) {
+        showToast(`${compName} removido com sucesso!`, 'success');
+      } else {
+        showToast(`Falha ao remover ${compName}: ${data.output || ''}`, 'error');
+      }
+      await fetchState();
+    } catch (e) {
+      cleanupRunning = false;
+      hideModal();
+      showToast(`Erro ao remover ${compName}`, 'error');
+    }
+  }
+
   async function cleanupAll() {
     if (!confirm('⚠️ ATENÇÃO: Isso vai remover TODOS os recursos e namespaces da demo. Continuar?')) return;
     cleanupRunning = true;
@@ -796,6 +819,7 @@
                         ${isDeploying ? 'disabled' : ''}>
                   ${isDeploying ? '⏳ ...' : '▶ Deploy'}
                 </button>
+                ${isDeployed || cs.status === 'failed' ? `<button class="btn btn-sm btn-danger" onclick="cleanupOne('${comp.id}', '${comp.name}')" title="Remover este componente">🗑️</button>` : ''}
                 <button class="btn btn-sm" onclick="showDetail('${comp.id}')">📋</button>
               </div>
             </div>

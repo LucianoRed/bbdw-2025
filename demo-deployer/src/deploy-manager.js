@@ -487,6 +487,59 @@ export async function cleanup() {
   return { success: failed.length === 0, output: summary, details: results };
 }
 
+/**
+ * Limpa um componente individual (exclui o namespace).
+ */
+export async function cleanupComponent(componentId) {
+  const { ocpApiUrl, ocpToken } = deployState.config;
+  if (!ocpApiUrl || !ocpToken) throw new Error("OCP não configurado");
+
+  const compDef = COMPONENTS.find((c) => c.id === componentId);
+  if (!compDef) throw new Error(`Componente não encontrado: ${componentId}`);
+
+  const ns = compDef.namespace || compDef.id;
+  let allOutput = "";
+
+  const onOutput = (line) => {
+    allOutput += line;
+    broadcast({ type: "cleanup-output", data: line });
+  };
+
+  onOutput(`\n🗑️ Limpando componente: ${compDef.name} (namespace: ${ns})...\n`);
+
+  const result = await runPlaybook("cleanup.yml", {
+    ocp_api_url: ocpApiUrl,
+    ocp_token: ocpToken,
+    namespace: ns,
+  }, onOutput);
+
+  if (result.success) {
+    onOutput(`✅ Namespace "${ns}" excluído com sucesso\n`);
+  } else {
+    onOutput(`⚠️ Falha ao excluir namespace "${ns}" (exit code: ${result.exitCode})\n`);
+  }
+
+  // Reset estado do componente
+  updateComponent(componentId, {
+    status: "not-deployed",
+    route: null,
+    namespace: null,
+    logs: "",
+    startedAt: null,
+    finishedAt: null,
+    error: null,
+  });
+
+  // Se é o agent-ai, limpa o saToken também
+  if (componentId === "agent-ai") {
+    delete deployState.config.saToken;
+  }
+  saveState();
+
+  broadcast({ type: "cleanup-complete", success: result.success, summary: `${compDef.name} removido` });
+  return { success: result.success, output: `Cleanup de ${compDef.name} (${ns}): ${result.success ? 'OK' : 'falhou'}` };
+}
+
 export function getJob(jobId) {
   return deployState.jobs[jobId] || null;
 }
