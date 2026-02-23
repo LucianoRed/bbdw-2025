@@ -862,11 +862,29 @@
   // ---- Ofertas ----
   async function deployCurrentOferta() {
     if (!currentOferta) return;
+
+    // Verifica credenciais antes de mostrar o confirm
+    if (!state.config.ocpApiUrl || !state.config.ocpToken) {
+      const missing = !state.config.ocpApiUrl && !state.config.ocpToken
+        ? 'OCP API URL e Token'
+        : !state.config.ocpApiUrl ? 'OCP API URL' : 'OCP Token';
+      showToast('⚠️ ' + missing + ' não configurado(s). Acesse ⚙️ Configurações.', 'error');
+      switchTab('config');
+      return;
+    }
+
     if (!confirm('Deployar a oferta "' + currentOferta.name + '" com ' + currentOferta.componentIds.length + ' componentes?')) return;
     ofertaDeployRunning = true;
     showModal('🚀 Deployando ' + currentOferta.name + '...', 'Deployando todos os componentes da oferta em sequência...', '🚀');
     try {
-      await fetch('/api/ofertas/' + currentOferta.id + '/deploy', { method: 'POST' });
+      const res = await fetch('/api/ofertas/' + currentOferta.id + '/deploy', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        hideModal();
+        ofertaDeployRunning = false;
+        showToast('❌ ' + (data.error || 'Erro ao iniciar deploy da oferta'), 'error');
+        return;
+      }
     } catch (e) {
       hideModal();
       ofertaDeployRunning = false;
@@ -1145,6 +1163,14 @@
         break;
 
       case 'oferta-start':
+        break;
+
+      case 'oferta-error':
+        if (ofertaDeployRunning) {
+          hideModal();
+          ofertaDeployRunning = false;
+        }
+        showToast('\u274c Erro no deploy da oferta: ' + event.error, 'error');
         break;
 
       case 'oferta-complete':

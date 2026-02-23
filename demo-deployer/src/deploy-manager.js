@@ -107,6 +107,29 @@ function updateComponent(id, updates) {
 
 // ---- API Pública ----
 
+/**
+ * Valida se as credenciais OCP estão configuradas.
+ * Lança erro descritivo se não estiverem.
+ */
+export function validateCredentials() {
+  const { ocpApiUrl, ocpToken } = deployState.config;
+  if (!ocpApiUrl && !ocpToken) {
+    throw new Error(
+      "OCP API URL e Token não configurados. Acesse a aba ⚙️ Configurações e preencha as credenciais antes de deployar."
+    );
+  }
+  if (!ocpApiUrl) {
+    throw new Error(
+      "OCP API URL não configurado. Acesse a aba ⚙️ Configurações e informe a URL da API do cluster."
+    );
+  }
+  if (!ocpToken) {
+    throw new Error(
+      "OCP Token não configurado. Acesse a aba ⚙️ Configurações e informe o token de acesso ao cluster."
+    );
+  }
+}
+
 export function getConfig() {
   return {
     ...deployState.config,
@@ -321,6 +344,16 @@ export async function deployComponent(componentId) {
  * Deploy de todos os componentes em ordem.
  */
 export async function deployAll() {
+  // Validação antecipada de credenciais
+  const { ocpApiUrl, ocpToken } = deployState.config;
+  if (!ocpApiUrl || !ocpToken) {
+    const errMsg = "OCP API URL e/ou Token não configurados. Acesse ⚙️ Configurações antes de deployar.";
+    console.error(`[deployAll] ❌ ${errMsg}`);
+    broadcast({ type: "deploy-all-stopped", reason: errMsg });
+    throw new Error(errMsg);
+  }
+  console.log(`[deployAll] ▶ Iniciando deploy completo (${COMPONENTS.length} componentes)`);
+
   const sorted = [...COMPONENTS].sort((a, b) => a.order - b.order);
   const results = [];
 
@@ -592,6 +625,25 @@ export async function deployOferta(ofertaId) {
   const oferta = OFERTAS.find((o) => o.id === ofertaId);
   if (!oferta) throw new Error(`Oferta desconhecida: ${ofertaId}`);
 
+  // Validação antecipada de credenciais — falha rápido com mensagem clara
+  const { ocpApiUrl, ocpToken } = deployState.config;
+  if (!ocpApiUrl || !ocpToken) {
+    const errMsg = !ocpApiUrl && !ocpToken
+      ? "OCP API URL e Token não configurados. Acesse ⚙️ Configurações antes de deployar."
+      : !ocpApiUrl
+        ? "OCP API URL não configurado. Acesse ⚙️ Configurações."
+        : "OCP Token não configurado. Acesse ⚙️ Configurações.";
+    console.error(`[deployOferta:${ofertaId}] ❌ Credenciais ausentes — ${errMsg}`);
+    console.error(`[deployOferta:${ofertaId}]    ocpApiUrl: ${ocpApiUrl ? '✓ configurado' : '✗ AUSENTE'}`);
+    console.error(`[deployOferta:${ofertaId}]    ocpToken:  ${ocpToken  ? '✓ configurado' : '✗ AUSENTE'}`);
+    broadcast({ type: "oferta-error", ofertaId, error: errMsg });
+    throw new Error(errMsg);
+  }
+
+  console.log(`[deployOferta:${ofertaId}] ▶ Iniciando deploy da oferta "${oferta.name}" (${oferta.componentIds.length} componentes)`);
+  console.log(`[deployOferta:${ofertaId}]   OCP API URL: ${ocpApiUrl}`);
+  console.log(`[deployOferta:${ofertaId}]   Token: ***${ocpToken.slice(-6)}`);
+
   const sorted = oferta.componentIds
     .map((cid) => COMPONENTS.find((c) => c.id === cid))
     .filter(Boolean)
@@ -601,15 +653,26 @@ export async function deployOferta(ofertaId) {
   const results = [];
 
   for (const comp of sorted) {
-    const job = await deployComponent(comp.id);
+    console.log(`[deployOferta:${ofertaId}] ▸ Deployando componente: ${comp.name} (${comp.id})`);
+    let job;
+    try {
+      job = await deployComponent(comp.id);
+    } catch (err) {
+      console.error(`[deployOferta:${ofertaId}] ❌ Erro ao iniciar deploy de "${comp.name}": ${err.message}`);
+      broadcast({ type: "oferta-stopped", ofertaId, reason: `Erro ao iniciar "${comp.name}": ${err.message}` });
+      broadcast({ type: "oferta-error", ofertaId, error: err.message });
+      return results;
+    }
     await waitForJob(job.jobId);
     results.push({ componentId: comp.id, jobId: job.jobId });
 
     const jobState = deployState.jobs[job.jobId];
     if (jobState && jobState.status === "failed") {
+      console.error(`[deployOferta:${ofertaId}] ❌ Componente "${comp.name}" falhou. Interrompendo oferta.`);
       broadcast({ type: "oferta-stopped", ofertaId, reason: `Falha no componente: ${comp.name}` });
       return results;
     }
+    console.log(`[deployOferta:${ofertaId}] ✅ Componente "${comp.name}" concluído.`);
   }
 
   broadcast({ type: "oferta-complete", ofertaId, total: results.length });

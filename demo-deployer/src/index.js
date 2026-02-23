@@ -28,6 +28,7 @@ import {
   cleanupOferta,
   addWsListener,
   removeWsListener,
+  validateCredentials,
 } from "./deploy-manager.js";
 import { COMPONENTS, CATEGORIES, OFERTAS } from "./config.js";
 import { setupMcpSseEndpoints, startStdioTransport } from "./mcp-server.js";
@@ -100,6 +101,7 @@ if (process.argv.includes("--stdio")) {
 
   app.post("/api/deploy-all", async (req, res) => {
     try {
+      validateCredentials(); // lança erro síncrono se credenciais ausentes
       // Inicia em background
       deployAll().catch((e) => console.error("deploy-all error:", e));
       res.json({ message: "Deploy completo iniciado" });
@@ -156,9 +158,13 @@ if (process.argv.includes("--stdio")) {
 
   app.post("/api/ofertas/:id/deploy", async (req, res) => {
     try {
-      deployOferta(req.params.id).catch((e) => console.error("deploy-oferta error:", e));
+      validateCredentials(); // lança erro síncrono se credenciais ausentes
+      deployOferta(req.params.id).catch((e) => {
+        console.error(`[route:/api/ofertas/${req.params.id}/deploy] Erro em background: ${e.message}`);
+      });
       res.json({ message: `Deploy da oferta '${req.params.id}' iniciado` });
     } catch (e) {
+      console.error(`[route:/api/ofertas/${req.params.id}/deploy] ❌ ${e.message}`);
       res.status(400).json({ error: e.message });
     }
   });
