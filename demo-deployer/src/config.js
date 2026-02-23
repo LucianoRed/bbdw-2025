@@ -122,6 +122,18 @@ export const COMPONENTS = [
     contextDir: "mcp-inspector",
     port: 6274,
   },
+  {
+    id: "sei",
+    name: "SEI",
+    description: "Sistema Eletrônico de Informações - gestão de processos e documentos oficiais",
+    icon: "https://www.gov.br/pt-br/apps/sei/@@images/imagem/mini",
+    category: "gov",
+    order: 8,
+    namespace: "sei",
+    playbook: "deploy-component.yml",
+    appImage: "quay.io/ricardi/sei-installer",
+    port: 80,
+  },
 ];
 
 export const CATEGORIES = {
@@ -129,6 +141,7 @@ export const CATEGORIES = {
   mcp: { label: "MCP Servers", color: "#9C27B0" },
   demo: { label: "Demo", color: "#FF9800" },
   core: { label: "Core", color: "#4CAF50" },
+  gov: { label: "Governo", color: "#1976D2" },
 };
 
 // ============================================================
@@ -143,7 +156,7 @@ export const OFERTAS = [
     icon: "🏛️",
     color: "#1976D2",    // System prompt que será aplicado automaticamente no agent-ai ao abrir esta oferta
     systemPrompt: "Você é um agente de governo que faz algumas ações, algumas informando e outras agindo, como o caso de matrículas e dados de saúde quando está conectado com MCP server. Você deve evitar, respeitosamente, que responda coisas não relacionadas ao governo. Coisas básicas como horário e coisas que estão no RAG, você pode responder.",    // Componentes que fazem parte desta oferta (devem existir em COMPONENTS)
-    componentIds: ["agent-ai", "mcp-inspector", "mcp-server-matriculas", "mcp-server-saude"],
+    componentIds: ["agent-ai", "mcp-inspector", "mcp-server-matriculas", "mcp-server-saude", "sei"],
     // Nodos na topologia (centro + satélites)
     topology: {
       center: { label: "Governo", icon: "🏛️", color: "#1976D2" },
@@ -152,6 +165,7 @@ export const OFERTAS = [
         { componentId: "mcp-inspector",         label: "MCP Inspector", icon: "🔍", color: "#FF9800" },
         { componentId: "mcp-server-matriculas", label: "Matrículas",  icon: "🎓", color: "#9C27B0" },
         { componentId: "mcp-server-saude",      label: "Saúde",       icon: "🏥", color: "#E91E63" },
+        { componentId: "sei",                   label: "SEI",         icon: "https://www.gov.br/pt-br/apps/sei/@@images/imagem/mini", color: "#1976D2" },
       ],
     },
   },

@@ -286,6 +286,11 @@ export async function deployComponent(componentId) {
           extraVars.context_dir = compDef.contextDir;
         }
 
+        // Deploy a partir de imagem externa (sem build)
+        if (compDef.appImage) {
+          extraVars.app_name = compDef.id;
+          extraVars.app_image = compDef.appImage;
+        }
         if (compDef.envVars) {
           extraVars.env_vars = compDef.envVars.map((ev) => ({
             key: ev.key,

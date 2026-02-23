@@ -1,11 +1,30 @@
 ---
-# Role: deploy-app — deploy genérico de uma app a partir de Dockerfile no Git
+# Role: deploy-app — deploy genérico de uma app: a partir de Dockerfile no Git ou de imagem externa
+
+# ---- Verificação de existência ----
 - name: "Verificar se BuildConfig {{ app_name }} já existe"
   command: "oc get bc {{ app_name }} -n {{ namespace }}"
   register: bc_check
   failed_when: false
   changed_when: false
 
+- name: "Verificar se Deployment {{ app_name }} já existe"
+  command: "oc get deploy {{ app_name }} -n {{ namespace }}"
+  register: deploy_check
+  failed_when: false
+  changed_when: false
+
+# ---- Deploy a partir de imagem externa (app_image definido) ----
+- name: "Criar Deployment para {{ app_name }} a partir de imagem {{ app_image }}"
+  command: >
+    oc new-app
+    --name={{ app_name }}
+    --image={{ app_image }}
+    -n {{ namespace }}
+  when: app_image is defined and deploy_check.rc != 0
+  register: new_app_image_result
+
+# ---- Deploy a partir de Dockerfile no Git (comportamento padrão) ----
 - name: "Criar BuildConfig + ImageStream + Deployment para {{ app_name }}"
   command: >
     oc new-app
@@ -14,12 +33,12 @@
     --context-dir={{ context_dir | default(app_name) }}
     {{ git_repo_url }}
     -n {{ namespace }}
-  when: bc_check.rc != 0
+  when: app_image is not defined and bc_check.rc != 0
   register: new_app_result
 
 - name: "Aguardar build {{ app_name }}"
   command: "oc logs -f bc/{{ app_name }} -n {{ namespace }}"
-  when: bc_check.rc != 0
+  when: app_image is not defined and bc_check.rc != 0
   changed_when: false
   failed_when: false
 
@@ -31,12 +50,12 @@
   retries: 60
   delay: 10
   until: build_phase.stdout in ['Complete', 'Failed', 'Error', 'Cancelled']
-  when: bc_check.rc != 0
+  when: app_image is not defined and bc_check.rc != 0
 
 - name: "Build falhou — exibir erro"
   fail:
     msg: "Build do {{ app_name }} falhou com status: {{ build_phase.stdout | default('Unknown') }}"
-  when: bc_check.rc != 0 and build_phase.stdout | default('') not in ['Complete', '']
+  when: app_image is not defined and bc_check.rc != 0 and build_phase.stdout | default('') not in ['Complete', '']
 
 - name: "Detectar tipo de recurso (Deployment ou DeploymentConfig)"
   shell: "oc get deploy {{ app_name }} -n {{ namespace }} -o name 2>/dev/null || oc get dc {{ app_name }} -n {{ namespace }} -o name 2>/dev/null"

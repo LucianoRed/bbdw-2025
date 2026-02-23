@@ -679,6 +679,24 @@
   let deployAllRunning = false;
   let ofertaDeployRunning = false;
 
+  // ---- Helpers de ícone ----
+  // Retorna HTML (para uso em elementos HTML normais)
+  function iconHtml(icon, style) {
+    if (icon && (icon.startsWith('http://') || icon.startsWith('https://'))) {
+      return '<img src="' + icon + '" style="width:1.3em;height:1.3em;vertical-align:middle;object-fit:contain;border-radius:3px;' + (style || '') + '">';
+    }
+    return icon || '';
+  }
+  // Retorna SVG markup para uso dentro de <svg>
+  function iconSvg(icon, x, y, size) {
+    size = size || 28;
+    if (icon && (icon.startsWith('http://') || icon.startsWith('https://'))) {
+      var half = size / 2;
+      return '<image href="' + icon + '" x="' + (x - half) + '" y="' + (y - size) + '" width="' + size + '" height="' + size + '" />';
+    }
+    return '<text x="' + x + '" y="' + (y - 6) + '" text-anchor="middle" font-size="24">' + (icon || '') + '</text>';
+  }
+
   // ---- Init ----
   window.addEventListener('load', async () => {
     await fetchState();
@@ -976,7 +994,7 @@
         + '<div class="oferta-name">' + o.name + '</div>'
         + '<div class="oferta-desc">' + o.description + '</div>'
         + '<div class="oferta-components">'
-        + o.topology.nodes.map(n => '<span class="oferta-comp-tag">' + n.icon + ' ' + n.label + '</span>').join('')
+        + o.topology.nodes.map(n => '<span class="oferta-comp-tag">' + iconHtml(n.icon) + ' ' + n.label + '</span>').join('')
         + '</div>'
         + '</div>';
     }).join('');
@@ -1074,7 +1092,7 @@
       var dotColor = isDeployed ? '#3fb950' : isFailed ? '#f85149' : isDeploying ? '#d29922' : '#555';
       html += '<circle cx="' + (p.x + 30) + '" cy="' + (p.y - 30) + '" r="6" fill="' + dotColor + '" stroke="#0d1117" stroke-width="2"/>';
 
-      html += '<text x="' + p.x + '" y="' + (p.y - 6) + '" text-anchor="middle" font-size="24">' + p.node.icon + '</text>';
+      html += iconSvg(p.node.icon, p.x, p.y);
       html += '<text x="' + p.x + '" y="' + (p.y + 16) + '" text-anchor="middle" fill="' + p.node.color + '"'
         + ' font-size="11" font-weight="600" font-family="-apple-system, sans-serif">' + p.node.label + '</text>';
 
@@ -1112,7 +1130,7 @@
         : '';
 
       return '<div class="topo-status-item">'
-        + '<span class="topo-status-icon">' + node.icon + '</span>'
+        + '<span class="topo-status-icon">' + iconHtml(node.icon) + '</span>'
         + '<div class="topo-status-info">'
         + '<div class="topo-status-name">' + node.label + '</div>'
         + '<div class="topo-status-state"><span class="badge badge-' + statusClass + '">' + formatStatus(cs.status) + '</span></div>'
@@ -1317,7 +1335,7 @@
 
         return '<div class="card" data-id="' + comp.id + '">'
           + '<div class="card-header">'
-          + '<span class="card-icon">' + comp.icon + '</span>'
+          + '<span class="card-icon">' + iconHtml(comp.icon, 'width:2em;height:2em;') + '</span>'
           + '<div>'
           + '<div class="card-title">' + comp.name + '</div>'
           + '<span class="card-category cat-' + comp.category + '">' + comp.category + '</span>'
@@ -1363,7 +1381,7 @@
           : '';
 
         return '<div class="detail-card">'
-          + '<h4>' + comp.icon + ' ' + comp.name + ' <span class="badge badge-' + cs.status.replace(' ','-') + '" style="font-size:10px;">' + formatStatus(cs.status) + '</span></h4>'
+          + '<h4>' + iconHtml(comp.icon) + ' ' + comp.name + ' <span class="badge badge-' + cs.status.replace(' ','-') + '" style="font-size:10px;">' + formatStatus(cs.status) + '</span></h4>'
           + '<div class="info-row"><span class="info-label">ID:</span><span class="info-value">' + comp.id + '</span></div>'
           + '<div class="info-row"><span class="info-label">Namespace:</span><span class="info-value">' + (comp.namespace || comp.id) + '</span></div>'
           + '<div class="info-row"><span class="info-label">Categoria:</span><span class="info-value">' + comp.category + '</span></div>'
