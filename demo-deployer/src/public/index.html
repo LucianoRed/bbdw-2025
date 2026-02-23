@@ -466,6 +466,12 @@
     }
     .topo-status-route:hover { text-decoration: underline; }
 
+    /* Nós de topologia clicáveis */
+    .topo-node { cursor: pointer; transition: opacity 0.15s; }
+    .topo-node:hover { opacity: 0.82; }
+    .topo-node-deployed { cursor: pointer; }
+    .topo-node-deployed:hover { opacity: 0.78; }
+
     @media (max-width: 768px) {
       .config-grid { grid-template-columns: 1fr; }
       .components-grid { grid-template-columns: 1fr; }
@@ -1001,6 +1007,7 @@
 
     // Nós satélite
     positions.forEach(function(p) {
+      var compDef = (state.definitions || []).find(function(c) { return c.id === p.node.componentId; }) || {};
       var compState = state.components[p.node.componentId] || {};
       var status = compState.status || 'not-deployed';
       var isDeployed = status === 'deployed';
@@ -1009,6 +1016,17 @@
 
       var ringColor = isDeployed ? '#3fb950' : isFailed ? '#f85149' : isDeploying ? '#d29922' : '#30363d';
       var bgOpacity = isDeployed ? '0.2' : '0.1';
+      var nodeClass = isDeployed ? 'topo-node topo-node-deployed' : 'topo-node';
+
+      // Tooltip nativo: descrição do componente + status
+      var shortDesc = compDef.description || '';
+      var tooltipText = p.node.label + ' — ' + formatStatus(status)
+        + (shortDesc ? '\n' + shortDesc : '')
+        + (isDeployed && compState.route ? '\n🔗 ' + compState.route : '')
+        + (isDeployed ? '\n\nClique para abrir detalhes' : '');
+
+      html += '<g class="' + nodeClass + '" onclick="showDetail(\'' + p.node.componentId + '\')">';
+      html += '<title>' + tooltipText.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</title>';
 
       html += '<circle cx="' + p.x + '" cy="' + p.y + '" r="44" fill="' + p.node.color + '" fill-opacity="' + bgOpacity + '"'
         + ' stroke="' + ringColor + '" stroke-width="2" filter="url(#shadow)"/>';
@@ -1029,6 +1047,14 @@
       html += '<text x="' + p.x + '" y="' + (p.y - 6) + '" text-anchor="middle" font-size="24">' + p.node.icon + '</text>';
       html += '<text x="' + p.x + '" y="' + (p.y + 16) + '" text-anchor="middle" fill="' + p.node.color + '"'
         + ' font-size="11" font-weight="600" font-family="-apple-system, sans-serif">' + p.node.label + '</text>';
+
+      // Indicador visual "clique" para nós deployados
+      if (isDeployed) {
+        html += '<text x="' + p.x + '" y="' + (p.y + 30) + '" text-anchor="middle" font-size="9"'
+          + ' fill="#3fb950" font-family="-apple-system, sans-serif" opacity="0.85">🔗 detalhes</text>';
+      }
+
+      html += '</g>';
     });
 
     svg.innerHTML = html;
