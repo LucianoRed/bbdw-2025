@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import com.redhat.mcp.McpCallEvent;
 import com.redhat.mcp.McpEventService;
 import com.redhat.orchestrator.OrchestratorService;
+import com.redhat.systemprompt.SystemPromptService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -69,6 +70,9 @@ public class ChatResource {
     @Inject
     McpEventService mcpEventService;
 
+    @Inject
+    SystemPromptService systemPromptService;
+
     /**
      * Endpoint tradicional que retorna a resposta completa
      */
@@ -89,6 +93,15 @@ public class ChatResource {
         boolean useRag = request.useRag() != null ? request.useRag() : false;
         boolean useOrchestrator = request.useOrchestrator() != null ? request.useOrchestrator() : false;
         String modelName = request.model() != null ? request.model() : "gpt4o-mini";
+
+        // Injeta o system prompt customizado como prefixo na mensagem do usuário
+        String effectiveMessage = systemPromptService.hasCustomPrompt()
+            ? systemPromptService.buildContextPrefix() + request.message()
+            : request.message();
+        if (systemPromptService.hasCustomPrompt()) {
+            Log.debugf("[SystemPrompt] Prompt customizado injetado (%d chars) na mensagem.",
+                       systemPromptService.getCustomPrompt().length());
+        }
         
         // Se MCP está ativo, registra o requestId no serviço de eventos
         if (useMcp) {
@@ -102,10 +115,10 @@ public class ChatResource {
             // Se orquestração está ativa, usa o OrchestratorService
             if (useOrchestrator) {
                 Log.info("🎯 Modo orquestração ativado - delegando para OrchestratorService");
-                result = orchestratorService.processMessage(memoryId, request.message(), modelName);
+                result = orchestratorService.processMessage(memoryId, effectiveMessage, modelName);
             } else {
                 // Modo tradicional: seleciona o agente baseado no modelo
-                result = routeMessage(modelName, memoryId, request.message(), useMcp, useRag);
+                result = routeMessage(modelName, memoryId, effectiveMessage, useMcp, useRag);
             }
             
             // Retorna com o requestId no header

@@ -1380,6 +1380,36 @@
             </div>
 
             <div class="feature-section">
+                <div class="feature-title" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span>System Prompt</span>
+                    <span id="system-prompt-badge" style="display:none;font-size:10px;padding:2px 7px;border-radius:10px;background:#22c55e22;color:#22c55e;border:1px solid #22c55e44;font-weight:600;">ativo</span>
+                </div>
+                <textarea
+                    id="system-prompt-input"
+                    class="form-input"
+                    rows="6"
+                    placeholder="Deixe vazio para usar o prompt padrão dos agentes..."
+                    style="width:100%;resize:vertical;font-size:12px;line-height:1.5;font-family:inherit;"
+                ></textarea>
+                <div style="display:flex;gap:6px;margin-top:8px;">
+                    <button
+                        onclick="saveSystemPrompt()"
+                        style="flex:1;padding:8px;background:var(--primary-color);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:opacity 0.2s;"
+                        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                        💾 Salvar
+                    </button>
+                    <button
+                        onclick="clearSystemPrompt()"
+                        title="Remover prompt customizado"
+                        style="padding:8px 10px;background:var(--bg-tertiary);color:var(--danger);border:1px solid var(--border-color);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:opacity 0.2s;"
+                        onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+                        🗑️
+                    </button>
+                </div>
+                <div id="system-prompt-status" style="font-size:11px;color:var(--text-secondary);margin-top:6px;min-height:16px;"></div>
+            </div>
+
+            <div class="feature-section">
                 <div class="feature-title">Ações</div>
                 <div class="tooltip-container" style="width: 100%;">
                     <button id="compact-button" class="feature-item" onclick="forceCompaction()" style="width: 100%; padding: 12px 16px; cursor: pointer; border: none; font-family: inherit; color: var(--text-primary);">
@@ -3603,12 +3633,84 @@
 
         // Carregar histórico ao iniciar
         loadHistory();
+
+        // Carregar system prompt ao iniciar
+        loadSystemPrompt();
         
         // Atualiza status do botão de compactar ao carregar
         updateCompactButtonStatus();
 
         // Foca no input ao carregar
         messageInput.focus();
+
+        // ---- System Prompt ----
+
+        async function loadSystemPrompt() {
+            try {
+                const res = await fetch('/admin/system-prompt');
+                const data = await res.json();
+                const input = document.getElementById('system-prompt-input');
+                const badge = document.getElementById('system-prompt-badge');
+                const status = document.getElementById('system-prompt-status');
+                if (data.active && data.prompt) {
+                    input.value = data.prompt;
+                    badge.style.display = 'inline';
+                    status.textContent = '✅ Prompt customizado ativo';
+                    status.style.color = '#22c55e';
+                } else {
+                    input.value = '';
+                    badge.style.display = 'none';
+                    status.textContent = 'Usando prompt padrão dos agentes';
+                    status.style.color = 'var(--text-secondary)';
+                    if (data.defaultPrompt) {
+                        input.placeholder = data.defaultPrompt;
+                    }
+                }
+            } catch (e) {
+                console.error('Erro ao carregar system prompt:', e);
+            }
+        }
+
+        async function saveSystemPrompt() {
+            const prompt = document.getElementById('system-prompt-input').value.trim();
+            const status = document.getElementById('system-prompt-status');
+            try {
+                const res = await fetch('/admin/system-prompt', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+                const data = await res.json();
+                const badge = document.getElementById('system-prompt-badge');
+                if (data.active) {
+                    badge.style.display = 'inline';
+                    status.textContent = '✅ Prompt salvo e ativo!';
+                    status.style.color = '#22c55e';
+                } else {
+                    badge.style.display = 'none';
+                    status.textContent = 'Prompt removido — usando padrão';
+                    status.style.color = 'var(--text-secondary)';
+                }
+                setTimeout(() => loadSystemPrompt(), 1500);
+            } catch (e) {
+                status.textContent = '❌ Erro ao salvar: ' + e.message;
+                status.style.color = 'var(--danger)';
+            }
+        }
+
+        async function clearSystemPrompt() {
+            const status = document.getElementById('system-prompt-status');
+            try {
+                await fetch('/admin/system-prompt', { method: 'DELETE' });
+                document.getElementById('system-prompt-input').value = '';
+                document.getElementById('system-prompt-badge').style.display = 'none';
+                status.textContent = '🔄 Prompt removido — usando padrão dos agentes';
+                status.style.color = 'var(--text-secondary)';
+            } catch (e) {
+                status.textContent = '❌ Erro: ' + e.message;
+                status.style.color = 'var(--danger)';
+            }
+        }
     </script>
 </body>
 </html>
