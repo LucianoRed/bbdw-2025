@@ -260,8 +260,8 @@ export async function deployComponent(componentId) {
 
           if (!stepResult.success) {
             // Steps de infraestrutura (Redis, RBAC) não devem abortar o fluxo
-            // Só o step principal (com contextDir) é crítico
-            if (step.contextDir) {
+            // Só o step principal (com contextDir ou critical:true) é crítico
+            if (step.contextDir || step.critical) {
               finalResult.success = false;
               onOutput(`\n❌ Etapa "${step.name}" falhou!\n`);
               break;

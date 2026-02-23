@@ -1,0 +1,18 @@
+---
+# Playbook: attach-pvc.yml
+# Cria um PVC e monta no deployment de um componente
+# Params: ocp_api_url, ocp_token, namespace, app_name, pvc_name, pvc_size, pvc_mount_path
+- name: "Attach PVC {{ pvc_name }} em {{ app_name }}"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    namespace: "{{ namespace | default('default') }}"
+  roles:
+    - common
+    - attach-pvc
+  post_tasks:
+    - name: "Resultado do attach-pvc"
+      debug:
+        msg: "{{ pvc_result | to_json }}"
+      tags: [result]

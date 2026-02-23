@@ -123,16 +123,38 @@ export const COMPONENTS = [
     port: 6274,
   },
   {
-    id: "sei",
+    id: "sei-installer",
     name: "SEI",
     description: "Sistema Eletrônico de Informações - gestão de processos e documentos oficiais",
     icon: "https://www.gov.br/pt-br/apps/sei/@@images/imagem/mini",
     category: "gov",
     order: 8,
-    namespace: "sei",
+    namespace: "sei-installer",
     playbook: "deploy-component.yml",
-    appImage: "quay.io/ricardi/sei-installer",
     port: 80,
+    subSteps: [
+      {
+        id: "sei-app",
+        name: "Deploy SEI (imagem)",
+        playbook: "deploy-component.yml",
+        critical: true,
+        extraVars: {
+          app_name: "sei-installer",
+          app_image: "quay.io/ricardi/sei-installer",
+        },
+      },
+      {
+        id: "sei-pvc",
+        name: "PVC /app/config (2Gi)",
+        playbook: "attach-pvc.yml",
+        extraVars: {
+          app_name: "sei-installer",
+          pvc_name: "sei-config",
+          pvc_size: "2Gi",
+          pvc_mount_path: "/app/config",
+        },
+      },
+    ],
   },
 ];
 
@@ -156,7 +178,7 @@ export const OFERTAS = [
     icon: "🏛️",
     color: "#1976D2",    // System prompt que será aplicado automaticamente no agent-ai ao abrir esta oferta
     systemPrompt: "Você é um agente de governo que faz algumas ações, algumas informando e outras agindo, como o caso de matrículas e dados de saúde quando está conectado com MCP server. Você deve evitar, respeitosamente, que responda coisas não relacionadas ao governo. Coisas básicas como horário e coisas que estão no RAG, você pode responder.",    // Componentes que fazem parte desta oferta (devem existir em COMPONENTS)
-    componentIds: ["agent-ai", "mcp-inspector", "mcp-server-matriculas", "mcp-server-saude", "sei"],
+    componentIds: ["agent-ai", "mcp-inspector", "mcp-server-matriculas", "mcp-server-saude", "sei-installer"],
     // Nodos na topologia (centro + satélites)
     topology: {
       center: { label: "Governo", icon: "🏛️", color: "#1976D2" },
@@ -165,7 +187,7 @@ export const OFERTAS = [
         { componentId: "mcp-inspector",         label: "MCP Inspector", icon: "🔍", color: "#FF9800" },
         { componentId: "mcp-server-matriculas", label: "Matrículas",  icon: "🎓", color: "#9C27B0" },
         { componentId: "mcp-server-saude",      label: "Saúde",       icon: "🏥", color: "#E91E63" },
-        { componentId: "sei",                   label: "SEI",         icon: "https://www.gov.br/pt-br/apps/sei/@@images/imagem/mini", color: "#1976D2" },
+        { componentId: "sei-installer",         label: "SEI",         icon: "https://www.gov.br/pt-br/apps/sei/@@images/imagem/mini", color: "#1976D2" },
       ],
     },
   },
