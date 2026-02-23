@@ -1070,7 +1070,7 @@
       var statusClass = cs.status.replace(' ', '-');
 
       var routeHtml = cs.route
-        ? '<a class="topo-status-route" href="http://' + cs.route + '" target="_blank">🔗 ' + cs.route + '</a>'
+        ? '<a class="topo-status-route" href="' + cs.route + '" target="_blank">🔗 ' + cs.route + '</a>'
         : '';
 
       var deployBtnClass = cs.status === 'deploying' ? 'btn btn-sm' : 'btn btn-sm btn-primary';
@@ -1270,7 +1270,7 @@
         var isDeployed = cs.status === 'deployed';
 
         var routeHtml = (isDeployed && cs.route)
-          ? '<div><a class="route-link" href="http://' + cs.route + '" target="_blank" style="font-size:11px; word-break:break-all;">🔗 ' + cs.route + '</a></div>'
+          ? '<div><a class="route-link" href="' + cs.route + '" target="_blank" style="font-size:11px; word-break:break-all;">🔗 ' + cs.route + '</a></div>'
           : '';
 
         var trashBtn = cs.status !== 'not-deployed'
@@ -1314,7 +1314,7 @@
       .map(function(comp) {
         var cs = state.components[comp.id] || { status: 'not-deployed' };
         var routeHtml = cs.route
-          ? '<div class="info-row"><span class="info-label">Rota:</span><span class="info-value"><a class="route-link" href="http://' + cs.route + '" target="_blank">' + cs.route + '</a></span></div>'
+          ? '<div class="info-row"><span class="info-label">Rota:</span><span class="info-value"><a class="route-link" href="' + cs.route + '" target="_blank">' + cs.route + '</a></span></div>'
           : '';
         var startHtml = cs.startedAt
           ? '<div class="info-row"><span class="info-label">Início:</span><span class="info-value">' + new Date(cs.startedAt).toLocaleString('pt-BR') + '</span></div>'
@@ -1356,7 +1356,7 @@
     document.getElementById('detailTitle').textContent = comp.icon + ' ' + comp.name;
 
     var routeHtml = cs.route
-      ? '<div class="detail-row"><span class="detail-label">Rota:</span><span class="detail-value"><a class="route-link" href="http://' + cs.route + '" target="_blank">' + cs.route + '</a></span></div>'
+      ? '<div class="detail-row"><span class="detail-label">Rota:</span><span class="detail-value"><a class="route-link" href="' + cs.route + '" target="_blank">' + cs.route + '</a></span></div>'
       : '';
     var portHtml = comp.port
       ? '<div class="detail-row"><span class="detail-label">Porta:</span><span class="detail-value">' + comp.port + '</span></div>'
