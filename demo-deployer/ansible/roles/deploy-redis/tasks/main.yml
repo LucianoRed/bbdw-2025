@@ -29,6 +29,42 @@
   delay: 3
   until: redis_resource.stdout | default('') | length > 0
 
+# Desabilita persistência RDB para evitar "stop-writes-on-bgsave-error" no OpenShift
+# (containers não têm permissão de escrita no diretório de trabalho por padrão)
+- name: "Configurar Redis: desabilitar persistência RDB (evita stop-writes-on-bgsave-error)"
+  shell: |
+    oc patch {{ redis_resource.stdout }} -n {{ namespace }} \
+      --type=strategic \
+      -p '{"spec":{"template":{"spec":{"containers":[{"name":"redis","args":["--save","","--stop-writes-on-bgsave-error","no"]}]}}}}'
+  when: redis_resource.stdout | default('') | length > 0
+  changed_when: true
+  failed_when: false
+  register: redis_patch
+
+- name: "Aplicar configuração Redis em pod já em execução (fix imediato)"
+  shell: |
+    POD=$(oc get pod -n {{ namespace }} -l deployment=redis --field-selector=status.phase=Running \
+          -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    if [ -z "$POD" ]; then
+      POD=$(oc get pod -n {{ namespace }} -l app=redis --field-selector=status.phase=Running \
+            -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    fi
+    if [ -n "$POD" ]; then
+      echo "Aplicando CONFIG SET no pod $POD"
+      oc exec "$POD" -n {{ namespace }} -- redis-cli CONFIG SET stop-writes-on-bgsave-error no
+      oc exec "$POD" -n {{ namespace }} -- redis-cli CONFIG SET save ""
+    else
+      echo "Nenhum pod Redis running encontrado, config será aplicada no próximo restart"
+    fi
+  register: redis_live_config
+  failed_when: false
+  changed_when: false
+
+- name: "Log da configuração aplicada em tempo real"
+  debug:
+    msg: "{{ redis_live_config.stdout_lines | default([]) }}"
+  when: redis_live_config.stdout | default('') | length > 0
+
 - name: "Aguardar Redis estar pronto"
   command: "oc rollout status {{ redis_resource.stdout }} -n {{ namespace }} --timeout=180s"
   when: redis_resource.stdout | default('') | length > 0
