@@ -141,8 +141,8 @@ export const OFERTAS = [
     name: "Demo para Governo",
     description: "Demonstração completa para o setor público: agente de IA com acesso a dados de saúde e matrículas escolares.",
     icon: "🏛️",
-    color: "#1976D2",
-    // Componentes que fazem parte desta oferta (devem existir em COMPONENTS)
+    color: "#1976D2",    // System prompt que será aplicado automaticamente no agent-ai ao abrir esta oferta
+    systemPrompt: "Você é um agente de governo que faz algumas ações, algumas informando e outras agindo, como o caso de matrículas e dados de saúde quando está conectado com MCP server. Você deve evitar, respeitosamente, que responda coisas não relacionadas ao governo. Coisas básicas como horário e coisas que estão no RAG, você pode responder.",    // Componentes que fazem parte desta oferta (devem existir em COMPONENTS)
     componentIds: ["agent-ai", "mcp-inspector", "mcp-server-matriculas", "mcp-server-saude"],
     // Nodos na topologia (centro + satélites)
     topology: {
@@ -161,6 +161,8 @@ export const OFERTAS = [
     description: "Demonstração de AIOps: agente de IA com visibilidade completa do cluster Kubernetes — métricas, segurança e troubleshooting inteligente.",
     icon: "🧠",
     color: "#00897B",
+    // System prompt null = remove qualquer prompt customizado, usa o padrão do agente (K8s/OpenShift)
+    systemPrompt: null,
     componentIds: ["agent-ai", "mcp-inspector", "mcp-server-k8s-live", "mcp-server-k8s-security"],
     topology: {
       center: { label: "AIOps", icon: "🧠", color: "#00897B" },

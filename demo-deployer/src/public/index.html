@@ -929,12 +929,42 @@
     document.getElementById('topoTitle').textContent = currentOferta.icon + ' ' + currentOferta.name;
     renderTopology();
     renderTopologyStatus();
+    // Aplica o system prompt correspondente à oferta no agent-ai (se já estiver deployado)
+    applyOfertaSystemPrompt(currentOferta);
   }
 
   function backToOfertas() {
     currentOferta = null;
     document.getElementById('topologyView').classList.remove('active');
     document.getElementById('ofertasList').style.display = 'block';
+  }
+
+  /**
+   * Aplica o system prompt da oferta no agent-ai via sua rota pública.
+   * Se a oferta tem systemPrompt definido → PUT; se null → DELETE (volta ao padrão).
+   * Só age se o agent-ai já estiver com status 'deployed' e tiver rota.
+   */
+  async function applyOfertaSystemPrompt(oferta) {
+    const agentState = state.components && state.components['agent-ai'];
+    if (!agentState || agentState.status !== 'deployed' || !agentState.route) return;
+
+    const agentRoute = agentState.route; // ex: https://agent-ai-agent-ai.apps.xxx
+    try {
+      if (oferta.systemPrompt) {
+        await fetch(agentRoute + '/admin/system-prompt', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: oferta.systemPrompt }),
+        });
+        showToast('🧠 System prompt da oferta "' + oferta.name + '" aplicado no Agent AI.', 'success');
+      } else {
+        await fetch(agentRoute + '/admin/system-prompt', { method: 'DELETE' });
+        showToast('🧠 System prompt padrao (AIOps) restaurado no Agent AI.', 'success');
+      }
+    } catch (e) {
+      // Silencioso: agent-ai pode nao estar acessivel ainda
+      console.warn('[oferta] Nao foi possivel aplicar system prompt no agent-ai:', e.message);
+    }
   }
 
   // ---- Render Ofertas Grid ----
@@ -1204,7 +1234,10 @@
           hideModal();
           ofertaDeployRunning = false;
           showToast('Oferta deployada com sucesso! (' + event.total + ' componentes)', 'success');
-          fetchState();
+          fetchState().then(() => {
+            // Aplica o system prompt após fetch do estado atualizado (rotas já disponíveis)
+            if (currentOferta) applyOfertaSystemPrompt(currentOferta);
+          });
         }
         break;
 
