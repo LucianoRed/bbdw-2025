@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEI — Sistema Eletrônico de Informações · MCP</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --primary:        #1a56db;
+      --primary-dark:   #1e429f;
+      --primary-light:  #76a9fa;
+      --success:        #057a55;
+      --success-bg:     #def7ec;
+      --warning:        #9f580a;
+      --warning-bg:     #fdf6b2;
+      --error:          #c81e1e;
+      --error-bg:       #fde8e8;
+      --neutral:        #374151;
+      --border:         #e5e7eb;
+      --bg:             #f3f4f6;
+      --card:           #ffffff;
+      --shadow:         0 1px 3px rgba(0,0,0,.08), 0 4px 24px rgba(26,86,219,.07);
+      --radius:         12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      color: var(--neutral);
+      padding: 0;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+      color: white;
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    .topbar .logo { font-size: 1.6rem; font-weight: 800; letter-spacing: -1px; }
+    .topbar .logo span { color: var(--primary-light); }
+    .topbar .subtitle { font-size: .85rem; opacity: .8; margin-left: 4px; }
+    .topbar .badge {
+      margin-left: auto;
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.3);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: .78rem;
+      font-weight: 600;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #84e1bc; animation: pulse 2s infinite; }
+    .dot.red { background: #f98080; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+
+    /* ── Layout ── */
+    .layout {
+      max-width: 1280px;
+      margin: 32px auto;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .card-header i { color: var(--primary); font-size: 1.1rem; }
+    .card-header h2 { font-size: 1rem; font-weight: 700; }
+    .card-body { padding: 20px 24px; }
+
+    /* ── Status ── */
+    .status-grid { display: grid; gap: 10px; }
+    .status-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px;
+      background: var(--bg);
+      border-radius: 8px;
+      font-size: .88rem;
+    }
+    .status-key { font-weight: 600; color: #6b7280; }
+    .status-val { font-family: monospace; font-size: .84rem; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .badge-ok   { background: var(--success-bg); color: var(--success); padding: 2px 10px; border-radius: 20px; font-weight: 700; font-size: .78rem; }
+    .badge-err  { background: var(--error-bg);   color: var(--error);   padding: 2px 10px; border-radius: 20px; font-weight: 700; font-size: .78rem; }
+
+    /* ── Form ── */
+    label { display: block; font-size: .8rem; font-weight: 600; color: #6b7280; margin: 14px 0 6px; text-transform: uppercase; letter-spacing: .4px; }
+    label:first-child { margin-top: 0; }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: .93rem;
+      background: white; font-family: inherit;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(26,86,219,.1);
+    }
+    textarea { resize: vertical; min-height: 80px; }
+
+    /* ── Buttons ── */
+    .btn-row { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+    .btn {
+      padding: 10px 20px; border: none; border-radius: 8px;
+      font-size: .9rem; font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 7px;
+      transition: all .2s; font-family: inherit;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,86,219,.25); }
+    .btn-secondary { background: var(--bg); color: var(--neutral); border: 1.5px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    /* ── Filters ── */
+    .filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* ── List ── */
+    .list-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px;
+    }
+    .list-count { font-size: .82rem; color: #6b7280; font-weight: 600; }
+
+    .process-list { display: grid; gap: 10px; }
+    .process-card {
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: all .2s;
+      background: white;
+    }
+    .process-card:hover { border-color: var(--primary); box-shadow: 0 2px 12px rgba(26,86,219,.1); transform: translateY(-1px); }
+    .process-card .pc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .process-card .pc-num { font-family: monospace; font-size: .82rem; color: var(--primary); font-weight: 700; }
+    .process-card .pc-esp { font-size: .9rem; font-weight: 600; color: var(--neutral); margin: 4px 0; }
+    .process-card .pc-meta { font-size: .78rem; color: #9ca3af; display: flex; gap: 12px; flex-wrap: wrap; }
+    .situation-badge {
+      padding: 2px 9px; border-radius: 20px; font-size: .72rem; font-weight: 700; white-space: nowrap;
+    }
+    .sit-A { background: #def7ec; color: #057a55; }
+    .sit-C { background: #e5e7eb; color: #6b7280; }
+    .sit-E { background: #fdf6b2; color: #9f580a; }
+
+    /* ── Detail panel ── */
+    .detail-panel { display: none; }
+    .detail-panel.active { display: block; }
+
+    .doc-list { display: grid; gap: 8px; margin-top: 4px; }
+    .doc-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: .88rem; cursor: pointer; transition: all .2s; background: white;
+    }
+    .doc-item:hover { border-color: var(--primary); color: var(--primary); }
+    .doc-item i { font-size: 1.1rem; color: #d1d5db; }
+    .doc-item:hover i { color: var(--primary); }
+    .doc-item .doc-name { flex: 1; font-weight: 600; }
+    .doc-item .doc-meta { font-size: .75rem; color: #9ca3af; }
+
+    /* ── Empty / loading / error ── */
+    .empty {
+      text-align: center; padding: 40px 20px; color: #9ca3af;
+    }
+    .empty i { font-size: 2.5rem; margin-bottom: 12px; display: block; }
+    .empty p { font-size: .9rem; }
+
+    .loading {
+      text-align: center; padding: 30px;
+      color: var(--primary); font-weight: 600;
+    }
+    .loading i { animation: spin 1s linear infinite; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .alert {
+      padding: 12px 16px; border-radius: 8px; font-size: .88rem;
+      display: flex; align-items: center; gap: 10px; margin-top: 14px;
+    }
+    .alert-success { background: var(--success-bg); color: var(--success); }
+    .alert-error   { background: var(--error-bg);   color: var(--error); }
+    .alert-warning { background: var(--warning-bg); color: var(--warning); }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4);
+      z-index: 100; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white; border-radius: 16px; box-shadow: 0 25px 60px rgba(0,0,0,.2);
+      width: 100%; max-width: 640px; max-height: 80vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .modal-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-header h3 { font-size: 1.05rem; font-weight: 700; }
+    .modal-close { background: none; border: none; cursor: pointer; font-size: 1.3rem; color: #9ca3af; }
+    .modal-close:hover { color: var(--error); }
+    .modal-body { padding: 20px 24px; overflow-y: auto; }
+    .modal-body pre {
+      background: #1e1e2e; color: #cdd6f4; padding: 18px; border-radius: 8px;
+      font-size: .8rem; overflow: auto; white-space: pre-wrap; word-break: break-all;
+    }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
+    .tab {
+      padding: 10px 18px; font-size: .88rem; font-weight: 600; cursor: pointer;
+      color: #9ca3af; border-bottom: 2px solid transparent; margin-bottom: -2px;
+      transition: color .2s;
+    }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab:hover:not(.active) { color: var(--neutral); }
+
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div>
+    <div class="logo">SEI <span>·</span> MCP</div>
+  </div>
+  <div class="subtitle">Sistema Eletrônico de Informações</div>
+  <div class="badge" id="conn-badge">
+    <div class="dot red" id="conn-dot"></div>
+    <span id="conn-label">Verificando...</span>
+  </div>
+</div>
+
+<!-- Layout principal -->
+<div class="layout">
+
+  <!-- Coluna esquerda -->
+  <div style="display:grid;gap:20px;">
+
+    <!-- Status da conexão -->
+    <div class="card">
+      <div class="card-header">
+        <i class="fa-solid fa-plug-circle-check"></i>
+        <h2>Configuração SEI</h2>
+        <button class="btn btn-secondary" style="margin-left:auto;padding:6px 12px;font-size:.8rem" onclick="loadConfig()">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="status-grid" id="status-grid">
+          <div class="loading"><i class="fa-solid fa-circle-notch"></i> Carregando...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Criar processo -->
+    <div class="card">
+      <div class="card-header">
+        <i class="fa-solid fa-folder-plus"></i>
+        <h2>Novo Processo</h2>
+      </div>
+      <div class="card-body">
+        <label>Tipo de Processo *</label>
+        <select id="np-tipo">
+          <option value="">— Carregando tipos... —</option>
+        </select>
+
+        <label>Especificação / Assunto *</label>
+        <input type="text" id="np-esp" placeholder="Descreva brevemente o assunto do processo">
+
+        <label>Nível de Acesso</label>
+        <select id="np-acesso">
+          <option value="0">0 — Público</option>
+          <option value="1">1 — Restrito</option>
+          <option value="2">2 — Sigiloso</option>
+        </select>
+
+        <div id="np-hipotese-row" style="display:none">
+          <label>Hipótese Legal *</label>
+          <input type="text" id="np-hipotese" placeholder="Fundamentação legal para acesso restrito/sigiloso">
+        </div>
+
+        <label>Interessados (opcional)</label>
+        <input type="text" id="np-interessados" placeholder="Ex: João Silva, Secretaria XYZ">
+
+        <label>Observações (opcional)</label>
+        <textarea id="np-obs" placeholder="Observações internas..."></textarea>
+
+        <div id="np-feedback"></div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="criarProcesso()">
+            <i class="fa-solid fa-circle-plus"></i> Criar Processo
+          </button>
+          <button class="btn btn-secondary" onclick="limparForm()">
+            <i class="fa-solid fa-eraser"></i> Limpar
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Coluna direita -->
+  <div style="display:grid;gap:20px;">
+
+    <!-- Lista de processos -->
+    <div class="card">
+      <div class="card-header">
+        <i class="fa-solid fa-folder-open"></i>
+        <h2>Processos</h2>
+      </div>
+      <div class="card-body">
+
+        <!-- Filtros -->
+        <div class="filter-row">
+          <div>
+            <label>Situação</label>
+            <select id="f-situacao">
+              <option value="">Todos</option>
+              <option value="A">Abertos</option>
+              <option value="C">Concluídos</option>
+              <option value="E">Em Bloqueio</option>
+            </select>
+          </div>
+          <div>
+            <label>Pesquisa</label>
+            <input type="text" id="f-pesquisa" placeholder="Número, assunto...">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="buscarProcessos()">
+            <i class="fa-solid fa-magnifying-glass"></i> Buscar
+          </button>
+          <button class="btn btn-secondary" onclick="limparFiltros()">
+            <i class="fa-solid fa-filter-circle-xmark"></i> Limpar
+          </button>
+        </div>
+
+        <div style="margin-top:20px" id="proc-list-area">
+          <div class="empty">
+            <i class="fa-regular fa-folder-open"></i>
+            <p>Use os filtros acima para buscar processos.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detalhe do processo (oculto inicialmente) -->
+    <div class="card detail-panel" id="detail-panel">
+      <div class="card-header">
+        <i class="fa-solid fa-folder-tree"></i>
+        <h2 id="detail-title">Detalhes do Processo</h2>
+        <button class="btn btn-secondary" style="margin-left:auto;padding:6px 12px;font-size:.8rem" onclick="fecharDetalhe()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="tabs">
+          <div class="tab active" onclick="mudarTab('info')">Informações</div>
+          <div class="tab"       onclick="mudarTab('docs')">Documentos</div>
+        </div>
+
+        <div class="tab-pane active" id="tab-info">
+          <div id="proc-info-content"></div>
+        </div>
+
+        <div class="tab-pane" id="tab-docs">
+          <div id="proc-docs-content">
+            <div class="loading"><i class="fa-solid fa-circle-notch"></i> Carregando documentos...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal: conteúdo do documento -->
+<div class="modal-overlay" id="doc-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Documento</h3>
+      <button class="modal-close" onclick="fecharModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-content"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = '';  // mesmo origin
+
+  // ---------------------------------------------------------------------------
+  // Config / status
+  // ---------------------------------------------------------------------------
+  async function loadConfig() {
+    try {
+      const r = await fetch(`${API}/api/config`);
+      const cfg = await r.json();
+      const grid = document.getElementById('status-grid');
+      const dot  = document.getElementById('conn-dot');
+      const lbl  = document.getElementById('conn-label');
+      const badge = document.getElementById('conn-badge');
+
+      grid.innerHTML = `
+        <div class="status-row"><span class="status-key">URL</span><span class="status-val" title="${cfg.sei_url}">${cfg.sei_url}</span></div>
+        <div class="status-row"><span class="status-key">Unidade</span><span class="status-val">${cfg.sei_unidade}</span></div>
+        <div class="status-row"><span class="status-key">Token</span><span class="status-val">${cfg.sei_token}</span></div>
+        <div class="status-row">
+          <span class="status-key">Status</span>
+          <span class="${cfg.configurado ? 'badge-ok' : 'badge-err'}">${cfg.configurado ? '✅ Configurado' : '❌ Incompleto'}</span>
+        </div>`;
+
+      if (cfg.configurado) {
+        dot.className = 'dot';
+        lbl.textContent = 'Conectado';
+      } else {
+        dot.className = 'dot red';
+        lbl.textContent = 'Não configurado';
+      }
+
+      // Carrega tipos de processo
+      loadTiposProcesso();
+    } catch (e) {
+      document.getElementById('status-grid').innerHTML = `<div class="alert alert-error"><i class="fa-solid fa-triangle-exclamation"></i> Erro ao carregar config: ${e.message}</div>`;
+    }
+  }
+
+  async function loadTiposProcesso() {
+    try {
+      const r = await fetch(`${API}/api/tipos-processo`);
+      const tipos = await r.json();
+      const sel = document.getElementById('np-tipo');
+      if (tipos.error) {
+        sel.innerHTML = `<option value="">Indisponível: ${tipos.error}</option>`;
+        return;
+      }
+      if (!Array.isArray(tipos) || tipos.length === 0) {
+        sel.innerHTML = `<option value="">Nenhum tipo disponível</option>`;
+        return;
+      }
+      sel.innerHTML = `<option value="">— Selecione o tipo —</option>` +
+        tipos.map(t => `<option value="${t.id_tipo_processo || t.id}">${t.nome || t.descricao || JSON.stringify(t)}</option>`).join('');
+    } catch (e) {
+      document.getElementById('np-tipo').innerHTML = `<option value="">Erro: ${e.message}</option>`;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Processos
+  // ---------------------------------------------------------------------------
+  async function buscarProcessos() {
+    const situacao = document.getElementById('f-situacao').value;
+    const pesquisa = document.getElementById('f-pesquisa').value;
+    const area = document.getElementById('proc-list-area');
+
+    const params = new URLSearchParams();
+    if (situacao) params.set('situacao', situacao);
+    if (pesquisa) params.set('pesquisa', pesquisa);
+
+    area.innerHTML = `<div class="loading"><i class="fa-solid fa-circle-notch"></i> Buscando processos...</div>`;
+
+    try {
+      const r = await fetch(`${API}/api/processos?${params}`);
+      const data = await r.json();
+
+      if (data.error) {
+        area.innerHTML = `<div class="alert alert-error"><i class="fa-solid fa-triangle-exclamation"></i> ${data.error}</div>`;
+        return;
+      }
+
+      // Normaliza: pode vir como array ou como { processos: [...] }
+      const lista = Array.isArray(data) ? data : (data.processos || data.itens || []);
+
+      if (lista.length === 0) {
+        area.innerHTML = `<div class="empty"><i class="fa-regular fa-folder-open"></i><p>Nenhum processo encontrado.</p></div>`;
+        return;
+      }
+
+      const sitLabel = { A: 'Aberto', C: 'Concluído', E: 'Em Bloqueio' };
+
+      area.innerHTML = `
+        <div class="list-header">
+          <span class="list-count">${lista.length} processo(s) encontrado(s)</span>
+        </div>
+        <div class="process-list">
+          ${lista.map(p => `
+            <div class="process-card" onclick="abrirProcesso('${p.protocolo_procedimento || p.id_procedimento || p.numero || ''}', ${JSON.stringify(JSON.stringify(p))})">
+              <div class="pc-top">
+                <span class="pc-num">${p.protocolo_procedimento || p.numero || '—'}</span>
+                <span class="situation-badge sit-${p.situacao || 'A'}">${sitLabel[p.situacao] || p.situacao || 'Aberto'}</span>
+              </div>
+              <div class="pc-esp">${p.especificacao || p.descricao || '(sem especificação)'}</div>
+              <div class="pc-meta">
+                <span><i class="fa-solid fa-tag fa-xs"></i> ${p.tipo_processo?.nome || p.nome_tipo_processo || '—'}</span>
+                ${p.data_autuacao ? `<span><i class="fa-regular fa-calendar fa-xs"></i> ${p.data_autuacao}</span>` : ''}
+                ${p.unidade_geradora ? `<span><i class="fa-solid fa-building fa-xs"></i> ${p.unidade_geradora?.sigla || p.unidade_geradora}</span>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>`;
+    } catch (e) {
+      area.innerHTML = `<div class="alert alert-error"><i class="fa-solid fa-triangle-exclamation"></i> Erro: ${e.message}</div>`;
+    }
+  }
+
+  function limparFiltros() {
+    document.getElementById('f-situacao').value = '';
+    document.getElementById('f-pesquisa').value = '';
+    document.getElementById('proc-list-area').innerHTML = `
+      <div class="empty"><i class="fa-regular fa-folder-open"></i><p>Use os filtros acima para buscar processos.</p></div>`;
+    fecharDetalhe();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Detalhe do processo
+  // ---------------------------------------------------------------------------
+  async function abrirProcesso(protocolo, jsonStr) {
+    const panel = document.getElementById('detail-panel');
+    const title = document.getElementById('detail-title');
+    panel.classList.add('active');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    mudarTab('info');
+
+    title.textContent = protocolo || 'Processo';
+
+    const dados = JSON.parse(jsonStr);
+    const campos = Object.entries(dados)
+      .filter(([,v]) => v !== null && v !== '' && v !== undefined)
+      .map(([k, v]) => `
+        <div class="status-row">
+          <span class="status-key" style="text-transform:none;font-size:.82rem">${k.replace(/_/g,' ')}</span>
+          <span class="status-val" style="max-width:60%;font-size:.83rem">${typeof v === 'object' ? JSON.stringify(v) : v}</span>
+        </div>`).join('');
+    document.getElementById('proc-info-content').innerHTML = `<div class="status-grid">${campos || '<p style="color:#9ca3af">Sem informações detalhadas.</p>'}</div>`;
+
+    // Carrega documentos
+    const docsArea = document.getElementById('proc-docs-content');
+    docsArea.innerHTML = `<div class="loading"><i class="fa-solid fa-circle-notch"></i> Carregando documentos...</div>`;
+    try {
+      const id = encodeURIComponent(protocolo);
+      const r = await fetch(`${API}/api/processos/${id}/documentos`);
+      const docs = await r.json();
+      if (docs.error) {
+        docsArea.innerHTML = `<div class="alert alert-error">${docs.error}</div>`;
+        return;
+      }
+      const lista = Array.isArray(docs) ? docs : (docs.documentos || docs.itens || []);
+      if (lista.length === 0) {
+        docsArea.innerHTML = `<div class="empty"><i class="fa-regular fa-file"></i><p>Nenhum documento neste processo.</p></div>`;
+        return;
+      }
+      docsArea.innerHTML = `<div class="doc-list">
+        ${lista.map(d => `
+          <div class="doc-item" onclick="abrirDocumento('${d.id_documento || d.id}', '${(d.nome || d.descricao || 'Documento').replace(/'/g,"\\'")}')">
+            <i class="fa-regular fa-file-lines"></i>
+            <div style="flex:1">
+              <div class="doc-name">${d.nome || d.descricao || d.tipo_documento?.nome || '(sem nome)'}</div>
+              <div class="doc-meta">${d.data_documento || ''} ${d.tipo_documento?.nome ? '· ' + d.tipo_documento.nome : ''}</div>
+            </div>
+            <i class="fa-solid fa-eye fa-xs" style="color:#c5c5c5"></i>
+          </div>`
+        ).join('')}
+      </div>`;
+    } catch (e) {
+      docsArea.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+  }
+
+  function fecharDetalhe() {
+    document.getElementById('detail-panel').classList.remove('active');
+  }
+
+  function mudarTab(tab) {
+    document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', i === (tab === 'info' ? 0 : 1)));
+    document.getElementById('tab-info').classList.toggle('active', tab === 'info');
+    document.getElementById('tab-docs').classList.toggle('active', tab === 'docs');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Documento (modal)
+  // ---------------------------------------------------------------------------
+  async function abrirDocumento(idDoc, nome) {
+    document.getElementById('modal-title').textContent = nome;
+    document.getElementById('modal-content').innerHTML = `<div class="loading"><i class="fa-solid fa-circle-notch"></i> Carregando...</div>`;
+    document.getElementById('doc-modal').classList.add('open');
+
+    try {
+      // Primeiro tenta metadados
+      const r = await fetch(`${API}/api/processos/--/documentos`); // placeholder — usamos /mcp direto via API REST não temos rota de doc individual
+      // Chamamos via MCP JSON-RPC para buscar o conteúdo
+      const rMcp = await fetch(`${API}/mcp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 1,
+          method: 'tools/call',
+          params: { name: 'sei_consultar_documento', arguments: { id_documento: idDoc } }
+        })
+      });
+      const mcp = await rMcp.json();
+      const texto = mcp?.result?.content?.[0]?.text || JSON.stringify(mcp, null, 2);
+
+      document.getElementById('modal-content').innerHTML = `
+        <p style="margin-bottom:12px;font-size:.85rem;color:#6b7280">ID: <strong>${idDoc}</strong></p>
+        <pre>${escapeHtml(texto)}</pre>`;
+    } catch (e) {
+      document.getElementById('modal-content').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+  }
+
+  function fecharModal() {
+    document.getElementById('doc-modal').classList.remove('open');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Criar processo
+  // ---------------------------------------------------------------------------
+  async function criarProcesso() {
+    const tipo      = document.getElementById('np-tipo').value;
+    const esp       = document.getElementById('np-esp').value.trim();
+    const acesso    = document.getElementById('np-acesso').value;
+    const hipotese  = document.getElementById('np-hipotese').value.trim();
+    const interRaw  = document.getElementById('np-interessados').value.trim();
+    const obs       = document.getElementById('np-obs').value.trim();
+    const fb        = document.getElementById('np-feedback');
+
+    fb.innerHTML = '';
+
+    if (!tipo) { fb.innerHTML = `<div class="alert alert-warning"><i class="fa-solid fa-triangle-exclamation"></i> Selecione o tipo de processo.</div>`; return; }
+    if (!esp)  { fb.innerHTML = `<div class="alert alert-warning"><i class="fa-solid fa-triangle-exclamation"></i> Informe a especificação/assunto.</div>`; return; }
+    if ((acesso === '1' || acesso === '2') && !hipotese) {
+      fb.innerHTML = `<div class="alert alert-warning"><i class="fa-solid fa-triangle-exclamation"></i> Hipótese legal é obrigatória para acesso restrito/sigiloso.</div>`; return;
+    }
+
+    const interessados = interRaw
+      ? interRaw.split(',').map(s => ({ nome: s.trim() })).filter(i => i.nome)
+      : undefined;
+
+    const body = { id_tipo_processo: tipo, especificacao: esp, nivel_acesso: acesso };
+    if (hipotese)     body.hipotese_legal  = hipotese;
+    if (interessados) body.interessados    = interessados;
+    if (obs)          body.observacoes     = obs;
+
+    fb.innerHTML = `<div class="loading" style="margin-top:10px"><i class="fa-solid fa-circle-notch"></i> Criando processo...</div>`;
+
+    try {
+      const r = await fetch(`${API}/api/processos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || 'Erro desconhecido');
+      fb.innerHTML = `<div class="alert alert-success"><i class="fa-solid fa-circle-check"></i> Processo criado! Protocolo: <strong>${data.protocolo_procedimento || data.numero || JSON.stringify(data)}</strong></div>`;
+      limparForm();
+      buscarProcessos();
+    } catch (e) {
+      fb.innerHTML = `<div class="alert alert-error"><i class="fa-solid fa-triangle-exclamation"></i> Erro: ${e.message}</div>`;
+    }
+  }
+
+  function limparForm() {
+    ['np-tipo','np-acesso'].forEach(id => document.getElementById(id).selectedIndex = 0);
+    ['np-esp','np-hipotese','np-interessados','np-obs'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('np-hipotese-row').style.display = 'none';
+  }
+
+  // Mostrar/ocultar campo hipótese legal
+  document.getElementById('np-acesso').addEventListener('change', function() {
+    document.getElementById('np-hipotese-row').style.display = (this.value === '1' || this.value === '2') ? 'block' : 'none';
+  });
+
+  // Fechar modal ao clicar fora
+  document.getElementById('doc-modal').addEventListener('click', function(e) {
+    if (e.target === this) fecharModal();
+  });
+
+  // Buscar ao pressionar Enter na pesquisa
+  document.getElementById('f-pesquisa').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') buscarProcessos();
+  });
+
+  function escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------------
+  loadConfig();
+</script>
+</body>
+</html>

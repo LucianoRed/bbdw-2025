@@ -1,0 +1,17 @@
+{
+  "name": "mcp-server-sei",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Servidor MCP para integração com o SEI (Sistema Eletrônico de Informações)",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "node-fetch": "^3.3.2",
+    "zod": "^3.22.4"
+  }
+}
