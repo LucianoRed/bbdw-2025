@@ -8,7 +8,7 @@
 
 - name: "Deploy do Redis Stack (com RediSearch para embeddings)"
   command: >
-    oc new-app docker.io/redis/redis-stack-server:latest
+    oc new-app docker.io/redis/redis-stack-server:7.2.0-v19
     --name=redis
     -n {{ namespace }}
   when: redis_check.stdout | default('') | length == 0
@@ -31,11 +31,15 @@
 
 # Desabilita persistência RDB para evitar "stop-writes-on-bgsave-error" no OpenShift
 # (containers não têm permissão de escrita no diretório de trabalho por padrão)
+# IMPORTANTE: é necessário definir "command" explicitamente junto com "args",
+# pois versões mais novas do redis-stack-server não definem ENTRYPOINT na imagem.
+# Sem "command", o K8s interpreta o primeiro elemento de "args" como executável,
+# causando: "executable file '--save' not found in $PATH"
 - name: "Configurar Redis: desabilitar persistência RDB (evita stop-writes-on-bgsave-error)"
   shell: |
     oc patch {{ redis_resource.stdout }} -n {{ namespace }} \
       --type=strategic \
-      -p '{"spec":{"template":{"spec":{"containers":[{"name":"redis","args":["--save","","--stop-writes-on-bgsave-error","no"]}]}}}}'
+      -p '{"spec":{"template":{"spec":{"containers":[{"name":"redis","command":["redis-server"],"args":["--save","","--stop-writes-on-bgsave-error","no"]}]}}}}'  
   when: redis_resource.stdout | default('') | length > 0
   changed_when: true
   failed_when: false
