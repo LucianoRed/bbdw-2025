@@ -1,143 +1,46 @@
-# bbdw-2025
-Conjunto de demos e utilitários criados para a Sala Temática Red Hat BBDW 2025. O objetivo é combinar IA generativa, observabilidade e automação para auxiliar decisões de binpacking e escalabilidade em clusters Kubernetes/OpenShift.
+# BBDW 2025 — Central de Demos Red Hat
 
-## Visão Geral
-- **Chat Agent (Quarkus + LangChain4j):** chatbot com memória em Redis, integrações MCP e RAG sobre documentação do OpenShift.
-- **MCP Servers (Node.js):** serviços que expõem dados em tempo real do cluster (binpacking) e operações focadas em segurança (NetworkPolicies, logs).
-- **Stacks de Modelos:** imagens de referência com vLLM e Ollama para disponibilizar endpoints compatíveis com OpenAI em CPU ou GPU.
-- **Imagem CrashLoopBackOff:** container de demonstração para evidenciar problemas de configuração e acionar correções via MCP.
-
-## Estrutura do Repositório
-```
-bbdw-2025/
-├── agent-ai/                 # Aplicação Quarkus com agentes conversacionais
-├── imagem-crash/             # Imagem exemplo que falha sem variáveis obrigatórias
-├── llama-stack/              # Containers para vLLM e Ollama (API OpenAI-like)
-├── mcp-server-k8s-live/      # MCP Server com métricas de cluster e binpacking
-└── mcp-server-k8s-security/  # MCP Server focado em NetworkPolicies e logs
-```
-
-### agent-ai/
-- **Tecnologias:** Quarkus 3, Java 21, LangChain4j, Redis, MCP.
-- **Pontos-chave:**
-	- múltiplos agentes (`AgentBBDW`, `AgentBBDWWithRAG`, `AgentGPT*`, `AgentGemini`).
-	- integração com Redis para memória do chat e vetor store de documentos (`rag-documents/`).
-	- templates de Docker em `src/main/docker/` (JVM, native e jar legacy).
-	- UI estática em `src/main/resources/META-INF/resources/` (dashboard, feedback, chat).
-	- configurações detalhadas em `src/main/resources/application.properties` (modelos, timeouts, auth e integração MCP).
-- **Executar local:**
-	```bash
-	cd agent-ai
-	./mvnw quarkus:dev
-	```
-	Variáveis mínimas: `OPENAI_API_KEY` ou `GOOGLE_API_KEY`; opcionalmente `MCP_SERVER` e `REDIS_URL`.
-
-### imagem-crash/
-- Container simples que falha com código 42 quando a variável obrigatória (padrão `APP_REQUIRED_TOKEN`) não está presente.
-- Inclui `k8s/deployment.yaml` para reproduzir CrashLoopBackOff em clusters.
-- Útil para demonstrar diagnósticos com os MCP servers e automações corretivas.
-
-### llama-stack/
-- Dockerfiles para dois cenários:
-	- **`Dockerfile` (vLLM):** expõe servidor compatível com OpenAI (`/v1/*`). Usa `VLLM_DEVICE` para alternar entre `cpu` e `cuda`.
-	- **`Dockerfile.ollama`:** empacota Ollama com modelo customizado (`ollama/Modelfile`), útil em ambientes apenas CPU.
-- Scripts auxiliares: `start.sh` ajusta parâmetros do vLLM; `entrypoint-ollama.sh` inicializa o runtime Ollama.
-
-### mcp-server-k8s-live/
-- Servidor MCP (Node 18+) com ferramentas para:
-	- obter binpacking (`get_live_binpacking`), deployments, services, storage, eventos, overview do cluster;
-	- administrar MachineSets (`list_machinesets`, `set_machineset_replicas`) e pods (`delete_pod`, `delete_pods_by_selector`).
-- Implementa transportes **STDIO**, **SSE** (`/mcp/sse`) e **HTTP JSON-RPC** (`/mcp`).
-- Endpoints auxiliares: `/live` (dados para dashboards), `/healthz` (status).
-
-### mcp-server-k8s-security/
-- Servidor MCP especializado em controles de segurança:
-	- listar namespaces, policies (`list_*`), criar/deletar templates (`create_np_template`).
-	- coletar logs de pods (`get_pod_logs`).
-- Também suporta STDIO, SSE e HTTP JSON-RPC, com mesmas variáveis de ambiente (`K8S_API_URL`, `K8S_BEARER_TOKEN`, etc.).
-
-## Pré-requisitos Gerais
-- Docker / Podman para build das imagens.
-- Maven 3.9+ e Java 21 para o módulo Quarkus (`agent-ai`).
-- Node.js 18+ para os MCP servers.
-- Acesso a um cluster Kubernetes/OpenShift com token (para demonstrar os MCP servers) e, opcionalmente, Redis.
-
-## Fluxos de Demonstração Recomendada
-1. **Observabilidade de Binpacking:**
-	 - Executar `mcp-server-k8s-live` apontando para o cluster.
-	 - Consumir os dados via SSE ou HTTP (`/live?resource=cpu`).
-2. **Chat Agent Inteligente:**
-	 - Subir `agent-ai` em modo dev (`./mvnw quarkus:dev`).
-	 - Acessar `http://localhost:8080` e interagir com o agente BBDW ou variantes GPT/Gemini.
-	 - Ativar integrações MCP para que o agente consulte dados do cluster em tempo real.
-3. **Correção de Incidentes:**
-	 - Fazer deploy da `imagem-crash` sem a variável obrigatória para gerar CrashLoopBackOff.
-	 - Usar o MCP de segurança para criar uma NetworkPolicy padrão ou ajustar configurações.
-
-## Build e Execução Rápida
-
-### Agent AI (Quarkus)
-```bash
-cd agent-ai
-./mvnw package -DskipTests
-docker build -f src/main/docker/Dockerfile.jvm -t agent-ai:latest .
-```
-
-### MCP Servers
-```bash
-# Live
-cd mcp-server-k8s-live
-npm install
-npm start
-
-# Security
-cd ../mcp-server-k8s-security
-npm install
-npm start
-```
-
-### Imagem Crash
-```bash
-cd imagem-crash
-docker build -t imagem-crash:latest .
-kubectl apply -f k8s/deployment.yaml
-```
-
-### Llama Stack
-```bash
-cd llama-stack
-docker build -t llama-stack:cpu .
-docker run --rm -p 8000:8000 llama-stack:cpu
-```
-
-## Próximos Passos
-- Criar dashboards específicos consumindo `/live` e `/mcp` para visualizações em tempo real.
-- Ajustar agentes para decisões automatizadas de escalabilidade (MachineSets, eviction de pods) com confirmação humana.
-- Integrar testes automatizados (Java e Node) e pipelines de CI/CD conforme práticas da equipe.
+> Conjunto de componentes criados para a **Sala Temática Red Hat · BBDW 2025**, combinando **IA Generativa**, **automação com Ansible**, **observabilidade de clusters** e **Model Context Protocol (MCP)** para demonstrar decisões inteligentes em ambientes Kubernetes/OpenShift.
 
 ---
 
-## Demo Deployer
+## Começando — Deploy Automatizado
 
-Aplicação web para deploy automatizado de todos os componentes da demo no OpenShift, com automação via **Ansible** e integração **MCP Server**. Permite deployar cada componente com um clique pela interface ou via chamadas MCP.
+A forma mais rápida de colocar tudo no ar é via o **Demo Deployer**: uma aplicação web que orquestra o deploy de todos os componentes no OpenShift com um clique, usando Ansible por baixo dos panos.
 
-### Deploy no OpenShift
+### Deploy do Demo Deployer no OpenShift
 
 ```bash
-# 1. Criar projeto
+# 1. Criar o projeto
 oc new-project demo-deployer
 
-# 2. Criar a app a partir do Dockerfile
-oc new-app --name=demo-deployer \
-  --strategy=docker \
-  --context-dir=demo-deployer \
+# 2. Criar a aplicação
+oc new-app --name=demo-deployer \\
+  --strategy=docker \\
+  --context-dir=demo-deployer \\
   https://github.com/LucianoRed/bbdw-2025.git
 
 # 3. Acompanhar o build
 oc logs -f bc/demo-deployer
 
-# 4. Criar PVC para persistência de estado
-oc create -f - <<EOF
+# 4. Criar PVC (salve como pvc-demo-deployer.yaml e aplique com oc create -f)
+# 5. Montar o PVC
+oc set volume deployment/demo-deployer \\
+  --add --name=demo-deployer-data \\
+  --type=pvc --claim-name=demo-deployer-data \\
+  --mount-path=/app/data
+
+# 6. Expor a rota e habilitar TLS
+oc expose svc/demo-deployer
+oc annotate route demo-deployer kubernetes.io/tls-acme=true --overwrite
+
+# 7. Obter a URL
+oc get route demo-deployer -o jsonpath='{.spec.host}'
+```
+
+**PVC (pvc-demo-deployer.yaml):**
+
+```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -148,48 +51,298 @@ spec:
   resources:
     requests:
       storage: 1Gi
-EOF
-
-# 5. Montar PVC no deployment
-oc set volume deployment/demo-deployer \
-  --add \
-  --name=demo-deployer-data \
-  --type=pvc \
-  --claim-name=demo-deployer-data \
-  --mount-path=/app/data
-
-# 6. Expor a rota
-oc expose svc/demo-deployer
-
-# 7. Anotar rota com TLS
-oc annotate route demo-deployer kubernetes.io/tls-acme=true --overwrite
-
-# 8. Pegar a URL
-oc get route demo-deployer -o jsonpath='{.spec.host}'
 ```
 
-### Funcionalidades
-- **Dashboard Web** — Interface para gerenciar deploys com status em tempo real (WebSocket)
-- **Ansible Automation** — Playbooks para deploy de cada componente (namespace, Redis, RBAC, MCP servers, Agent AI)
-- **MCP Server** — 8 tools acessíveis via SSE (`/mcp/sse`) ou STDIO para integração com IA
-- **Persistência** — Estado salvo em PVC, sobrevive a restarts do pod
+### O que o Demo Deployer faz
 
-### MCP Server — Tools Disponíveis
+Acesse o dashboard e configure as credenciais do cluster (API URL, token, namespace e Git URL).
 
-| Tool | Descrição |
-|------|-----------|
+| # | Componente | Categoria | Descrição |
+|---|---|---|---|
+| 0 | Namespace | infra | Cria o projeto no OpenShift |
+| 1 | Redis | infra | Cache e vector store para RAG |
+| 2 | RBAC | infra | ServiceAccount + permissões para os MCP servers |
+| 3 | MCP K8s Live | mcp | Métricas, pods, eventos do cluster |
+| 4 | MCP K8s Security | mcp | NetworkPolicies, logs de segurança |
+| 5 | MCP Downdetector | mcp | Status de websites externos |
+| 6 | MCP Saúde | mcp | Registros de saúde escolar |
+| 7 | MCP Matrículas | mcp | Sistema de matrículas escolares |
+| 8 | Imagem Crash | demo | Container CrashLoopBackOff para demo |
+| 9 | Agent AI | core | Chatbot Quarkus + LangChain4j |
+
+### MCP Server do Demo Deployer
+
+O próprio Demo Deployer expõe um MCP Server para que o agente de IA execute deploys de forma autônoma:
+
+| Ferramenta | Descrição |
+|---|---|
 | `configure` | Configura API URL, token, namespace e git URL |
-| `get_status` | Estado de todos os componentes |
-| `list_components` | Lista componentes disponíveis |
-| `deploy_component` | Deploy de um componente específico |
-| `deploy_all` | Deploy completo de todos |
+| `get_status` | Estado de todos os componentes no cluster |
+| `list_components` | Lista os componentes disponíveis |
+| `deploy_component` | Faz o deploy de um componente específico |
+| `deploy_all` | Deploy completo de todos os componentes |
 | `get_component_details` | Detalhes e logs de um componente |
-| `refresh_cluster_status` | Consulta status real no cluster |
-| `cleanup` | Remove todos os recursos |
+| `refresh_cluster_status` | Consulta o status real no cluster |
+| `cleanup` | Remove todos os recursos do namespace |
 
-### Container
-A imagem inclui **Node.js**, **Ansible Core**, **oc CLI**, **kubectl**, **Python 3** e **Git** sobre base **Red Hat UBI 9 Minimal**.
+**Conexão SSE:** `http://<demo-deployer-url>/mcp/sse`
 
-Para mais detalhes, veja o [README do demo-deployer](demo-deployer/README.md).
+> A imagem Docker inclui **Node.js**, **Ansible Core**, **oc CLI**, **kubectl**, **Python 3** e **Git** sobre base **Red Hat UBI 9 Minimal**.
 
+Para mais detalhes: [demo-deployer/README.md](demo-deployer/README.md)
 
+---
+
+## Visão Geral da Arquitetura
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│         BBDW 2025 — Central de Demos                      │
+│                                                             │
+│  agent-ai  (Quarkus + LangChain4j + Redis)                 │
+│    │ MCP                                                  │
+│    ├── mcp-k8s-live       (binpacking / cluster live)        │
+│    ├── mcp-k8s-security   (NetworkPolicies / logs)           │
+│    ├── mcp-sei            (SEI — Gov BR)                     │
+│    ├── mcp-matriculas     (matrículas escolares)             │
+│    ├── mcp-saude          (saúde escolar)                    │
+│    └── mcp-downdetector   (status de websites)               │
+│                                                             │
+│  demo-deployer  (Ansible + MCP + Dashboard Web)            │
+│  Orquestra o deploy de todos os componentes acima          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Componentes do Repositório
+
+### 🤖 agent-ai — Chatbot com IA Generativa
+
+Aplicação **Quarkus 3 + LangChain4j** com múltiplos agentes conversacionais, memória persistente em Redis e RAG sobre documentação do OpenShift.
+
+**Agentes disponíveis:** `AgentBBDW`, `AgentBBDWWithRAG`, `AgentGPT*`, `AgentGemini`
+
+**Destaques:**
+- Memória de chat e vector store via Redis
+- Interface web completa em `src/main/resources/META-INF/resources/`
+- Integração dinâmica com qualquer MCP server via painel de configuração
+- Suporte a OpenAI, Google Gemini e modelos locais (vLLM/Ollama)
+
+```bash
+cd agent-ai
+./mvnw quarkus:dev
+# Acesse http://localhost:8080
+```
+
+Variáveis mínimas: `OPENAI_API_KEY` ou `GOOGLE_API_KEY`. Opcionalmente: `MCP_SERVER`, `REDIS_URL`.
+
+---
+
+### 🔧 demo-deployer — Orquestrador de Deploy
+
+> **Ponto de entrada principal da demo.** Veja a seção [Começando](#começando--deploy-automatizado) acima para o deploy no OpenShift.
+
+```bash
+cd demo-deployer
+npm install && npm start
+# Acesse http://localhost:3000
+```
+
+---
+
+### 📡 mcp-server-k8s-live — Observabilidade do Cluster
+
+MCP Server com ferramentas para métricas e gerenciamento do cluster em tempo real.
+
+**Ferramentas:** `get_live_binpacking`, `list_deployments`, `list_services`, `list_pods`, `list_storage`, `get_cluster_overview`, `list_events`, `list_machinesets`, `set_machineset_replicas`, `delete_pod`, `delete_pods_by_selector`
+
+**Endpoints extras:** `/live` (dados para dashboards), `/healthz`
+
+```bash
+cd mcp-server-k8s-live
+npm install && npm start
+```
+Variáveis: `K8S_API_URL`, `K8S_BEARER_TOKEN`
+
+---
+
+### 🔒 mcp-server-k8s-security — Segurança do Cluster
+
+MCP Server focado em controles de segurança: NetworkPolicies, namespaces e coleta de logs.
+
+**Ferramentas:** `list_namespaces`, `list_network_policies`, `create_np_template`, `delete_network_policy`, `get_pod_logs`
+
+```bash
+cd mcp-server-k8s-security
+npm install && npm start
+```
+Variáveis: `K8S_API_URL`, `K8S_BEARER_TOKEN`
+
+---
+
+### 🏛️ mcp-server-sei — SEI (Governo Brasileiro)
+
+MCP Server para integração com o **SEI — Sistema Eletrônico de Informações**, sistema de gestão de documentos e processos do governo federal (distribuído pelo MGI/SEGES).
+
+| Ferramenta | Descrição |
+|---|---|
+| `sei_status_configuracao` | Verifica as credenciais configuradas |
+| `sei_listar_unidades` | Lista unidades acessíveis pelo token |
+| `sei_listar_tipos_processo` | Tipos de processo disponíveis |
+| `sei_listar_processos` | Lista processos (filtros: situação, tipo, pesquisa) |
+| `sei_consultar_processo` | Detalhes de um processo pelo número de protocolo |
+| `sei_criar_processo` | Abre novo processo no SEI |
+| `sei_listar_documentos_processo` | Lista documentos de um processo |
+| `sei_consultar_documento` | Metadados de um documento |
+| `sei_conteudo_documento` | Conteúdo textual de um documento |
+| `sei_incluir_documento` | Inclui documento externo (Base64) em um processo |
+
+```bash
+cd mcp-server-sei
+npm install
+
+SEI_URL="https://sei.orgao.gov.br" \\
+SEI_TOKEN="seu_token" \\
+SEI_UNIDADE="110000123" \\
+npm start
+```
+Variáveis obrigatórias: `SEI_URL`, `SEI_TOKEN`, `SEI_UNIDADE`
+
+---
+
+### 🏥 mcp-server-saude — Registros de Saúde
+
+MCP Server com dados de saúde escolar e interface web para visualização.
+
+```bash
+cd mcp-server-saude && npm install && npm start
+```
+
+---
+
+### 🎓 mcp-server-matriculas — Sistema de Matrículas
+
+MCP Server para matrículas escolares (anos 5 ao 8), com interface web e ferramentas MCP.
+
+**Ferramentas:** `listar_alunos`, `matricular_aluno`, `buscar_aluno`
+
+```bash
+cd mcp-server-matriculas && npm install && npm start
+```
+
+---
+
+### 🌐 mcp-server-downdetector — Status de Websites
+
+MCP Server que consulta disponibilidade de serviços externos e APIs públicas.
+
+```bash
+cd mcp-server-downdetector && npm install && npm start
+```
+
+---
+
+### 💥 imagem-crash — Demo de CrashLoopBackOff
+
+Container que falha intencionalmente (código 42) quando `APP_REQUIRED_TOKEN` não está definida. Demonstra diagnósticos com os MCP servers.
+
+```bash
+cd imagem-crash
+docker build -t imagem-crash:latest .
+kubectl apply -f k8s/deployment.yaml
+```
+
+---
+
+### 🦙 llama-stack — Modelos de IA Locais
+
+Imagens Docker para servir modelos com API compatível com OpenAI:
+
+- **`Dockerfile` (vLLM):** endpoint `/v1/*`. `VLLM_DEVICE` alterna entre `cpu` e `cuda`.
+- **`Dockerfile.ollama`:** Ollama com modelo customizado, ideal para CPU.
+
+```bash
+cd llama-stack
+docker build -t llama-stack:cpu .
+docker run --rm -p 8000:8000 llama-stack:cpu
+```
+
+---
+
+### 🔍 mcp-inspector
+
+Ferramenta de inspeção e teste de MCP servers. Útil para validar ferramentas e respostas antes de conectar ao agente.
+
+---
+
+## Pré-requisitos
+
+| Componente | Requisito |
+|---|---|
+| `agent-ai` | Java 21, Maven 3.9+ |
+| MCP Servers (Node.js) | Node.js 18+ |
+| `demo-deployer` | Node.js 18+, acesso ao cluster OpenShift |
+| Builds Docker | Docker ou Podman |
+| Cluster demos | Kubernetes/OpenShift com token de acesso |
+| Modelos de IA | `OPENAI_API_KEY` ou `GOOGLE_API_KEY` (ou vLLM/Ollama local) |
+
+---
+
+## Fluxos de Demonstração
+
+### 1. Deploy Rápido — tudo de uma vez
+```
+1. Suba o demo-deployer no OpenShift (seção "Começando")
+2. Configure as credenciais do cluster no dashboard
+3. Clique em "Deploy All" e aguarde os componentes ficarem verdes
+```
+
+### 2. Observabilidade de Binpacking
+```
+1. Suba o agent-ai e o mcp-server-k8s-live
+2. Configure o mcp-k8s-live como MCP server no painel do agent-ai
+3. Pergunte ao agente sobre nós, pods e recursos do cluster
+4. O agente consultará dados reais em tempo real via MCP
+```
+
+### 3. Diagnóstico de Incidente com IA
+```
+1. Faça deploy da imagem-crash sem APP_REQUIRED_TOKEN
+2. O pod entrará em CrashLoopBackOff
+3. Use o agente + mcp-k8s-live para identificar o problema
+4. Use mcp-k8s-security para verificar NetworkPolicies e coletar logs
+```
+
+### 4. Integração com SEI (Governo)
+```
+1. Suba o mcp-server-sei com as credenciais do órgão
+2. Configure como MCP server no agent-ai
+3. O agente poderá consultar processos, criar novos e ler documentos
+4. Combine com outros MCPs para workflows governamentais completos
+```
+
+---
+
+## Estrutura do Repositório
+
+```
+bbdw-2025/
+├── agent-ai/                   # Chatbot Quarkus + LangChain4j + Redis
+├── demo-deployer/              # Orquestrador de deploy (Ansible + MCP + Web)
+├── imagem-crash/               # Container de demo CrashLoopBackOff
+├── llama-stack/                # vLLM e Ollama (API OpenAI-compatible)
+├── mcp-inspector/              # Ferramenta de inspeção de MCP servers
+├── mcp-server-downdetector/    # MCP: status de websites
+├── mcp-server-k8s-live/        # MCP: observabilidade e binpacking do cluster
+├── mcp-server-k8s-security/    # MCP: segurança, NetworkPolicies e logs
+├── mcp-server-matriculas/      # MCP: sistema de matrículas escolares
+├── mcp-server-quarkus/         # MCP: servidor base em Quarkus
+├── mcp-server-saude/           # MCP: registros de saúde escolar
+├── mcp-server-sei/             # MCP: integração com SEI (Gov BR)
+└── ansible/                    # Playbooks Ansible auxiliares
+```
+
+---
+
+*Sala Temática Red Hat · BBDW 2025*
