@@ -21,11 +21,14 @@ As credenciais são fornecidas como **variáveis de ambiente**:
 
 | Variável | Obrigatória | Descrição | Exemplo |
 |---|---|---|---|
-| `SEI_URL` | ✅ | URL base da instalação do SEI | `https://sei.orgao.gov.br` |
-| `SEI_TOKEN` | ✅ | Token de API gerado no SEI | `4a5f2c...` |
-| `SEI_UNIDADE` | ✅ | ID da unidade no SEI | `110000123` |
+| `SEI_URL` | ✅ | URL base da instalação do SEI | `http://sei.orgao.gov.br` |
+| `SEI_TOKEN` | ✅ | Token do sistema gerado em Administração > Sistemas | `4a5f2c...` |
+| `SEI_UNIDADE` | ✅ | ID da unidade no SEI | `110000834` |
+| `SEI_SISTEMA` | ✅ | Sigla do sistema cadastrado no SEI (mesmo usado para gerar o token) | `ABC` |
 | `PORT` | ❌ | Porta HTTP (padrão: 3000) | `3000` |
 | `ENABLE_STDIO` | ❌ | Habilita transporte STDIO (padrão: true) | `true` |
+
+> **Nota:** Esta instalação do SEI não possui a API REST v1 habilitada. A comunicação é feita via **WebService SOAP** (`/sei/controlador_ws.php?servico=sei`). A variável `SEI_SISTEMA` deve corresponder exatamente à sigla cadastrada em **Administração → Sistemas** no SEI.
 
 ### Como gerar o token no SEI
 
@@ -43,9 +46,10 @@ As credenciais são fornecidas como **variáveis de ambiente**:
 docker build -t mcp-server-sei .
 
 docker run -p 3000:3000 \
-  -e SEI_URL="https://sei.orgao.gov.br" \
+  -e SEI_URL="http://sei.orgao.gov.br" \
   -e SEI_TOKEN="SEU_TOKEN_AQUI" \
-  -e SEI_UNIDADE="110000123" \
+  -e SEI_UNIDADE="110000834" \
+  -e SEI_SISTEMA="ABC" \
   mcp-server-sei
 ```
 
@@ -54,9 +58,10 @@ docker run -p 3000:3000 \
 ```bash
 npm install
 
-SEI_URL="https://sei.orgao.gov.br" \
+SEI_URL="http://sei.orgao.gov.br" \
 SEI_TOKEN="SEU_TOKEN_AQUI" \
-SEI_UNIDADE="110000123" \
+SEI_UNIDADE="110000834" \
+SEI_SISTEMA="ABC" \
 npm start
 ```
 
@@ -101,14 +106,16 @@ Ou via STDIO:
 }
 ```
 
-## Compatibilidade com a API SEI
+## Compatibilidade com o SEI
 
-Este servidor foi desenvolvido para a **SEI API REST v1**, disponível em `{SEI_URL}/sei/api/v1/`. A documentação oficial é fornecida para órgãos credenciados pela SEGES/MGI.
+Este servidor utiliza o **WebService SOAP do SEI**, disponível em `{SEI_URL}/sei/controlador_ws.php?servico=sei`.
 
 ### Versões suportadas
 
-- SEI 4.x (API v1 REST)
-- SEI 3.x (com limitações)
+- SEI 4.x (SOAP) ✅
+- SEI 3.x (SOAP) ✅
+
+> A API REST v1 (`/sei/api/v1/`) requer configuração adicional do Apache (mod_rewrite + AllowOverride All) que pode não estar habilitada em todas as instalações.
 
 ## Segurança
 

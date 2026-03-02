@@ -1,19 +1,26 @@
 /**
  * sei-client.js
- * Cliente HTTP para a API REST do SEI (Sistema Eletrônico de Informações) v1.
+ * Cliente SOAP para o SEI (Sistema Eletrônico de Informações).
  *
- * Documentação da API SEI disponível para órgãos credenciados em:
- *   {SEI_URL}/sei/api/v1/documentacao
+ * Esta instalação não possui a API REST v1 habilitada.
+ * Toda comunicação é feita via WebService SOAP disponível em:
+ *   {SEI_URL}/sei/controlador_ws.php?servico=sei
  *
  * Variáveis de ambiente necessárias:
- *   SEI_URL      - URL base da instalação (ex: https://sei.orgao.gov.br)
- *   SEI_TOKEN    - Token de API gerado no painel Administração > Sistemas
+ *   SEI_URL      - URL base da instalação (ex: http://sei.orgao.gov.br)
+ *   SEI_TOKEN    - Token/chave do sistema cadastrado em Administração > Sistemas
  *   SEI_UNIDADE  - ID numérico da unidade no SEI
+ *   SEI_SISTEMA  - Sigla do sistema cadastrado no SEI (padrão: 'SEI')
  */
 
-const SEI_URL    = process.env.SEI_URL?.replace(/\/$/, '');
-const SEI_TOKEN  = process.env.SEI_TOKEN;
+import soap from 'soap';
+
+const SEI_URL     = process.env.SEI_URL?.replace(/\/$/, '');
+const SEI_TOKEN   = process.env.SEI_TOKEN;
 const SEI_UNIDADE = process.env.SEI_UNIDADE;
+const SEI_SISTEMA = process.env.SEI_SISTEMA || 'ABC';
+
+let _client = null;
 
 function validateConfig() {
   const missing = [];
@@ -25,62 +32,55 @@ function validateConfig() {
   }
 }
 
-/**
- * Realiza uma chamada HTTP à API SEI.
- * @param {string} method    - Método HTTP (GET, POST, PUT, DELETE)
- * @param {string} path      - Caminho relativo (ex: '/processos')
- * @param {object} [params]  - Query params extras
- * @param {object} [body]    - Body JSON (para POST/PUT)
- */
-async function seiRequest(method, path, params = {}, body = null) {
+/** Retorna (ou cria) o cliente SOAP singleton. */
+async function getClient() {
+  if (_client) return _client;
   validateConfig();
+  const wsdlUrl = `${SEI_URL}/sei/controlador_ws.php?servico=sei`;
+  _client = await soap.createClientAsync(wsdlUrl);
+  return _client;
+}
 
-  const { default: fetch } = await import('node-fetch');
-
-  const url = new URL(`${SEI_URL}/sei/api/v1${path}`);
-
-  // Token sempre como query param (padrão SEI)
-  url.searchParams.set('token', SEI_TOKEN);
-
-  // Unidade como query param quando não informada explicitamente
-  if (!url.searchParams.has('id_unidade')) {
-    url.searchParams.set('id_unidade', SEI_UNIDADE);
-  }
-
-  // Adiciona query params extras
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== '') {
-      url.searchParams.set(k, String(v));
-    }
-  }
-
-  const options = {
-    method,
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-    },
+/** Parâmetros de autenticação presentes em todas as chamadas SOAP. */
+function auth() {
+  return {
+    SiglaSistema:         SEI_SISTEMA,
+    IdentificacaoServico: SEI_TOKEN,
+    IdUnidade:            SEI_UNIDADE,
   };
+}
 
-  if (body) {
-    options.body = JSON.stringify(body);
+/**
+ * Executa uma operação SOAP no SEI e retorna o resultado desembalado.
+ * @param {string} operation - Nome exato da operação no WSDL
+ * @param {object} [extra]   - Parâmetros adicionais além dos de autenticação
+ */
+async function seiCall(operation, extra = {}) {
+  const client = await getClient();
+  const args   = { ...auth(), ...extra };
+
+  if (typeof client[`${operation}Async`] !== 'function') {
+    throw new Error(`Operação SOAP '${operation}' não encontrada no WSDL do SEI.`);
   }
 
-  const res = await fetch(url.toString(), options);
+  const [result] = await client[`${operation}Async`](args);
 
-  // 204 No Content
-  if (res.status === 204) return null;
+  // O SEI SOAP encapsula arrays em <parametros> e objetos simples em <parametros> tb
+  return result?.parametros ?? result?.return ?? result;
+}
 
-  const text = await res.text();
-
-  if (!res.ok) {
-    let detail = text;
-    try { detail = JSON.parse(text)?.mensagem || detail; } catch (_) {}
-    throw new Error(`SEI API erro ${res.status}: ${detail}`);
+/**
+ * Normaliza arrays retornados pelo SOAP.
+ * O node-soap desserializa ArrayOf* em { attributes: {...}, item: [...] } ou
+ * diretamente como array nativo. Também lida com item único sem wrapper.
+ */
+function toArray(val) {
+  if (!val) return [];
+  // { attributes: {...}, item: [...] } — padrão SOAP-ENC array
+  if (val && typeof val === 'object' && !Array.isArray(val) && 'attributes' in val) {
+    return toArray(val.item);
   }
-
-  if (!text) return null;
-  return JSON.parse(text);
+  return Array.isArray(val) ? val : [val];
 }
 
 // ---------------------------------------------------------------------------
@@ -89,80 +89,99 @@ async function seiRequest(method, path, params = {}, body = null) {
 
 /** Lista unidades acessíveis pelo token. */
 export async function listarUnidades() {
-  return seiRequest('GET', '/unidades');
+  const result = await seiCall('listarUnidades');
+  return toArray(result);
 }
 
 // ---------------------------------------------------------------------------
 // Tipos
 // ---------------------------------------------------------------------------
 
-/** Lista tipos de processo disponíveis na unidade. */
+/** Lista tipos de processo (procedimento) disponíveis na unidade. */
 export async function listarTiposProcesso() {
-  return seiRequest('GET', '/tipos_processo');
+  const result = await seiCall('listarTiposProcedimento');
+  return toArray(result);
 }
 
-/** Lista tipos de documento (séries documentais) disponíveis na unidade. */
+/** Lista séries documentais (tipos de documento) disponíveis na unidade. */
 export async function listarTiposDocumento() {
-  return seiRequest('GET', '/series');
+  const result = await seiCall('listarSeries');
+  return toArray(result);
 }
 
 // ---------------------------------------------------------------------------
-// Processos
+// Processos (Procedimentos no vocabulário SOAP do SEI)
 // ---------------------------------------------------------------------------
 
 /**
  * Lista processos da unidade.
- * @param {object} filtros
- * @param {string} [filtros.id_tipo_processo]  - Filtrar por tipo de processo
- * @param {string} [filtros.situacao]          - 'A' (aberto), 'C' (concluído), 'E' (em bloqueio)
- * @param {string} [filtros.pesquisa]          - Texto livre para pesquisa
- * @param {number} [filtros.pagina]            - Número da página (padrão: 1)
- * @param {number} [filtros.registros_por_pagina] - Qtd por página (padrão: 20, max: 100)
+ * NOTA: O WebService SOAP do SEI não oferece operação de listagem paginada de
+ * processos — apenas consulta individual. Esta função retorna uma mensagem
+ * informativa. Para consultar um processo específico, use consultarProcesso().
  */
 export async function listarProcessos(filtros = {}) {
-  const params = {};
-  if (filtros.id_tipo_processo)      params['id_tipo_processo']       = filtros.id_tipo_processo;
-  if (filtros.situacao)              params['situacao']                = filtros.situacao;
-  if (filtros.pesquisa)              params['pesquisa']                = filtros.pesquisa;
-  if (filtros.pagina)                params['pagina']                  = filtros.pagina;
-  if (filtros.registros_por_pagina)  params['registros_por_pagina']    = filtros.registros_por_pagina;
-
-  return seiRequest('GET', '/processos', params);
+  return {
+    aviso: 'O WebService SOAP do SEI não suporta listagem de processos. Use consultarProcesso(numero) para consultar um processo específico pelo número ou protocolo.',
+    filtros_recebidos: filtros,
+  };
 }
 
 /**
- * Consulta os detalhes de um processo pelo ID ou número.
- * @param {string} protocolo - Número ou ID do processo (ex: '00002.123456/2024-01')
+ * Consulta os detalhes completos de um processo (procedimento).
+ * @param {string} protocolo - Número formatado do processo (ex: '00002.123456/2024-01')
  */
 export async function consultarProcesso(protocolo) {
-  // O SEI aceita o protocolo na URL (encode de '/' e '.')
-  const id = encodeURIComponent(protocolo);
-  return seiRequest('GET', `/processos/${id}`);
+  const result = await seiCall('consultarProcedimento', {
+    ProtocoloProcedimento:          protocolo,
+    SinRetornarAssuntos:            'S',
+    SinRetornarAndamentos:          'N',
+    SinRetornarDocumentos:          'S',
+    SinRetornarUnidadesEnvolvidas:  'S',
+    SinRetornarProcedimentosRelacionados: 'N',
+    SinRetornarProcedimentosAnexados:     'N',
+  });
+  return result;
 }
 
 /**
- * Cria um novo processo no SEI.
+ * Cria um novo processo (procedimento) no SEI.
  * @param {object} dados
- * @param {string} dados.id_tipo_processo         - ID do tipo de processo (obrigatório)
- * @param {string} dados.especificacao             - Especificação/assunto (obrigatório)
- * @param {string} [dados.nivel_acesso]            - '0'=público, '1'=restrito, '2'=sigiloso
- * @param {string} [dados.hipotese_legal]          - Hipótese legal (obrigatório se restrito/sigiloso)
- * @param {string[]} [dados.assuntos]              - Array de IDs de assuntos
- * @param {object[]} [dados.interessados]          - Array de {nome, sigla}
- * @param {string} [dados.observacoes]             - Observações internas
+ * @param {string} dados.id_tipo_processo  - IdTipoProcedimento (obrigatório)
+ * @param {string} dados.especificacao     - Especificação/assunto (obrigatório)
+ * @param {string} [dados.nivel_acesso]    - '0'=público, '1'=restrito, '2'=sigiloso
+ * @param {string} [dados.hipotese_legal]  - IdHipoteseLegal (necessário se restrito/sigiloso)
+ * @param {string[]} [dados.assuntos]      - Array de IdAssunto
+ * @param {object[]} [dados.interessados]  - Array de { Nome, Sigla }
+ * @param {string} [dados.observacoes]     - Observações internas
  */
 export async function criarProcesso(dados) {
-  const body = {
-    id_tipo_processo:  dados.id_tipo_processo,
-    especificacao:     dados.especificacao,
-    nivel_acesso:      dados.nivel_acesso  ?? '0',
+  const procedimento = {
+    TipoProcedimento: { IdTipoProcedimento: dados.id_tipo_processo },
+    Especificacao:    dados.especificacao,
+    NivelAcesso:      dados.nivel_acesso ?? '0',
   };
-  if (dados.hipotese_legal) body.hipotese_legal  = dados.hipotese_legal;
-  if (dados.assuntos)       body.assuntos         = dados.assuntos;
-  if (dados.interessados)   body.interessados     = dados.interessados;
-  if (dados.observacoes)    body.observacoes      = dados.observacoes;
 
-  return seiRequest('POST', '/processos', {}, body);
+  if (dados.hipotese_legal) {
+    procedimento.HipoteseLegal = { IdHipoteseLegal: dados.hipotese_legal };
+  }
+
+  const assuntosArr = toArray(dados.assuntos).map(id => ({ IdAssunto: id }));
+  const interessadosArr = toArray(dados.interessados).map(i => ({
+    Nome:  i.nome || i.Nome,
+    Sigla: i.sigla || i.Sigla,
+  }));
+
+  const extra = {
+    Procedimento:  procedimento,
+    Assuntos:      assuntosArr.length  ? { item: assuntosArr }  : undefined,
+    Interessados:  interessadosArr.length ? { item: interessadosArr } : undefined,
+    ObservacaoUnidades: dados.observacoes
+      ? { item: [{ IdUnidade: SEI_UNIDADE, Descricao: dados.observacoes }] }
+      : undefined,
+  };
+
+  const result = await seiCall('gerarProcedimento', extra);
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -170,69 +189,98 @@ export async function criarProcesso(dados) {
 // ---------------------------------------------------------------------------
 
 /**
- * Lista os documentos de um processo.
- * @param {string} protocolo - Número ou ID do processo
+ * Lista os documentos de um processo consultando o procedimento completo.
+ * @param {string} protocolo - Número do processo
  */
 export async function listarDocumentosProcesso(protocolo) {
-  const id = encodeURIComponent(protocolo);
-  return seiRequest('GET', `/processos/${id}/documentos`);
+  const proc = await seiCall('consultarProcedimento', {
+    ProtocoloProcedimento:         protocolo,
+    SinRetornarAssuntos:           'N',
+    SinRetornarAndamentos:         'N',
+    SinRetornarDocumentos:         'S',
+    SinRetornarUnidadesEnvolvidas: 'N',
+    SinRetornarProcedimentosRelacionados: 'N',
+    SinRetornarProcedimentosAnexados:     'N',
+  });
+  return toArray(proc?.DocumentosProcedimento?.item ?? proc?.DocumentosProcedimento);
 }
 
 /**
- * Consulta os metadados de um documento específico.
- * @param {string} idDocumento - ID do documento no SEI
+ * Consulta os metadados e conteúdo de um documento.
+ * @param {string} protocoloDocumento - Número/protocolo do documento
  */
-export async function consultarDocumento(idDocumento) {
-  return seiRequest('GET', `/documentos/${idDocumento}`);
+export async function consultarDocumento(protocoloDocumento) {
+  const result = await seiCall('consultarDocumento', {
+    ProtocoloDocumento:   protocoloDocumento,
+    SinRetornarAndamentos: 'N',
+    SinRetornarAssinaturas: 'S',
+    SinRetornarPublicacoes: 'N',
+    SinRetornarCampos:      'S',
+    SinRetornarDisposicao:  'N',
+  });
+  return result;
 }
 
 /**
- * Recupera o conteúdo (HTML/texto) de um documento.
- * @param {string} idDocumento - ID do documento no SEI
+ * Recupera o conteúdo HTML de um documento interno.
+ * Usa consultarDocumento — o campo Conteudo contém o HTML em Base64.
+ * @param {string} protocoloDocumento - Número/protocolo do documento
  */
-export async function conteudoDocumento(idDocumento) {
-  return seiRequest('GET', `/documentos/${idDocumento}/conteudo`);
+export async function conteudoDocumento(protocoloDocumento) {
+  const doc = await consultarDocumento(protocoloDocumento);
+  const conteudoB64 = doc?.Conteudo;
+  if (!conteudoB64) return { conteudo: null, aviso: 'Documento sem conteúdo (pode ser externo/binário).' };
+  try {
+    return { conteudo: Buffer.from(conteudoB64, 'base64').toString('utf-8') };
+  } catch {
+    return { conteudo_base64: conteudoB64 };
+  }
 }
 
 /**
- * Inclui um documento externo (PDF, DOCX etc.) em um processo.
- * @param {string} protocolo - Número ou ID do processo
+ * Inclui um documento externo em um processo.
+ * @param {string} protocolo - Número do processo
  * @param {object} dados
- * @param {string} dados.id_tipo_documento   - ID do tipo de documento
- * @param {string} dados.nome               - Nome do documento
- * @param {string} dados.data               - Data do documento (DD/MM/AAAA)
- * @param {string} dados.nivel_acesso       - '0'=público, '1'=restrito, '2'=sigiloso
+ * @param {string} dados.id_tipo_documento  - IdSerie (tipo de documento)
+ * @param {string} dados.nome               - Descrição/nome do documento
+ * @param {string} dados.data               - Data (DD/MM/AAAA)
+ * @param {string} [dados.nivel_acesso]     - '0'=público, '1'=restrito, '2'=sigiloso
  * @param {string} dados.conteudo_base64    - Conteúdo do arquivo em Base64
- * @param {string} [dados.descricao]        - Descrição adicional
- * @param {string} [dados.remetente]        - Nome do remetente (para doc externo)
+ * @param {string} [dados.nome_arquivo]     - Nome do arquivo com extensão (ex: 'arquivo.pdf')
+ * @param {string} [dados.remetente]        - Nome do remetente
  */
 export async function incluirDocumento(protocolo, dados) {
-  const id = encodeURIComponent(protocolo);
-  const body = {
-    id_tipo_documento:  dados.id_tipo_documento,
-    nome:               dados.nome,
-    data:               dados.data,
-    nivel_acesso:       dados.nivel_acesso ?? '0',
-    conteudo_base64:    dados.conteudo_base64,
+  const documento = {
+    Tipo:                    'R', // R = Recebido (externo)
+    ProtocoloProcedimento:   protocolo,
+    IdSerie:                 dados.id_tipo_documento,
+    Numero:                  dados.nome,
+    Data:                    dados.data,
+    NivelAcesso:             dados.nivel_acesso ?? '0',
+    Remetente:               dados.remetente ? { Nome: dados.remetente } : undefined,
+    Conteudo:                dados.conteudo_base64,
+    NomeArquivo:             dados.nome_arquivo || 'documento.pdf',
   };
-  if (dados.descricao)  body.descricao  = dados.descricao;
-  if (dados.remetente)  body.remetente  = dados.remetente;
 
-  return seiRequest('POST', `/processos/${id}/documentos`, {}, body);
+  const result = await seiCall('incluirDocumento', { Documento: documento });
+  return result;
 }
 
 // ---------------------------------------------------------------------------
 // Utilitários de configuração
 // ---------------------------------------------------------------------------
 
-/**
- * Retorna o status da configuração (sem expor o token).
- */
+/** Retorna o status da configuração sem expor o token completo. */
 export function statusConfiguracao() {
   return {
-    sei_url:     SEI_URL     || '(não configurado)',
-    sei_unidade: SEI_UNIDADE || '(não configurado)',
-    sei_token:   SEI_TOKEN   ? `${SEI_TOKEN.slice(0, 4)}${'*'.repeat(Math.max(0, SEI_TOKEN.length - 8))}${SEI_TOKEN.slice(-4)}` : '(não configurado)',
-    configurado: !!(SEI_URL && SEI_TOKEN && SEI_UNIDADE),
+    sei_url:      SEI_URL      || '(não configurado)',
+    sei_unidade:  SEI_UNIDADE  || '(não configurado)',
+    sei_sistema:  SEI_SISTEMA,
+    sei_token:    SEI_TOKEN
+      ? `${SEI_TOKEN.slice(0, 4)}${'*'.repeat(Math.max(0, SEI_TOKEN.length - 8))}${SEI_TOKEN.slice(-4)}`
+      : '(não configurado)',
+    configurado:  !!(SEI_URL && SEI_TOKEN && SEI_UNIDADE),
+    modo:         'SOAP (WebService)',
+    wsdl:         SEI_URL ? `${SEI_URL}/sei/controlador_ws.php?servico=sei` : null,
   };
 }
