@@ -63,10 +63,23 @@ async function seiCall(operation, extra = {}) {
     throw new Error(`Operação SOAP '${operation}' não encontrada no WSDL do SEI.`);
   }
 
-  const [result] = await client[`${operation}Async`](args);
-
-  // O SEI SOAP encapsula arrays em <parametros> e objetos simples em <parametros> tb
-  return result?.parametros ?? result?.return ?? result;
+  try {
+    const [result] = await client[`${operation}Async`](args);
+    // O SEI SOAP encapsula arrays em <parametros> e objetos simples em <parametros> tb
+    return result?.parametros ?? result?.return ?? result;
+  } catch (err) {
+    const raw = err.message || '';
+    // Traduz erros comuns de configuração do SEI para mensagens mais claras
+    if (raw.includes('Nenhuma operação configurada')) {
+      const match = raw.match(/para \[(.+?)\] no serviço/);
+      const op = match ? match[1] : operation;
+      throw new Error(
+        `A operação '${op}' não está habilitada para o sistema '${SEI_SISTEMA}' no SEI. ` +
+        `Para habilitar: Administração → Sistemas → ${SEI_SISTEMA} → Operações → marque '${op}'.`
+      );
+    }
+    throw err;
+  }
 }
 
 /**
@@ -89,7 +102,8 @@ function toArray(val) {
 
 /** Lista unidades acessíveis pelo token. */
 export async function listarUnidades() {
-  const result = await seiCall('listarUnidades');
+  // SinExibirUnidadesVinculadas: 'S' retorna a hierarquia completa
+  const result = await seiCall('listarUnidades', { SinExibirUnidadesVinculadas: 'S' });
   return toArray(result);
 }
 
