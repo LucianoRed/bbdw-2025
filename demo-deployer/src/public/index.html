@@ -687,6 +687,11 @@
     }
     return icon || '';
   }
+  // Garante que a rota sempre tenha protocolo https:// para uso em href
+  function normalizeRoute(route) {
+    if (!route) return route;
+    return route.startsWith('http') ? route : 'https://' + route;
+  }
   // Retorna SVG markup para uso dentro de <svg>
   function iconSvg(icon, x, y, size) {
     size = size || 28;
@@ -1117,8 +1122,9 @@
       var cs = state.components[node.componentId] || { status: 'not-deployed' };
       var statusClass = cs.status.replace(' ', '-');
 
-      var routeHtml = cs.route
-        ? '<a class="topo-status-route" href="' + cs.route + '" target="_blank">🔗 ' + cs.route + '</a>'
+      var csRouteUrl = normalizeRoute(cs.route);
+      var routeHtml = csRouteUrl
+        ? '<a class="topo-status-route" href="' + csRouteUrl + '" target="_blank">🔗 ' + csRouteUrl + '</a>'
         : '';
 
       var deployBtnClass = cs.status === 'deploying' ? 'btn btn-sm' : 'btn btn-sm btn-primary';
@@ -1320,8 +1326,9 @@
         var isDeploying = cs.status === 'deploying';
         var isDeployed = cs.status === 'deployed';
 
-        var routeHtml = (isDeployed && cs.route)
-          ? '<div><a class="route-link" href="' + cs.route + '" target="_blank" style="font-size:11px; word-break:break-all;">🔗 ' + cs.route + '</a></div>'
+        var compRouteUrl = normalizeRoute(cs.route);
+        var routeHtml = (isDeployed && compRouteUrl)
+          ? '<div><a class="route-link" href="' + compRouteUrl + '" target="_blank" style="font-size:11px; word-break:break-all;">🔗 ' + compRouteUrl + '</a></div>'
           : '';
 
         var trashBtn = cs.status !== 'not-deployed'
@@ -1364,8 +1371,9 @@
       .sort(function(a, b) { return a.order - b.order; })
       .map(function(comp) {
         var cs = state.components[comp.id] || { status: 'not-deployed' };
-        var routeHtml = cs.route
-          ? '<div class="info-row"><span class="info-label">Rota:</span><span class="info-value"><a class="route-link" href="' + cs.route + '" target="_blank">' + cs.route + '</a></span></div>'
+        var csUrl = normalizeRoute(cs.route);
+        var routeHtml = csUrl
+          ? '<div class="info-row"><span class="info-label">Rota:</span><span class="info-value"><a class="route-link" href="' + csUrl + '" target="_blank">' + csUrl + '</a></span></div>'
           : '';
         var startHtml = cs.startedAt
           ? '<div class="info-row"><span class="info-label">Início:</span><span class="info-value">' + new Date(cs.startedAt).toLocaleString('pt-BR') + '</span></div>'
@@ -1406,8 +1414,9 @@
     var cs = state.components[id] || {};
     document.getElementById('detailTitle').textContent = comp.icon + ' ' + comp.name;
 
-    var routeHtml = cs.route
-      ? '<div class="detail-row"><span class="detail-label">Rota:</span><span class="detail-value"><a class="route-link" href="' + cs.route + '" target="_blank">' + cs.route + '</a></span></div>'
+    var detailRouteUrl = normalizeRoute(cs.route);
+    var routeHtml = detailRouteUrl
+      ? '<div class="detail-row"><span class="detail-label">Rota:</span><span class="detail-value"><a class="route-link" href="' + detailRouteUrl + '" target="_blank">' + detailRouteUrl + '</a></span></div>'
       : '';
     var portHtml = comp.port
       ? '<div class="detail-row"><span class="detail-label">Porta:</span><span class="detail-value">' + comp.port + '</span></div>'

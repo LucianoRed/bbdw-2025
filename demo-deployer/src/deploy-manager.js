@@ -256,7 +256,10 @@ export async function deployComponent(componentId) {
 
           // Extrair rota
           const routeMatch = stepResult.output.match(/"route"\s*:\s*"([^"]+)"/);
-          if (routeMatch) route = routeMatch[1];
+          if (routeMatch) {
+            const raw = routeMatch[1];
+            route = raw.startsWith('http') ? raw : `https://${raw}`;
+          }
 
           if (!stepResult.success) {
             // Steps de infraestrutura (Redis, RBAC) não devem abortar o fluxo
@@ -314,7 +317,10 @@ export async function deployComponent(componentId) {
         finalResult = await runPlaybook(compDef.playbook, extraVars, onOutput);
 
         const routeMatch = finalResult.output.match(/"route"\s*:\s*"([^"]+)"/);
-        if (routeMatch) route = routeMatch[1];
+        if (routeMatch) {
+          const raw = routeMatch[1];
+          route = raw.startsWith('http') ? raw : `https://${raw}`;
+        }
       }
 
       const status = finalResult.success ? "deployed" : "failed";
