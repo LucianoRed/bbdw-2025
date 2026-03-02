@@ -35,11 +35,11 @@
 # pois versões mais novas do redis-stack-server não definem ENTRYPOINT na imagem.
 # Sem "command", o K8s interpreta o primeiro elemento de "args" como executável,
 # causando: "executable file '--save' not found in $PATH"
-- name: "Configurar Redis: desabilitar persistência RDB (evita stop-writes-on-bgsave-error)"
+- name: "Configurar Redis: desabilitar persistência RDB e protected-mode"
   shell: |
     oc patch {{ redis_resource.stdout }} -n {{ namespace }} \
       --type=strategic \
-      -p '{"spec":{"template":{"spec":{"containers":[{"name":"redis","command":["redis-server"],"args":["--save","","--stop-writes-on-bgsave-error","no"]}]}}}}'  
+      -p '{"spec":{"template":{"spec":{"containers":[{"name":"redis","command":["redis-server"],"args":["--save","","--stop-writes-on-bgsave-error","no","--protected-mode","no"]}]}}}}}'  
   when: redis_resource.stdout | default('') | length > 0
   changed_when: true
   failed_when: false
@@ -57,6 +57,7 @@
       echo "Aplicando CONFIG SET no pod $POD"
       oc exec "$POD" -n {{ namespace }} -- redis-cli CONFIG SET stop-writes-on-bgsave-error no
       oc exec "$POD" -n {{ namespace }} -- redis-cli CONFIG SET save ""
+      oc exec "$POD" -n {{ namespace }} -- redis-cli CONFIG SET protected-mode no
     else
       echo "Nenhum pod Redis running encontrado, config será aplicada no próximo restart"
     fi
