@@ -101,9 +101,9 @@ export async function listarTiposProcesso() {
   return seiRequest('GET', '/tipos_processo');
 }
 
-/** Lista tipos de documento disponíveis na unidade. */
+/** Lista tipos de documento (séries documentais) disponíveis na unidade. */
 export async function listarTiposDocumento() {
-  return seiRequest('GET', '/tipos_documento');
+  return seiRequest('GET', '/series');
 }
 
 // ---------------------------------------------------------------------------
