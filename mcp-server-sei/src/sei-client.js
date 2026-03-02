@@ -171,32 +171,45 @@ export async function consultarProcesso(protocolo) {
  * @param {string} [dados.observacoes]     - Observações internas
  */
 export async function criarProcesso(dados) {
-  const procedimento = {
-    TipoProcedimento: { IdTipoProcedimento: dados.id_tipo_processo },
-    Especificacao:    dados.especificacao,
-    NivelAcesso:      dados.nivel_acesso ?? '0',
-  };
+  // O tipo complexo Procedimento no WSDL do SEI define os campos no nível raiz:
+  //   IdTipoProcedimento (string, obrigatório)
+  //   Especificacao      (string, opcional)
+  //   NivelAcesso        (string, opcional)
+  //   IdHipoteseLegal    (string, opcional)
+  //   Assuntos           (ArrayOfAssunto, obrigatório — enviar vazio se não houver)
+  //   Interessados       (ArrayOfInteressado, obrigatório — enviar vazio se não houver)
+  //   Observacao         (string, opcional)
+  //
+  // ATENÇÃO: IdTipoProcedimento fica direto no objeto, NÃO aninhado em TipoProcedimento.
 
-  if (dados.hipotese_legal) {
-    procedimento.HipoteseLegal = { IdHipoteseLegal: dados.hipotese_legal };
-  }
-
-  const assuntosArr = toArray(dados.assuntos).map(id => ({ IdAssunto: id }));
+  const assuntosArr = toArray(dados.assuntos).map(id => ({ IdAssunto: String(id) }));
   const interessadosArr = toArray(dados.interessados).map(i => ({
-    Nome:  i.nome || i.Nome,
-    Sigla: i.sigla || i.Sigla,
+    Nome:  i.nome || i.Nome || '',
+    Sigla: i.sigla || i.Sigla || '',
   }));
 
-  const extra = {
-    Procedimento:  procedimento,
-    Assuntos:      assuntosArr.length  ? { item: assuntosArr }  : undefined,
-    Interessados:  interessadosArr.length ? { item: interessadosArr } : undefined,
-    ObservacaoUnidades: dados.observacoes
-      ? { item: [{ IdUnidade: SEI_UNIDADE, Descricao: dados.observacoes }] }
-      : undefined,
+  const procedimento = {
+    IdTipoProcedimento: String(dados.id_tipo_processo),
+    Especificacao:      dados.especificacao ?? '',
+    NivelAcesso:        dados.nivel_acesso ?? '0',
+    // Assuntos e Interessados são campos obrigatórios do tipo Procedimento
+    Assuntos:    assuntosArr.length    ? { item: assuntosArr }     : { item: [] },
+    Interessados: interessadosArr.length ? { item: interessadosArr } : { item: [] },
   };
 
-  const result = await seiCall('gerarProcedimento', extra);
+  if (dados.observacoes) {
+    procedimento.Observacao = dados.observacoes;
+  }
+
+  if (dados.hipotese_legal) {
+    procedimento.IdHipoteseLegal = String(dados.hipotese_legal);
+  }
+
+  const result = await seiCall('gerarProcedimento', {
+    Procedimento: procedimento,
+    // Documentos, ProcedimentosRelacionados, UnidadesEnvio são parâmetros opcionais
+    // de gerarProcedimento (não são parte de Procedimento)
+  });
   return result;
 }
 
