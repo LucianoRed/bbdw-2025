@@ -113,13 +113,15 @@ export async function listarUnidades() {
 
 /** Lista tipos de processo (procedimento) disponíveis na unidade. */
 export async function listarTiposProcesso() {
-  const result = await seiCall('listarTiposProcedimento');
+  // SinIndividual: 'N' retorna tanto tipos coletivos quanto individuais
+  const result = await seiCall('listarTiposProcedimento', { SinIndividual: 'N' });
   return toArray(result);
 }
 
 /** Lista séries documentais (tipos de documento) disponíveis na unidade. */
 export async function listarTiposDocumento() {
-  const result = await seiCall('listarSeries');
+  // Sem IdTipoProcedimento retorna todas as séries disponíveis na unidade
+  const result = await seiCall('listarSeries', {});
   return toArray(result);
 }
 
