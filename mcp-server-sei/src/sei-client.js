@@ -89,11 +89,46 @@ async function seiCall(operation, extra = {}) {
  */
 function toArray(val) {
   if (!val) return [];
-  // { attributes: {...}, item: [...] } — padrão SOAP-ENC array
-  if (val && typeof val === 'object' && !Array.isArray(val) && 'attributes' in val) {
+  // { attributes: {...}, item: [...] } — padrão SOAP-ENC array wrapper
+  // ATENÇÃO: verificar 'item' em val além de 'attributes', pois objetos únicos
+  // do SOAP também possuem 'attributes' mas NÃO possuem 'item'.
+  if (typeof val === 'object' && !Array.isArray(val) && 'attributes' in val && 'item' in val) {
+    // item pode ser array (N > 1) ou objeto único (N = 1)
     return toArray(val.item);
   }
   return Array.isArray(val) ? val : [val];
+}
+
+/**
+ * Normaliza objetos SOAP removendo os wrappers { attributes, $value } gerados
+ * pelo node-soap para campos xsi:type. Retorna objetos simples com strings planas.
+ */
+function flatten(val) {
+  if (val === null || val === undefined) return val;
+  if (Array.isArray(val)) return val.map(flatten);
+  if (typeof val !== 'object') return val;
+
+  // Campo escalar encapsulado: { attributes: {...}, $value: "..." }
+  const keys = Object.keys(val);
+  if (keys.length === 2 && keys.includes('attributes') && keys.includes('$value')) {
+    return val.$value;
+  }
+  if (keys.length === 1 && keys[0] === '$value') {
+    return val.$value;
+  }
+
+  // Array SOAP-ENC: { attributes: {...}, item: [...] }
+  if ('attributes' in val && 'item' in val) {
+    return flatten(val.item);
+  }
+
+  // Objeto genérico: processa cada campo, ignora 'attributes'
+  const out = {};
+  for (const [k, v] of Object.entries(val)) {
+    if (k === 'attributes') continue;
+    out[k] = flatten(v);
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,7 +139,7 @@ function toArray(val) {
 export async function listarUnidades() {
   // SinExibirUnidadesVinculadas: 'S' retorna a hierarquia completa
   const result = await seiCall('listarUnidades', { SinExibirUnidadesVinculadas: 'S' });
-  return toArray(result);
+  return flatten(toArray(result));
 }
 
 // ---------------------------------------------------------------------------
@@ -113,16 +148,17 @@ export async function listarUnidades() {
 
 /** Lista tipos de processo (procedimento) disponíveis na unidade. */
 export async function listarTiposProcesso() {
-  // SinIndividual: 'N' retorna tanto tipos coletivos quanto individuais
-  const result = await seiCall('listarTiposProcedimento', { SinIndividual: 'N' });
-  return toArray(result);
+  // SinIndividual: '' retorna TODOS os tipos (individual + coletivo)
+  // 'S' = só individuais, 'N' = só coletivos, '' = todos
+  const result = await seiCall('listarTiposProcedimento', { SinIndividual: '' });
+  return flatten(toArray(result));
 }
 
 /** Lista séries documentais (tipos de documento) disponíveis na unidade. */
 export async function listarTiposDocumento() {
   // Sem IdTipoProcedimento retorna todas as séries disponíveis na unidade
   const result = await seiCall('listarSeries', {});
-  return toArray(result);
+  return flatten(toArray(result));
 }
 
 // ---------------------------------------------------------------------------
@@ -156,7 +192,7 @@ export async function consultarProcesso(protocolo) {
     SinRetornarProcedimentosRelacionados: 'N',
     SinRetornarProcedimentosAnexados:     'N',
   });
-  return result;
+  return flatten(result);
 }
 
 /**
@@ -210,7 +246,7 @@ export async function criarProcesso(dados) {
     // Documentos, ProcedimentosRelacionados, UnidadesEnvio são parâmetros opcionais
     // de gerarProcedimento (não são parte de Procedimento)
   });
-  return result;
+  return flatten(result);
 }
 
 // ---------------------------------------------------------------------------
@@ -231,7 +267,7 @@ export async function listarDocumentosProcesso(protocolo) {
     SinRetornarProcedimentosRelacionados: 'N',
     SinRetornarProcedimentosAnexados:     'N',
   });
-  return toArray(proc?.DocumentosProcedimento?.item ?? proc?.DocumentosProcedimento);
+  return flatten(toArray(proc?.DocumentosProcedimento?.item ?? proc?.DocumentosProcedimento));
 }
 
 /**
@@ -247,7 +283,7 @@ export async function consultarDocumento(protocoloDocumento) {
     SinRetornarCampos:      'S',
     SinRetornarDisposicao:  'N',
   });
-  return result;
+  return flatten(result);
 }
 
 /**
@@ -292,7 +328,7 @@ export async function incluirDocumento(protocolo, dados) {
   };
 
   const result = await seiCall('incluirDocumento', { Documento: documento });
-  return result;
+  return flatten(result);
 }
 
 // ---------------------------------------------------------------------------
