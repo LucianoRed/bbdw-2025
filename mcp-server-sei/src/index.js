@@ -244,10 +244,11 @@ const TOOLS = [
           items: {
             type: 'object',
             properties: {
+              id:    { type: 'string', description: 'IdContato do interessado (obtido via sei_listar_interessados). Obrigatório para validação no SEI.' },
               nome:  { type: 'string', description: 'Nome do interessado (obtido via sei_listar_interessados).' },
               sigla: { type: 'string', description: 'Sigla da unidade interessada (obtida via sei_listar_interessados).' },
             },
-            required: ['nome'],
+            required: ['id', 'nome'],
           },
           description: 'Lista de interessados no processo. Se omitido, utiliza o usuário de teste padrão "Aaa Bbb Ccc" (ambiente de homologação).',
         },
@@ -437,7 +438,7 @@ async function executeToolCall(name, args) {
         if (!especificacao)    throw new Error("O parâmetro 'especificacao' é obrigatório.");
         const interessadosEfetivos = (Array.isArray(interessados) && interessados.length > 0)
           ? interessados
-          : [{ nome: 'Aaa Bbb Ccc', sigla: '' }];
+          : [{ id: '100000008', nome: 'Aaa Bbb Ccc', sigla: 'ABC' }];
         if ((nivel_acesso === '1' || nivel_acesso === '2') && !hipotese_legal) {
           throw new Error("O parâmetro 'hipotese_legal' é obrigatório para processos com acesso restrito ou sigiloso.");
         }
