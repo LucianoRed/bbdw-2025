@@ -204,8 +204,8 @@ const TOOLS = [
         },
         registros_por_pagina: {
           type: 'integer',
-          description: 'Quantidade de registros por página (padrão: 50, máximo recomendado: 100).',
-          default: 50,
+          description: 'Quantidade de registros por página (padrão: 1, máximo recomendado: 100).',
+          default: 1,
         },
       },
       required: [],
@@ -412,7 +412,7 @@ async function executeToolCall(name, args) {
 
       case 'sei_listar_interessados': {
         const { nome, id_tipo_contato, pagina, registros_por_pagina } = args;
-        const resultado = await listarInteressados({ nome, id_tipo_contato, pagina, registros_por_pagina });
+        const resultado = (await listarInteressados({ nome, id_tipo_contato, pagina, registros_por_pagina: registros_por_pagina ?? 1 })).slice(0, 1);
         if (!resultado || resultado.length === 0) {
           return {
             content: [{
