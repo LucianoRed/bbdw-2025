@@ -4,6 +4,7 @@ import com.redhat.mcp.DynamicMcpToolProviderSupplier;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 import io.quarkiverse.langchain4j.RegisterAiService;
 import io.quarkiverse.langchain4j.RegisterAiService.BeanChatMemoryProviderSupplier;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -16,35 +17,17 @@ import jakarta.enterprise.context.ApplicationScoped;
 @ApplicationScoped
 public interface AgentGPT4oNano {
     
-    @SystemMessage("""
-        Você é um assistente de AI especializado em análise de clusters OpenShift/Kubernetes. 
-        Você tem acesso a ferramentas MCP cadastradas dinamicamente para consultar informações do cluster em tempo real.
-        
-        Sempre responda em markdown usando:
-        - Listas para enumerações
-        - Tabelas para dados estruturados
-        - Blocos de código para logs e YAML
-        - Formatação adequada para melhorar a legibilidade
-        
-        Ao analisar o cluster, seja proativo em buscar informações relevantes usando as ferramentas disponíveis.
-        """)
+    @SystemMessage("{systemPrompt}")
     String sendMessageWithMcp(
         @MemoryId String memoryId,
+        @V("systemPrompt") String systemPrompt,
         @UserMessage String message
     );
     
-    @SystemMessage("""
-        Você é um assistente de AI especializado em análise de clusters OpenShift/Kubernetes. 
-        
-        Sempre responda em markdown usando:
-        - Listas para enumerações
-        - Tabelas para dados estruturados
-        - Blocos de código para logs e YAML
-        - Formatação adequada para melhorar a legibilidade
-        
-        """)
+    @SystemMessage("{systemPrompt}")
     String sendMessage(
         @MemoryId String memoryId,
+        @V("systemPrompt") String systemPrompt,
         @UserMessage String message
     );
 }

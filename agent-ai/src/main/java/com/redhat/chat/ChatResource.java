@@ -94,14 +94,9 @@ public class ChatResource {
         boolean useOrchestrator = request.useOrchestrator() != null ? request.useOrchestrator() : false;
         String modelName = request.model() != null ? request.model() : "gpt4o-mini";
 
-        // Injeta o system prompt customizado como prefixo na mensagem do usuário
-        String effectiveMessage = systemPromptService.hasCustomPrompt()
-            ? systemPromptService.buildContextPrefix() + request.message()
-            : request.message();
-        if (systemPromptService.hasCustomPrompt()) {
-            Log.debugf("[SystemPrompt] Prompt customizado injetado (%d chars) na mensagem.",
-                       systemPromptService.getCustomPrompt().length());
-        }
+        // Mensagem original do usuário (sem prefixo injetado — o system prompt
+        // é agora passado diretamente para o agente via @V("systemPrompt"))
+        String userMessage = request.message();
         
         // Se MCP está ativo, registra o requestId no serviço de eventos
         if (useMcp) {
@@ -115,10 +110,10 @@ public class ChatResource {
             // Se orquestração está ativa, usa o OrchestratorService
             if (useOrchestrator) {
                 Log.info("🎯 Modo orquestração ativado - delegando para OrchestratorService");
-                result = orchestratorService.processMessage(memoryId, effectiveMessage, modelName);
+                result = orchestratorService.processMessage(memoryId, userMessage, modelName);
             } else {
                 // Modo tradicional: seleciona o agente baseado no modelo
-                result = routeMessage(modelName, memoryId, effectiveMessage, useMcp, useRag);
+                result = routeMessage(modelName, memoryId, userMessage, useMcp, useRag);
             }
             
             // Retorna com o requestId no header
@@ -137,42 +132,59 @@ public class ChatResource {
      * Método auxiliar para rotear mensagens para o agente correto
      */
     private String routeMessage(String modelName, String memoryId, String message, boolean useMcp, boolean useRag) {
+        // Resolve o system prompt efetivo: customizado (se configurado) ou padrão do agente
+        String sysPrompt = useMcp
+            ? systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT_WITH_MCP)
+            : (useRag
+                ? systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT_WITH_RAG)
+                : systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT));
+
+        if (systemPromptService.hasCustomPrompt()) {
+            Log.debugf("[SystemPrompt] Prompt customizado ativo (%d chars) — injetado como system message real.",
+                       systemPromptService.getCustomPrompt().length());
+        }
+
         // Routing: RAG + MCP > RAG > MCP > Basic
         return switch (modelName.toLowerCase()) {
             case "gemini-2.5-flash", "gemini" -> {
-                if (useMcp) yield agentGemini.sendMessageWithMcp(memoryId, message);
-                else yield agentGemini.sendMessage(memoryId, message);
+                if (useMcp) yield agentGemini.sendMessageWithMcp(memoryId, sysPrompt, message);
+                else yield agentGemini.sendMessage(memoryId, sysPrompt, message);
             }
             case "gpt-3.5-turbo", "gpt35" -> {
-                if (useMcp) yield agentGPT35.sendMessageWithMcp(memoryId, message);
-                else yield agentGPT35.sendMessage(memoryId, message);
+                if (useMcp) yield agentGPT35.sendMessageWithMcp(memoryId, sysPrompt, message);
+                else yield agentGPT35.sendMessage(memoryId, sysPrompt, message);
             }
             case "gpt-4o-nano", "gpt4o-nano" -> {
-                if (useMcp) yield agentGPT4oNano.sendMessageWithMcp(memoryId, message);
-                else yield agentGPT4oNano.sendMessage(memoryId, message);
+                if (useMcp) yield agentGPT4oNano.sendMessageWithMcp(memoryId, sysPrompt, message);
+                else yield agentGPT4oNano.sendMessage(memoryId, sysPrompt, message);
             }
             case "gpt-4o-mini", "gpt4o-mini" -> {
-                if (useMcp) yield agentGPT4oMini.sendMessageWithMcp(memoryId, message);
-                else yield agentGPT4oMini.sendMessage(memoryId, message);
+                if (useMcp) yield agentGPT4oMini.sendMessageWithMcp(memoryId, sysPrompt, message);
+                else yield agentGPT4oMini.sendMessage(memoryId, sysPrompt, message);
             }
             case "gpt-4.1-nano", "gpt41-nano" -> {
-                if (useMcp) yield agentGPT41Nano.sendMessageWithMcp(memoryId, message);
-                else yield agentGPT41Nano.sendMessage(memoryId, message);
+                if (useMcp) yield agentGPT41Nano.sendMessageWithMcp(memoryId, sysPrompt, message);
+                else yield agentGPT41Nano.sendMessage(memoryId, sysPrompt, message);
             }
             case "gpt-5", "gpt5" -> {
-                if (useMcp) yield agentGPT5.sendMessageWithMcp(memoryId, message);
-                else yield agentGPT5.sendMessage(memoryId, message);
+                if (useMcp) yield agentGPT5.sendMessageWithMcp(memoryId, sysPrompt, message);
+                else yield agentGPT5.sendMessage(memoryId, sysPrompt, message);
             }
             case "gpt-5-mini", "gpt5-mini" -> {
-                if (useMcp) yield agentGPT5Mini.sendMessageWithMcp(memoryId, message);
-                else yield agentGPT5Mini.sendMessage(memoryId, message);
+                if (useMcp) yield agentGPT5Mini.sendMessageWithMcp(memoryId, sysPrompt, message);
+                else yield agentGPT5Mini.sendMessage(memoryId, sysPrompt, message);
             }
             default -> {
                 // Fallback para o agente padrão com RAG support
-                if (useRag && useMcp) yield agentWithRAG.sendMessageWithMcpAndRAG(memoryId, message);
-                else if (useRag) yield agentWithRAG.sendMessageWithRAG(memoryId, message);
-                else if (useMcp) yield agent.sendMessageWithMcp(memoryId, message);
-                else yield agent.sendMessage(memoryId, message);
+                String ragSysPrompt = (useMcp && useRag)
+                    ? systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT_WITH_RAG_AND_MCP)
+                    : (useRag
+                        ? systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT_WITH_RAG)
+                        : sysPrompt);
+                if (useRag && useMcp) yield agentWithRAG.sendMessageWithMcpAndRAG(memoryId, ragSysPrompt, message);
+                else if (useRag) yield agentWithRAG.sendMessageWithRAG(memoryId, ragSysPrompt, message);
+                else if (useMcp) yield agent.sendMessageWithMcp(memoryId, sysPrompt, message);
+                else yield agent.sendMessage(memoryId, sysPrompt, message);
             }
         };
     }

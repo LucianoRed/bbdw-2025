@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.chat.*;
+import com.redhat.systemprompt.SystemPromptService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -40,7 +41,10 @@ public class OrchestratorService {
     
     @Inject
     ChatMemoryProvider chatMemoryProvider;
-    
+
+    @Inject
+    SystemPromptService systemPromptService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
     
     /**
@@ -73,7 +77,9 @@ public class OrchestratorService {
         } catch (Exception e) {
             Log.errorf("❌ Erro no orquestrador: %s", e.getMessage());
             // Fallback: usa agente geral em caso de erro
-            return agentGeneral.sendMessage(memoryId, message);
+            return agentGeneral.sendMessage(memoryId,
+                systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT),
+                message);
         }
     }
     
@@ -88,34 +94,52 @@ public class OrchestratorService {
             case K8S_CLUSTER -> {
                 Log.info("🔧 Delegando para agente K8S_CLUSTER");
                 if (decision.useMcp()) {
-                    yield agentK8s.sendMessageWithMcp(memoryId, message);
+                    yield agentK8s.sendMessageWithMcp(memoryId,
+                        systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT_WITH_MCP),
+                        message);
                 } else {
-                    yield agentK8s.sendMessage(memoryId, message);
+                    yield agentK8s.sendMessage(memoryId,
+                        systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT),
+                        message);
                 }
             }
             case DOCUMENTATION -> {
                 Log.info("📚 Delegando para agente DOCUMENTATION");
                 if (decision.useRag()) {
-                    yield agentWithRAG.sendMessageWithRAG(memoryId, message);
+                    yield agentWithRAG.sendMessageWithRAG(memoryId,
+                        systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT_WITH_RAG),
+                        message);
                 } else {
-                    yield agentGeneral.sendMessage(memoryId, message);
+                    yield agentGeneral.sendMessage(memoryId,
+                        systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT),
+                        message);
                 }
             }
             case TROUBLESHOOTING -> {
                 Log.info("🔍 Delegando para agente TROUBLESHOOTING");
                 if (decision.useMcp() && decision.useRag()) {
-                    yield agentWithRAG.sendMessageWithMcpAndRAG(memoryId, message);
+                    yield agentWithRAG.sendMessageWithMcpAndRAG(memoryId,
+                        systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT_WITH_RAG_AND_MCP),
+                        message);
                 } else if (decision.useRag()) {
-                    yield agentWithRAG.sendMessageWithRAG(memoryId, message);
+                    yield agentWithRAG.sendMessageWithRAG(memoryId,
+                        systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT_WITH_RAG),
+                        message);
                 } else if (decision.useMcp()) {
-                    yield agentK8s.sendMessageWithMcp(memoryId, message);
+                    yield agentK8s.sendMessageWithMcp(memoryId,
+                        systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT_WITH_MCP),
+                        message);
                 } else {
-                    yield agentGeneral.sendMessage(memoryId, message);
+                    yield agentGeneral.sendMessage(memoryId,
+                        systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT),
+                        message);
                 }
             }
             case GENERAL -> {
                 Log.info("💬 Delegando para agente GENERAL");
-                yield agentGeneral.sendMessage(memoryId, message);
+                yield agentGeneral.sendMessage(memoryId,
+                    systemPromptService.resolveSystemPrompt(SystemPromptService.DEFAULT_SYSTEM_PROMPT),
+                    message);
             }
         };
     }
