@@ -1,86 +1,112 @@
 ---
 # Role: deploy-redis — deploy do Redis para o agent-ai
-- name: "Verificar se Redis já existe"
-  shell: "oc get deploy redis -n {{ namespace }} -o name 2>/dev/null || oc get dc redis -n {{ namespace }} -o name 2>/dev/null"
-  register: redis_check
-  failed_when: false
-  changed_when: false
+# Usa manifesto declarativo (oc apply) para garantir que as flags
+# --protected-mode no e --save "" sejam aplicadas desde o início,
+# evitando o problema de patches estratégicos com nome de container incorreto.
 
-- name: "Deploy do Redis Stack (com RediSearch para embeddings)"
-  command: >
-    oc new-app docker.io/redis/redis-stack-server:7.2.0-v19
-    --name=redis
-    -n {{ namespace }}
-  when: redis_check.stdout | default('') | length == 0
-  failed_when: false
-  register: redis_new_app
+- name: "Criar manifesto Deployment do Redis"
+  copy:
+    dest: /tmp/redis-deployment.yaml
+    content: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: redis
+        namespace: {{ namespace }}
+        labels:
+          app: redis
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: redis
+        template:
+          metadata:
+            labels:
+              app: redis
+          spec:
+            containers:
+            - name: redis
+              image: docker.io/redis/redis-stack-server:7.2.0-v19
+              # IMPORTANTE: "command" substitui o ENTRYPOINT da imagem.
+              # Para redis-stack-server >= 7.2.0-v9, o redis-server já inclui
+              # os módulos (RediSearch, RedisJSON) compilados; chamar redis-server
+              # diretamente é seguro e garante que os args abaixo sejam respeitados.
+              command: ["redis-server"]
+              args:
+                - "--save"
+                - ""
+                - "--stop-writes-on-bgsave-error"
+                - "no"
+                - "--protected-mode"
+                - "no"
+              ports:
+              - containerPort: 6379
+                protocol: TCP
+              - containerPort: 8001
+                protocol: TCP
 
-- name: "Aguardar criação do recurso Redis"
-  pause:
-    seconds: 5
-  when: redis_check.stdout | default('') | length == 0
+- name: "Criar manifesto Service do Redis"
+  copy:
+    dest: /tmp/redis-service.yaml
+    content: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: redis
+        namespace: {{ namespace }}
+        labels:
+          app: redis
+      spec:
+        selector:
+          app: redis
+        ports:
+        - name: redis
+          port: 6379
+          targetPort: 6379
+          protocol: TCP
+        - name: redis-insight
+          port: 8001
+          targetPort: 8001
+          protocol: TCP
 
-- name: "Detectar tipo de recurso Redis"
-  shell: "oc get deploy redis -n {{ namespace }} -o name 2>/dev/null || oc get dc redis -n {{ namespace }} -o name 2>/dev/null"
-  register: redis_resource
-  changed_when: false
-  failed_when: false
-  retries: 5
-  delay: 3
-  until: redis_resource.stdout | default('') | length > 0
+- name: "Aplicar Deployment Redis (oc apply garante idempotência)"
+  command: "oc apply -f /tmp/redis-deployment.yaml -n {{ namespace }}"
+  register: redis_deploy_apply
+  changed_when: "'configured' in redis_deploy_apply.stdout or 'created' in redis_deploy_apply.stdout"
 
-# Desabilita persistência RDB para evitar "stop-writes-on-bgsave-error" no OpenShift
-# (containers não têm permissão de escrita no diretório de trabalho por padrão)
-# IMPORTANTE: é necessário definir "command" explicitamente junto com "args",
-# pois versões mais novas do redis-stack-server não definem ENTRYPOINT na imagem.
-# Sem "command", o K8s interpreta o primeiro elemento de "args" como executável,
-# causando: "executable file '--save' not found in $PATH"
-- name: "Configurar Redis: desabilitar persistência RDB e protected-mode"
-  shell: |
-    oc patch {{ redis_resource.stdout }} -n {{ namespace }} \
-      --type=strategic \
-      -p '{"spec":{"template":{"spec":{"containers":[{"name":"redis","command":["redis-server"],"args":["--save","","--stop-writes-on-bgsave-error","no","--protected-mode","no"]}]}}}}}'  
-  when: redis_resource.stdout | default('') | length > 0
-  changed_when: true
-  failed_when: false
-  register: redis_patch
+- name: "Aplicar Service Redis"
+  command: "oc apply -f /tmp/redis-service.yaml -n {{ namespace }}"
+  register: redis_svc_apply
+  changed_when: "'configured' in redis_svc_apply.stdout or 'created' in redis_svc_apply.stdout"
 
-- name: "Aplicar configuração Redis em pod já em execução (fix imediato)"
-  shell: |
-    POD=$(oc get pod -n {{ namespace }} -l deployment=redis --field-selector=status.phase=Running \
-          -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-    if [ -z "$POD" ]; then
-      POD=$(oc get pod -n {{ namespace }} -l app=redis --field-selector=status.phase=Running \
-            -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-    fi
-    if [ -n "$POD" ]; then
-      echo "Aplicando CONFIG SET no pod $POD"
-      oc exec "$POD" -n {{ namespace }} -- redis-cli CONFIG SET stop-writes-on-bgsave-error no
-      oc exec "$POD" -n {{ namespace }} -- redis-cli CONFIG SET save ""
-      oc exec "$POD" -n {{ namespace }} -- redis-cli CONFIG SET protected-mode no
-    else
-      echo "Nenhum pod Redis running encontrado, config será aplicada no próximo restart"
-    fi
-  register: redis_live_config
-  failed_when: false
-  changed_when: false
-
-- name: "Log da configuração aplicada em tempo real"
+- name: "Log do resultado do apply"
   debug:
-    msg: "{{ redis_live_config.stdout_lines | default([]) }}"
-  when: redis_live_config.stdout | default('') | length > 0
+    msg:
+      - "Deployment: {{ redis_deploy_apply.stdout }}"
+      - "Service: {{ redis_svc_apply.stdout }}"
 
 - name: "Aguardar Redis estar pronto"
-  command: "oc rollout status {{ redis_resource.stdout }} -n {{ namespace }} --timeout=180s"
-  when: redis_resource.stdout | default('') | length > 0
+  command: "oc rollout status deployment/redis -n {{ namespace }} --timeout=180s"
   changed_when: false
-  failed_when: false
 
-- name: "Obter service ClusterIP do Redis"
-  command: "oc get svc redis -n {{ namespace }} -o jsonpath='{.spec.clusterIP}'"
-  register: redis_ip
-  changed_when: false
+- name: "Verificar protected-mode desabilitado no pod em execução"
+  shell: |
+    POD=$(oc get pod -n {{ namespace }} -l app=redis --field-selector=status.phase=Running \
+          -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    if [ -n "$POD" ]; then
+      echo "Pod Redis: $POD"
+      oc exec "$POD" -n {{ namespace }} -- redis-cli CONFIG GET protected-mode
+    else
+      echo "Nenhum pod Redis running encontrado"
+    fi
+  register: redis_verify
   failed_when: false
+  changed_when: false
+
+- name: "Log da verificação do protected-mode"
+  debug:
+    msg: "{{ redis_verify.stdout_lines | default([]) }}"
 
 - name: "Registrar informações do Redis"
   set_fact:

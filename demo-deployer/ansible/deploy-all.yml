@@ -45,11 +45,33 @@
       loop: "{{ components }}"
 
     # 5. Configurar variáveis do agent-ai
-    - name: "Configurar agent-ai com endpoints dos MCP servers"
+    # NOTA: oc new-app cria Deployment (não DeploymentConfig) em versões recentes do OpenShift.
+    # Detectamos o tipo de recurso antes de setar env vars para evitar falha silenciosa.
+    - name: "Detectar tipo de recurso do agent-ai"
+      shell: >
+        oc get deployment agent-ai -n {{ namespace }} -o name 2>/dev/null ||
+        oc get dc agent-ai -n {{ namespace }} -o name 2>/dev/null
+      register: agent_resource
+      failed_when: false
+      changed_when: false
+
+    - name: "Configurar agent-ai com REDIS_URL"
       command: >
-        oc set env dc/agent-ai
+        oc set env {{ agent_resource.stdout }}
         REDIS_URL=redis://redis.{{ namespace }}.svc.cluster.local:6379
         -n {{ namespace }}
+      when: agent_resource.stdout | default('') | length > 0
+      failed_when: false
+
+    - name: "Forçar rollout do agent-ai após configurar REDIS_URL"
+      command: "oc rollout restart {{ agent_resource.stdout }} -n {{ namespace }}"
+      when: agent_resource.stdout | default('') | length > 0
+      failed_when: false
+
+    - name: "Aguardar rollout do agent-ai concluir"
+      command: "oc rollout status {{ agent_resource.stdout }} -n {{ namespace }} --timeout=300s"
+      when: agent_resource.stdout | default('') | length > 0
+      changed_when: false
       failed_when: false
 
     # 6. Obter status final
