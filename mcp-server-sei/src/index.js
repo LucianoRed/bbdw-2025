@@ -185,7 +185,7 @@ const TOOLS = [
   },
   {
     name: 'sei_listar_interessados',
-    description: 'Lista contatos/interessados cadastrados no SEI. Use para obter o nome e sigla dos interessados a serem incluídos ao criar um processo com sei_criar_processo.',
+    description: 'Lista contatos/interessados cadastrados no SEI. OBRIGATÓRIO chamar esta tool antes de sei_criar_processo para obter o nome e sigla válidos dos interessados, pois o SEI exige ao menos um interessado com dados corretos ao criar um processo.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -213,7 +213,7 @@ const TOOLS = [
   },
   {
     name: 'sei_criar_processo',
-    description: 'Abre um novo processo no SEI na unidade configurada.',
+    description: 'Abre um novo processo no SEI na unidade configurada. ATENÇÃO: o campo interessados é obrigatório pela API SOAP do SEI — sempre use sei_listar_interessados antes para obter os dados corretos (nome e sigla) e passe-os neste campo.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -244,15 +244,16 @@ const TOOLS = [
           items: {
             type: 'object',
             properties: {
-              nome:  { type: 'string', description: 'Nome do interessado.' },
-              sigla: { type: 'string', description: 'Sigla da unidade interessada (se aplicável).' },
+              nome:  { type: 'string', description: 'Nome do interessado (obtido via sei_listar_interessados).' },
+              sigla: { type: 'string', description: 'Sigla da unidade interessada (obtida via sei_listar_interessados).' },
             },
             required: ['nome'],
           },
-          description: 'Lista de interessados no processo.',
+          description: 'Lista de interessados no processo. OBRIGATÓRIO pela API do SEI — deve conter ao menos um item. Use sei_listar_interessados para obter dados válidos.',
+          minItems: 1,
         },
       },
-      required: ['id_tipo_processo', 'especificacao'],
+      required: ['id_tipo_processo', 'especificacao', 'interessados'],
     },
   },
   {
@@ -413,7 +414,12 @@ async function executeToolCall(name, args) {
         const { nome, id_tipo_contato, pagina, registros_por_pagina } = args;
         const resultado = await listarInteressados({ nome, id_tipo_contato, pagina, registros_por_pagina });
         if (!resultado || resultado.length === 0) {
-          return { content: [{ type: 'text', text: 'Nenhum interessado encontrado com os filtros informados.' }] };
+          return {
+            content: [{
+              type: 'text',
+              text: 'Nenhum interessado encontrado com os filtros informados. Tente buscar pelo nome completo ou parcial do solicitante (pessoa física/jurídica), não pelo assunto do processo. Por exemplo, use o nome do funcionário ou da unidade responsável.',
+            }],
+          };
         }
         const resumo = resultado.map(c =>
           `• ${c.nome}${c.sigla ? ` (${c.sigla})` : ''}  [id: ${c.id}]`
@@ -430,6 +436,9 @@ async function executeToolCall(name, args) {
         const { id_tipo_processo, especificacao, nivel_acesso, hipotese_legal, observacoes, interessados } = args;
         if (!id_tipo_processo) throw new Error("O parâmetro 'id_tipo_processo' é obrigatório.");
         if (!especificacao)    throw new Error("O parâmetro 'especificacao' é obrigatório.");
+        if (!interessados || !Array.isArray(interessados) || interessados.length === 0) {
+          throw new Error("O parâmetro 'interessados' é obrigatório e deve conter ao menos um item. Use sei_listar_interessados para obter os dados corretos antes de criar o processo.");
+        }
         if ((nivel_acesso === '1' || nivel_acesso === '2') && !hipotese_legal) {
           throw new Error("O parâmetro 'hipotese_legal' é obrigatório para processos com acesso restrito ou sigiloso.");
         }

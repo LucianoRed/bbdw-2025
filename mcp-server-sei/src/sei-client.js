@@ -190,11 +190,14 @@ export async function listarInteressados(filtros = {}) {
   const contatos = flatten(toArray(result));
 
   // Normaliza para { id, nome, sigla } para facilitar o uso na criação de processo
-  return contatos.map(c => ({
-    id:    c.IdContato  ?? c.id    ?? '',
-    nome:  c.Nome       ?? c.nome  ?? '',
-    sigla: c.Sigla      ?? c.sigla ?? '',
-  }));
+  // Filtra registros com campos vazios para evitar que a LLM use dados inválidos
+  return contatos
+    .map(c => ({
+      id:    c.IdContato  ?? c.id    ?? '',
+      nome:  c.Nome       ?? c.nome  ?? '',
+      sigla: c.Sigla      ?? c.sigla ?? '',
+    }))
+    .filter(c => c.id && c.nome);
 }
 
 // ---------------------------------------------------------------------------
