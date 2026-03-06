@@ -162,6 +162,42 @@ export async function listarTiposDocumento() {
 }
 
 // ---------------------------------------------------------------------------
+// Interessados (Contatos no vocabulário SOAP do SEI)
+// ---------------------------------------------------------------------------
+
+/**
+ * Lista contatos/interessados cadastrados no SEI.
+ * Os registros retornados contêm IdContato, Nome e Sigla — os mesmos campos
+ * exigidos pelo campo Interessados ao criar um processo via gerarProcedimento.
+ *
+ * @param {object} [filtros]
+ * @param {string} [filtros.nome]              - Filtro parcial por nome (busca LIKE)
+ * @param {string} [filtros.id_tipo_contato]   - ID do tipo de contato para restringir a busca
+ * @param {number} [filtros.pagina]            - Página (padrão: 1)
+ * @param {number} [filtros.registros_por_pagina] - Registros por página (padrão: 50, máximo aconselhável: 100)
+ */
+export async function listarInteressados(filtros = {}) {
+  const extra = {};
+
+  if (filtros.nome)            extra.Nome            = filtros.nome;
+  if (filtros.id_tipo_contato) extra.IdTipoContato   = String(filtros.id_tipo_contato);
+  if (filtros.pagina)          extra.Pagina          = String(filtros.pagina ?? 1);
+  if (filtros.registros_por_pagina) {
+    extra.RegistrosPorPagina = String(filtros.registros_por_pagina);
+  }
+
+  const result = await seiCall('listarContatos', extra);
+  const contatos = flatten(toArray(result));
+
+  // Normaliza para { id, nome, sigla } para facilitar o uso na criação de processo
+  return contatos.map(c => ({
+    id:    c.IdContato  ?? c.id    ?? '',
+    nome:  c.Nome       ?? c.nome  ?? '',
+    sigla: c.Sigla      ?? c.sigla ?? '',
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // Processos (Procedimentos no vocabulário SOAP do SEI)
 // ---------------------------------------------------------------------------
 

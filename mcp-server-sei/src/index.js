@@ -11,6 +11,7 @@ import {
   listarUnidades,
   listarTiposProcesso,
   listarTiposDocumento,
+  listarInteressados,
   listarProcessos,
   consultarProcesso,
   criarProcesso,
@@ -96,6 +97,16 @@ app.get('/api/unidades', async (_req, res) => {
   }
 });
 
+app.get('/api/interessados', async (req, res) => {
+  try {
+    const { nome, id_tipo_contato, pagina, registros_por_pagina } = req.query;
+    const resultado = await listarInteressados({ nome, id_tipo_contato, pagina, registros_por_pagina });
+    res.json(resultado || []);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Servidor MCP
 // ---------------------------------------------------------------------------
@@ -170,6 +181,34 @@ const TOOLS = [
         },
       },
       required: ['protocolo'],
+    },
+  },
+  {
+    name: 'sei_listar_interessados',
+    description: 'Lista contatos/interessados cadastrados no SEI. Use para obter o nome e sigla dos interessados a serem incluídos ao criar um processo com sei_criar_processo.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nome: {
+          type: 'string',
+          description: 'Filtro parcial pelo nome do contato/interessado (busca parcial).',
+        },
+        id_tipo_contato: {
+          type: 'string',
+          description: 'ID do tipo de contato para restringir a busca (ex: pessoa física, jurídica, unidade interna).',
+        },
+        pagina: {
+          type: 'integer',
+          description: 'Número da página (padrão: 1).',
+          default: 1,
+        },
+        registros_por_pagina: {
+          type: 'integer',
+          description: 'Quantidade de registros por página (padrão: 50, máximo recomendado: 100).',
+          default: 50,
+        },
+      },
+      required: [],
     },
   },
   {
@@ -368,6 +407,23 @@ async function executeToolCall(name, args) {
         if (!protocolo) throw new Error("O parâmetro 'protocolo' é obrigatório.");
         const resultado = await consultarProcesso(protocolo);
         return { content: [{ type: 'text', text: JSON.stringify(resultado, null, 2) }] };
+      }
+
+      case 'sei_listar_interessados': {
+        const { nome, id_tipo_contato, pagina, registros_por_pagina } = args;
+        const resultado = await listarInteressados({ nome, id_tipo_contato, pagina, registros_por_pagina });
+        if (!resultado || resultado.length === 0) {
+          return { content: [{ type: 'text', text: 'Nenhum interessado encontrado com os filtros informados.' }] };
+        }
+        const resumo = resultado.map(c =>
+          `• ${c.nome}${c.sigla ? ` (${c.sigla})` : ''}  [id: ${c.id}]`
+        ).join('\n');
+        return {
+          content: [{
+            type: 'text',
+            text: `Interessados encontrados (${resultado.length}):\n\n${resumo}\n\nDados completos:\n${JSON.stringify(resultado, null, 2)}`,
+          }],
+        };
       }
 
       case 'sei_criar_processo': {
