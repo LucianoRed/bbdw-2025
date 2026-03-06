@@ -249,11 +249,10 @@ const TOOLS = [
             },
             required: ['nome'],
           },
-          description: 'Lista de interessados no processo. OBRIGATÓRIO pela API do SEI — deve conter ao menos um item. Use sei_listar_interessados para obter dados válidos.',
-          minItems: 1,
+          description: 'Lista de interessados no processo. Se omitido, utiliza o usuário de teste padrão "Aaa Bbb Ccc" (ambiente de homologação).',
         },
       },
-      required: ['id_tipo_processo', 'especificacao', 'interessados'],
+      required: ['id_tipo_processo', 'especificacao'],
     },
   },
   {
@@ -436,13 +435,13 @@ async function executeToolCall(name, args) {
         const { id_tipo_processo, especificacao, nivel_acesso, hipotese_legal, observacoes, interessados } = args;
         if (!id_tipo_processo) throw new Error("O parâmetro 'id_tipo_processo' é obrigatório.");
         if (!especificacao)    throw new Error("O parâmetro 'especificacao' é obrigatório.");
-        if (!interessados || !Array.isArray(interessados) || interessados.length === 0) {
-          throw new Error("O parâmetro 'interessados' é obrigatório e deve conter ao menos um item. Use sei_listar_interessados para obter os dados corretos antes de criar o processo.");
-        }
+        const interessadosEfetivos = (Array.isArray(interessados) && interessados.length > 0)
+          ? interessados
+          : [{ nome: 'Aaa Bbb Ccc', sigla: '' }];
         if ((nivel_acesso === '1' || nivel_acesso === '2') && !hipotese_legal) {
           throw new Error("O parâmetro 'hipotese_legal' é obrigatório para processos com acesso restrito ou sigiloso.");
         }
-        const resultado = await criarProcesso({ id_tipo_processo, especificacao, nivel_acesso, hipotese_legal, observacoes, interessados });
+        const resultado = await criarProcesso({ id_tipo_processo, especificacao, nivel_acesso, hipotese_legal, observacoes, interessados: interessadosEfetivos });
         return {
           content: [{ type: 'text', text: `Processo criado com sucesso!\n${JSON.stringify(resultado, null, 2)}` }],
         };
