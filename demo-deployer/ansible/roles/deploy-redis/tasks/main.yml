@@ -28,11 +28,15 @@
             containers:
             - name: redis
               image: docker.io/redis/redis-stack-server:7.2.0-v19
-              # IMPORTANTE: "command" substitui o ENTRYPOINT da imagem.
-              # Para redis-stack-server >= 7.2.0-v9, o redis-server já inclui
-              # os módulos (RediSearch, RedisJSON) compilados; chamar redis-server
-              # diretamente é seguro e garante que os args abaixo sejam respeitados.
-              command: ["redis-server"]
+              # IMPORTANTE: usar "redis-stack-server" (não "redis-server") como command.
+              # O binário redis-stack-server é o wrapper da imagem que carrega os módulos
+              # RediSearch, RedisJSON, etc. antes de iniciar o Redis.
+              # Usar "redis-server" diretamente faz o Redis subir sem os módulos,
+              # causando: ERR unknown command 'FT._LIST'
+              #
+              # Sem "command" explícito, o K8s não tem ENTRYPOINT para executar e trata
+              # o primeiro elemento de "args" como executável — por isso definimos command.
+              command: ["redis-stack-server"]
               args:
                 - "--save"
                 - ""
