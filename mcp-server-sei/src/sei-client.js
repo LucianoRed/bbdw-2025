@@ -259,7 +259,6 @@ export async function criarProcesso(dados) {
 
   const assuntosArr = toArray(dados.assuntos).map(id => ({ IdAssunto: String(id) }));
   const interessadosArr = toArray(dados.interessados).map(i => ({
-    IdContato: String(i.id || i.IdContato || ''),
     Nome:  i.nome || i.Nome || '',
     Sigla: i.sigla || i.Sigla || '',
   }));

@@ -185,7 +185,7 @@ const TOOLS = [
   },
   {
     name: 'sei_listar_interessados',
-    description: 'Lista contatos/interessados cadastrados no SEI. OBRIGATÓRIO chamar esta tool antes de sei_criar_processo para obter o nome e sigla válidos dos interessados, pois o SEI exige ao menos um interessado com dados corretos ao criar um processo.',
+    description: 'Lista contatos/interessados cadastrados no SEI. Útil para buscar dados de contatos por nome.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -213,7 +213,7 @@ const TOOLS = [
   },
   {
     name: 'sei_criar_processo',
-    description: 'Abre um novo processo no SEI na unidade configurada. ATENÇÃO: o campo interessados é obrigatório pela API SOAP do SEI — sempre use sei_listar_interessados antes para obter os dados corretos (nome e sigla) e passe-os neste campo.',
+    description: 'Abre um novo processo no SEI na unidade configurada. O campo interessados é opcional — pode ser omitido para abrir o processo sem interessados.',,
     inputSchema: {
       type: 'object',
       properties: {
@@ -250,7 +250,7 @@ const TOOLS = [
             },
             required: ['id', 'nome'],
           },
-          description: 'Lista de interessados no processo. Se omitido, utiliza o usuário de teste padrão "Aaa Bbb Ccc" (ambiente de homologação).',
+          description: 'Lista de interessados no processo. Opcional — se omitido ou vazio, o processo é aberto sem interessados. Quando informar, use os dados retornados por sei_listar_interessados (nome e sigla).',
         },
       },
       required: ['id_tipo_processo', 'especificacao'],
@@ -438,7 +438,7 @@ async function executeToolCall(name, args) {
         if (!especificacao)    throw new Error("O parâmetro 'especificacao' é obrigatório.");
         const interessadosEfetivos = (Array.isArray(interessados) && interessados.length > 0)
           ? interessados
-          : [{ id: '100000008', nome: 'Aaa Bbb Ccc', sigla: 'ABC' }];
+          : [];
         if ((nivel_acesso === '1' || nivel_acesso === '2') && !hipotese_legal) {
           throw new Error("O parâmetro 'hipotese_legal' é obrigatório para processos com acesso restrito ou sigiloso.");
         }
