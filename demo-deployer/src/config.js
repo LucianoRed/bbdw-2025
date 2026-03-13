@@ -132,11 +132,12 @@ export const COMPONENTS = [
     port: 8080,
     routeTimeout: true,
     envVars: [
-      { key: "REDIS_URL", value: "redis://redis:6379" },
-      { key: "K8S_API_URL", value: "{{ocp_api_url}}" },
-      { key: "K8S_BEARER_TOKEN", value: "{{sa_token}}" },
-      { key: "K8S_SKIP_TLS_VERIFY", value: "true" },
-      { key: "OPENAI_API_KEY", value: "{{openai_api_key}}" },
+      { key: "REDIS_URL",             value: "redis://redis:6379" },
+      { key: "K8S_API_URL",           value: "{{ocp_api_url}}" },
+      { key: "K8S_BEARER_TOKEN",      value: "{{sa_token}}" },
+      { key: "K8S_SKIP_TLS_VERIFY",   value: "true" },
+      { key: "OPENAI_API_KEY",        value: "{{openai_api_key}}" },
+      { key: "MCP_SEI_AGENT_URL",     value: "http://mcp-server-sei-agent.mcp-server-sei-agent.svc.cluster.local:3000/mcp" },
     ],
     subSteps: [
       { id: "redis", name: "Redis", playbook: "deploy-redis.yml" },
