@@ -107,77 +107,117 @@ function sendJson(res, status, data) {
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(body),
     "Access-Control-Allow-Origin": "*",
+    "Access-Control-Expose-Headers": "mcp-protocol-version, mcp-session-id",
   });
   res.end(body);
 }
 
-const sseTransports = {};
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk.toString()));
+    req.on("end", () => resolve(body));
+    req.on("error", reject);
+  });
+}
+
+const sseSessions = new Map();
 
 const httpServer = http.createServer(async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, mcp-session-id, mcp-protocol-version, accept");
+  try {
+    const u = new URL(req.url, "http://localhost");
+    const pathname = u.pathname;
 
-  if (req.method === "OPTIONS") {
-    res.writeHead(204);
-    res.end();
-    return;
-  }
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, mcp-session-id, mcp-protocol-version, accept",
+        "Access-Control-Expose-Headers": "mcp-protocol-version, mcp-session-id",
+      });
+      return res.end();
+    }
 
-  // Health check
-  if (req.method === "GET" && req.url === "/health") {
-    sendJson(res, 200, { status: "ok", service: "mcp-server-sei-agent" });
-    return;
-  }
+    // Health check
+    if (req.method === "GET" && (pathname === "/health" || pathname === "/healthz")) {
+      return sendJson(res, 200, { status: "ok", service: "mcp-server-sei-agent" });
+    }
 
-  // SSE endpoint
-  if (req.method === "GET" && req.url === "/sse") {
-    const transport = new SSEServerTransport("/messages", res);
-    sseTransports[transport.sessionId] = transport;
-    res.on("close", () => delete sseTransports[transport.sessionId]);
-    await server.connect(transport);
-    return;
-  }
+    // MCP Streamable HTTP (POST /mcp)
+    if (req.method === "POST" && pathname === "/mcp") {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Expose-Headers", "mcp-protocol-version, mcp-session-id");
+      try {
+        const body = await readBody(req);
+        const request = JSON.parse(body);
+        let response;
 
-  // Messages endpoint
-  if (req.method === "POST" && req.url === "/messages") {
-    const sessionId = req.headers["mcp-session-id"];
-    const transport = sseTransports[sessionId];
-    if (!transport) {
-      sendJson(res, 400, { error: "Sessão MCP não encontrada" });
+        if (request.method === "initialize") {
+          response = {
+            jsonrpc: "2.0",
+            id: request.id,
+            result: {
+              protocolVersion: "2024-11-05",
+              capabilities: { tools: { listChanged: true } },
+              serverInfo: { name: "mcp-server-sei-agent", version: "1.0.0" },
+              instructions: "Agente SEI — acesso ao Sistema Eletrônico de Informações do governo federal brasileiro.",
+            },
+          };
+        } else if (request.method === "notifications/initialized" || (request.method && request.method.startsWith("notifications/"))) {
+          res.writeHead(204, { "Access-Control-Allow-Origin": "*" });
+          return res.end();
+        } else if (request.method === "ping") {
+          response = { jsonrpc: "2.0", id: request.id, result: {} };
+        } else if (request.method === "tools/list") {
+          response = { jsonrpc: "2.0", id: request.id, result: { tools: TOOLS } };
+        } else if (request.method === "tools/call") {
+          const toolRes = await server.handleRequest(request);
+          response = { jsonrpc: "2.0", id: request.id, result: toolRes };
+        } else {
+          response = { jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found" } };
+        }
+
+        return sendJson(res, 200, response);
+      } catch (e) {
+        console.error("[SEI-AGENT] Erro ao processar request:", e);
+        return sendJson(res, 400, { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error", data: e.message } });
+      }
+    }
+
+    // SSE endpoint
+    if (req.method === "GET" && pathname === "/mcp/sse") {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Expose-Headers", "mcp-protocol-version, mcp-session-id");
+      const transport = new SSEServerTransport("/mcp/messages", res);
+      await transport.start();
+      sseSessions.set(transport.sessionId, transport);
+      transport.onclose = () => sseSessions.delete(transport.sessionId);
       return;
     }
-    await transport.handlePostMessage(req, res);
-    return;
-  }
 
-  // MCP Streamable HTTP (POST /)
-  if (req.method === "POST" && (req.url === "/" || req.url === "/mcp")) {
-    let body = "";
-    req.on("data", (chunk) => (body += chunk));
-    req.on("end", async () => {
-      try {
-        const parsed = JSON.parse(body);
-        if (parsed.method === "tools/list") {
-          sendJson(res, 200, { jsonrpc: "2.0", id: parsed.id, result: { tools: TOOLS } });
-          return;
-        }
-        if (parsed.method === "tools/call") {
-          const toolRes = await server.handleRequest(parsed);
-          sendJson(res, 200, toolRes);
-          return;
-        }
-        sendJson(res, 400, { error: "Método não suportado" });
-      } catch (e) {
-        sendJson(res, 400, { error: e.message });
+    // SSE messages
+    if (req.method === "POST" && pathname === "/mcp/messages") {
+      const sessionId = u.searchParams.get("sessionId") || "";
+      const transport = sseSessions.get(sessionId);
+      if (!transport) {
+        res.writeHead(404, { "Access-Control-Allow-Origin": "*" });
+        return res.end("Unknown session");
       }
-    });
-    return;
-  }
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      return transport.handlePostMessage(req, res);
+    }
 
-  sendJson(res, 404, { error: "Not found" });
+    return sendJson(res, 404, { error: "Not found" });
+  } catch (e) {
+    return sendJson(res, 500, { error: "Erro interno" });
+  }
 });
 
 httpServer.listen(PORT, () => {
-  console.error(`[SEI-AGENT] HTTP/SSE transport habilitado na porta ${PORT}`);
+  console.error(`[SEI-AGENT] HTTP server escutando na porta ${PORT}`);
+  console.error(`[SEI-AGENT] Endpoints:`);
+  console.error(`[SEI-AGENT]   POST http://localhost:${PORT}/mcp  (Streamable HTTP/JSON-RPC)`);
+  console.error(`[SEI-AGENT]   GET  http://localhost:${PORT}/mcp/sse  (SSE transport)`);
+  console.error(`[SEI-AGENT]   POST http://localhost:${PORT}/mcp/messages  (SSE messages)`);
+  console.error(`[SEI-AGENT]   GET  http://localhost:${PORT}/healthz  (Health check)`);
 });
