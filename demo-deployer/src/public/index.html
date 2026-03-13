@@ -606,6 +606,12 @@
             <input type="password" id="openaiApiKey" placeholder="sk-...">
           </div>
         </div>
+        <div class="config-grid" style="margin-top: 12px;">
+          <div class="form-group">
+            <label>OpenAI SEI Model <span style="color:var(--text-muted);font-weight:400;font-size:11px;">(Agente SEI multi-agent)</span></label>
+            <input type="text" id="openaiSeiModel" placeholder="gpt-4o-mini">
+          </div>
+        </div>
         <p style="font-size: 11px; color: var(--text-muted); margin-top: 10px;">Cada componente será deployado no seu próprio namespace (ex: mcp-server-matriculas → namespace mcp-server-matriculas)</p>
         <div style="margin-top: 14px; display: flex; gap: 10px;">
           <button class="btn btn-accent" onclick="saveConfig()">💾 Salvar Config</button>
@@ -730,6 +736,10 @@
           openaiInput.value = '';
           openaiInput.placeholder = '🔒 Key salva (deixe vazio para manter)';
         }
+        const seiModelInput = document.getElementById('openaiSeiModel');
+        if (seiModelInput) {
+          seiModelInput.value = state.config.openaiSeiModel || 'gpt-4o-mini';
+        }
       }
     } catch (e) {
       showToast('Erro ao carregar estado', 'error');
@@ -752,6 +762,7 @@
       ocpToken: document.getElementById('ocpToken').value,
       gitRepoUrl: document.getElementById('gitRepoUrl').value,
       openaiApiKey: document.getElementById('openaiApiKey').value,
+      openaiSeiModel: document.getElementById('openaiSeiModel').value,
     };
     try {
       await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });

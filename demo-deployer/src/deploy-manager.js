@@ -55,6 +55,7 @@ const deployState = {
     ocpApiUrl: "",
     ocpToken: "",
     openaiApiKey: "",
+    openaiSeiModel: "gpt-4o-mini",
     namespace: "bbdw-demo",
     gitRepoUrl: "https://github.com/LucianoRed/bbdw-2025.git",
   },
@@ -138,6 +139,7 @@ export function getConfig() {
   };
 }
 
+
 export function setConfig(config) {
   // Não sobreescrever segredos se vierem mascarados ou vazios
   if (!config.ocpToken || config.ocpToken === "***") {
@@ -145,6 +147,10 @@ export function setConfig(config) {
   }
   if (!config.openaiApiKey || config.openaiApiKey === "***") {
     delete config.openaiApiKey;
+  }
+  // openaiSeiModel não é segredo — aceita vazio (mantém o padrão existente)
+  if (!config.openaiSeiModel) {
+    delete config.openaiSeiModel;
   }
   Object.assign(deployState.config, config);
   broadcast({ type: "config-update", data: getConfig() });
@@ -239,7 +245,8 @@ export async function deployComponent(componentId) {
               value: ev.value
                 .replace("{{ocp_api_url}}", ocpApiUrl)
                 .replace("{{sa_token}}", deployState.config.saToken || ocpToken)
-                .replace("{{openai_api_key}}", deployState.config.openaiApiKey || ""),
+                .replace("{{openai_api_key}}", deployState.config.openaiApiKey || "")
+                .replace("{{openai_sei_model}}", deployState.config.openaiSeiModel || "gpt-4o-mini"),
             }));
           }
 
@@ -300,7 +307,8 @@ export async function deployComponent(componentId) {
             value: ev.value
               .replace("{{ocp_api_url}}", ocpApiUrl)
               .replace("{{sa_token}}", deployState.config.saToken || ocpToken)
-              .replace("{{openai_api_key}}", deployState.config.openaiApiKey || ""),
+              .replace("{{openai_api_key}}", deployState.config.openaiApiKey || "")
+              .replace("{{openai_sei_model}}", deployState.config.openaiSeiModel || "gpt-4o-mini"),
           }));
         }
 

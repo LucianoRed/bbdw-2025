@@ -15,6 +15,7 @@
       - { name: "mcp-server-downdetector",   context_dir: "mcp-server-downdetector" }
       - { name: "mcp-server-saude",          context_dir: "mcp-server-saude" }
       - { name: "mcp-server-matriculas",     context_dir: "mcp-server-matriculas" }
+      - { name: "mcp-server-sei-agent",      context_dir: "mcp-server-sei-agent" }
       - { name: "imagem-crash",              context_dir: "imagem-crash" }
       - { name: "agent-ai",                  context_dir: "agent-ai" }
   

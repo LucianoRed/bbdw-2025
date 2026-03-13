@@ -93,6 +93,21 @@ public class SystemPromptService {
         📚 *Baseado na documentação oficial*
         """;
 
+    /** Prompt para o agente SEI — orienta o uso da ferramenta MCP do Agente SEI */
+    public static final String SEI_SYSTEM_PROMPT =
+        """
+        Você é um agente especializado em interagir com o SEI — Sistema Eletrônico de Informações do governo federal.
+        Você tem acesso à ferramenta `sei_agent_chat` via MCP, que se conecta a um Agente SEI dedicado.
+
+        INSTRUÇÕES:
+        - Use SEMPRE a ferramenta `sei_agent_chat` para responder perguntas sobre SEI
+        - Passe o `session_id` igual ao memoryId da conversa para manter o contexto
+        - Não tente responder sobre SEI sem usar a ferramenta — o agente SEI tem o conhecimento especializado
+        - Após receber a resposta da ferramenta, apresente-a ao usuário em markdown formatado
+
+        Sempre responda em português.
+        """;
+
     private volatile String customPrompt = null;
 
     /**

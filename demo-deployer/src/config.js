@@ -91,6 +91,22 @@ export const COMPONENTS = [
     ],
   },
   {
+    id: "mcp-server-sei-agent",
+    name: "MCP Server SEI Agent",
+    description: "Agente SEI multi-agent: conecta ao Agente SEI hospedado na OpenAI via Responses API",
+    icon: "🏛️",
+    category: "mcp",
+    order: 6,
+    namespace: "mcp-server-sei-agent",
+    playbook: "deploy-component.yml",
+    contextDir: "mcp-server-sei-agent",
+    port: 3000,
+    envVars: [
+      { key: "OPENAI_API_KEY",       value: "{{openai_api_key}}" },
+      { key: "OPENAI_SEI_MODEL",    value: "{{openai_sei_model}}" },
+    ],
+  },
+  {
     id: "imagem-crash",
     name: "Imagem Crash (Demo)",
     description: "Container que entra em CrashLoopBackOff para demonstração",
@@ -195,17 +211,18 @@ export const OFERTAS = [
     icon: "🏛️",
     color: "#1976D2",    // System prompt que será aplicado automaticamente no agent-ai ao abrir esta oferta
     systemPrompt: "Você é um agente de governo que faz algumas ações, algumas informando e outras agindo, como o caso de matrículas e dados de saúde quando está conectado com MCP server. Você também tem acesso ao SEI (Sistema Eletrônico de Informações) para consultar e criar processos e documentos oficiais. Você deve evitar, respeitosamente, que responda coisas não relacionadas ao governo. Coisas básicas como horário e coisas que estão no RAG, você pode responder.",    // Componentes que fazem parte desta oferta (devem existir em COMPONENTS)
-    componentIds: ["agent-ai", "mcp-inspector", "mcp-server-matriculas", "mcp-server-saude", "mcp-server-sei", "sei-installer"],
+    componentIds: ["agent-ai", "mcp-inspector", "mcp-server-matriculas", "mcp-server-saude", "mcp-server-sei", "mcp-server-sei-agent", "sei-installer"],
     // Nodos na topologia (centro + satélites)
     topology: {
       center: { label: "Governo", icon: "🏛️", color: "#1976D2" },
       nodes: [
-        { componentId: "agent-ai",              label: "Agent AI",    icon: "🤖", color: "#4CAF50" },
-        { componentId: "mcp-inspector",         label: "MCP Inspector", icon: "🔍", color: "#FF9800" },
-        { componentId: "mcp-server-matriculas", label: "Matrículas",  icon: "🎓", color: "#9C27B0" },
-        { componentId: "mcp-server-saude",      label: "Saúde",       icon: "🏥", color: "#E91E63" },
-        { componentId: "mcp-server-sei",          label: "MCP SEI",     icon: "📄", color: "#0D47A1" },
-        { componentId: "sei-installer",             label: "SEI",         icon: "https://www.gov.br/pt-br/apps/sei/@@images/imagem/mini", color: "#1976D2" },
+        { componentId: "agent-ai",              label: "Agent AI",       icon: "🤖", color: "#4CAF50" },
+        { componentId: "mcp-inspector",         label: "MCP Inspector",  icon: "🔍", color: "#FF9800" },
+        { componentId: "mcp-server-matriculas", label: "Matrículas",     icon: "🎓", color: "#9C27B0" },
+        { componentId: "mcp-server-saude",      label: "Saúde",          icon: "🏥", color: "#E91E63" },
+        { componentId: "mcp-server-sei",        label: "MCP SEI",        icon: "📄", color: "#0D47A1" },
+        { componentId: "mcp-server-sei-agent",  label: "SEI Agent",      icon: "🏛️", color: "#1565C0" },
+        { componentId: "sei-installer",         label: "SEI",            icon: "https://www.gov.br/pt-br/apps/sei/@@images/imagem/mini", color: "#1976D2" },
       ],
     },
   },
