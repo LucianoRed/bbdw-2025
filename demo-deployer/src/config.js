@@ -102,8 +102,9 @@ export const COMPONENTS = [
     contextDir: "mcp-server-sei-agent",
     port: 3000,
     envVars: [
-      { key: "OPENAI_API_KEY",       value: "{{openai_api_key}}" },
-      { key: "OPENAI_SEI_MODEL",    value: "{{openai_sei_model}}" },
+      { key: "OPENAI_API_KEY",           value: "{{openai_api_key}}" },
+      { key: "OPENAI_SEI_MODEL",         value: "{{openai_sei_model}}" },
+      { key: "OPENAI_SEI_WORKFLOW_ID",   value: "{{openai_sei_workflow_id}}" },
     ],
   },
   {
