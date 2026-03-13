@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.chat.*;
+import com.redhat.sei.SeiAssistantService;
 import com.redhat.systemprompt.SystemPromptService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -39,6 +40,9 @@ public class OrchestratorService {
     @Inject
     AgentGPT4oMini agentGeneral;
     
+    @Inject
+    SeiAssistantService seiAssistantService;
+
     @Inject
     ChatMemoryProvider chatMemoryProvider;
 
@@ -135,6 +139,10 @@ public class OrchestratorService {
                         message);
                 }
             }
+            case SEI -> {
+                Log.info("🏛️ Delegando para agente SEI (OpenAI AgentBuilder)");
+                yield seiAssistantService.chat(memoryId, message);
+            }
             case GENERAL -> {
                 Log.info("💬 Delegando para agente GENERAL");
                 yield agentGeneral.sendMessage(memoryId,
@@ -187,6 +195,7 @@ public class OrchestratorService {
             case K8S_CLUSTER -> "*🔧 Respondido pelo especialista em Cluster K8s*";
             case DOCUMENTATION -> "*📚 Respondido pelo especialista em Documentação*";
             case TROUBLESHOOTING -> "*🔍 Respondido pelo especialista em Troubleshooting*";
+            case SEI -> "*🏛️ Respondido pelo Agente SEI (Sistema Eletrônico de Informações)*";
             case GENERAL -> "*💬 Respondido pelo assistente geral*";
         };
     }
@@ -209,6 +218,7 @@ public class OrchestratorService {
         K8S_CLUSTER,
         DOCUMENTATION,
         TROUBLESHOOTING,
+        SEI,
         GENERAL
     }
 }
