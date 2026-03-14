@@ -213,7 +213,7 @@ const TOOLS = [
   },
   {
     name: 'sei_criar_processo',
-    description: 'Abre um novo processo no SEI na unidade configurada. O campo interessados é opcional — pode ser omitido para abrir o processo sem interessados.',,
+    description: 'Abre um novo processo no SEI na unidade configurada. O campo interessados é opcional — pode ser omitido para abrir o processo sem interessados.',
     inputSchema: {
       type: 'object',
       properties: {
