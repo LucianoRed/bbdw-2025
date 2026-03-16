@@ -7,19 +7,16 @@ RUN npm install --production
 
 COPY src/ ./src/
 
-ENV PORT=3000
-ENV ENABLE_STDIO=false
-# Configure via env vars:
-#   OPENAI_API_KEY              — obrigatório
-#   OPENAI_SEI_ASSISTANT_ID     — ID do assistente criado no OpenAI Platform (asst_xxx).
-#                                 Quando definido, usa a Assistants API com as instruções
-#                                 e ferramentas configuradas no assistente.
-#                                 Obtenha em: platform.openai.com → Assistants
-#   OPENAI_SEI_MODEL            — padrão: gpt-4o-mini (usado apenas SEM assistant_id)
-#   OPENAI_SEI_INSTRUCTIONS     — substitui o prompt padrão (usado apenas SEM assistant_id)
+# Variáveis de ambiente obrigatórias:
+#   OPENAI_API_KEY          — API key da OpenAI
+#   OPENAI_SEI_WORKFLOW_ID  — ID do workflow criado no AgentBuilder (wf_xxx)
+#                             Obtenha em: platform.openai.com → Agent Builder
 #
-# NOTA: wf_xxx (workflow ChatKit) NÃO funciona como model na Responses API.
-#       Use asst_xxx (Assistants API) para integração server-side.
+# Opcionais:
+#   PORT          — porta HTTP (padrão: 3000)
+#   MCP_TRANSPORT — "stdio" (padrão) ou "sse"
+
+ENV PORT=3000
 
 EXPOSE 3000
 

@@ -1,7 +1,7 @@
 {
   "name": "mcp-server-sei-agent",
-  "version": "1.0.0",
-  "description": "MCP server que expõe o Agente SEI (OpenAI Responses API) como ferramentas MCP",
+  "version": "2.0.0",
+  "description": "MCP server que cria sessões ChatKit para o workflow do Agente SEI (OpenAI AgentBuilder)",
   "type": "module",
   "main": "src/index.js",
   "engines": {
