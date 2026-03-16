@@ -7,7 +7,7 @@ import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join }  from "path";
 
-import { criarSessao, agentChat, limparSessao, getConfig } from "./chatkit.js";
+import { criarSessao, getConfig } from "./chatkit.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT      = parseInt(process.env.PORT || "3000");
@@ -17,43 +17,6 @@ const USE_STDIO = process.env.MCP_TRANSPORT === "stdio";
 // Ferramentas MCP
 // ---------------------------------------------------------------------------
 const TOOLS = [
-  {
-    name: "sei_agent_chat",
-    description:
-      "Envia uma mensagem ao Agente SEI e retorna a resposta. " +
-      "Use para consultar processos, documentos, unidades, tipos de processo, " +
-      "tramitações, assinaturas e expedientes do SEI.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        message: {
-          type: "string",
-          description: "Mensagem ou pergunta para o Agente SEI",
-        },
-        session_id: {
-          type: "string",
-          description:
-            "ID de sessão para manter contexto entre mensagens do mesmo usuário. " +
-            "Use o mesmo valor em mensagens consecutivas.",
-        },
-      },
-      required: ["message"],
-    },
-  },
-  {
-    name: "sei_limpar_sessao",
-    description: "Limpa o histórico de conversa de uma sessão, iniciando um novo contexto do zero.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        session_id: {
-          type: "string",
-          description: "ID da sessão a ser limpa",
-        },
-      },
-      required: ["session_id"],
-    },
-  },
   {
     name: "sei_criar_sessao",
     description:
@@ -99,16 +62,6 @@ function makeMcpServer() {
   s.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     try {
-      if (name === "sei_agent_chat") {
-        const resposta = await agentChat(args.message, args.session_id);
-        return { content: [{ type: "text", text: resposta }] };
-      }
-
-      if (name === "sei_limpar_sessao") {
-        limparSessao(args.session_id);
-        return { content: [{ type: "text", text: `Sessão '${args.session_id}' limpa.` }] };
-      }
-
       if (name === "sei_criar_sessao") {
         const clientSecret = await criarSessao(args.user_id);
         return { content: [{ type: "text", text: JSON.stringify({ client_secret: clientSecret }, null, 2) }] };
