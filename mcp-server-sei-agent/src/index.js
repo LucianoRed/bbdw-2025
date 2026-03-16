@@ -84,7 +84,7 @@ function makeMcpServer() {
 function setCORSHeaders(res) {
   res.setHeader("Access-Control-Allow-Origin",  "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Mcp-Session-Id");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version");
   res.setHeader("Access-Control-Expose-Headers", "Mcp-Session-Id");
 }
 
