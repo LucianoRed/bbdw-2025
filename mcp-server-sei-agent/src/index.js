@@ -3,7 +3,6 @@ import { StdioServerTransport }          from "@modelcontextprotocol/sdk/server/
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import http            from "http";
-import { randomUUID }  from "crypto";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join }  from "path";
@@ -103,7 +102,6 @@ function readBody(req) {
 // ---------------------------------------------------------------------------
 // Sessões StreamableHTTP  (sessionId → transport)
 // ---------------------------------------------------------------------------
-const sessions = new Map();
 
 // ---------------------------------------------------------------------------
 // HTTP handler
@@ -120,47 +118,17 @@ async function handleHttp(req, res) {
 
   const url = req.url.split("?")[0];
 
-  // ── MCP  StreamableHTTP  (/mcp)  ───────────────────────────────────────
+  // ── MCP  StreamableHTTP  (/mcp) — Stateless mode ──────────────────────
+  // Uma nova instância de transport + server por requisição (stateless).
+  // Evita o erro "Server already initialized" em reconexões.
   if (url === "/mcp") {
-    const sessionId = req.headers["mcp-session-id"];
-
-    // Nova sessão (POST sem session-id)
-    if (req.method === "POST" && !sessionId) {
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-        onsessioninitialized: (id) => {
-          sessions.set(id, transport);
-          console.error(`[mcp] Nova sessão: ${id}`);
-        },
-      });
-      transport.onclose = () => {
-        if (transport.sessionId) {
-          sessions.delete(transport.sessionId);
-          console.error(`[mcp] Sessão encerrada: ${transport.sessionId}`);
-        }
-      };
-      const mcpServer = makeMcpServer();
-      await mcpServer.connect(transport);
-      const body = await readBody(req);
-      await transport.handleRequest(req, res, body);
-      return;
-    }
-
-    // Sessão existente (POST mensagem, GET stream, DELETE encerrar)
-    if (sessionId) {
-      const transport = sessions.get(sessionId);
-      if (!transport) {
-        res.writeHead(404, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Sessão não encontrada" }));
-        return;
-      }
-      const body = req.method === "POST" ? await readBody(req) : undefined;
-      await transport.handleRequest(req, res, body);
-      return;
-    }
-
-    res.writeHead(400, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "mcp-session-id obrigatório para requisições não-iniciais" }));
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined, // stateless — sem session tracking
+    });
+    const mcpServer = makeMcpServer();
+    await mcpServer.connect(transport);
+    const body = req.method === "POST" ? await readBody(req) : undefined;
+    await transport.handleRequest(req, res, body);
     return;
   }
 

@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Agente SEI</title>
 
-  <!-- ChatKit JS — widget oficial da OpenAI -->
+  <!--
+    ChatKit JS — widget oficial da OpenAI.
+    IMPORTANTE: NÃO usar `async` — o script usa `document.currentScript`
+    para determinar o base URL do iframe interno. Com `async` o currentScript
+    pode ser null dependendo do timing.
+  -->
   <script src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js"></script>
 
   <style>
@@ -37,19 +42,21 @@
     }
 
     header svg { flex-shrink: 0; }
-
     header h1    { font-size: 1.05rem; font-weight: 600; }
     header small { font-size: .8rem;  opacity: .65;     }
 
-    #chatkit-root {
+    /* O custom element <openai-chatkit> tem display:block por padrão.
+       Precisamos dar altura explícita para ele preencher o restante da tela. */
+    openai-chatkit {
       flex: 1;
-      overflow: hidden;
-      background: #fff;
+      min-height: 0;
+      display: block;
     }
 
-    #chatkit-error {
+    #error-msg {
       display: none;
       padding: 32px 24px;
+      background: #fff;
       color: #c00;
       font-size: .95rem;
       line-height: 1.6;
@@ -59,7 +66,6 @@
 <body>
   <div id="app">
     <header>
-      <!-- ícone SEI simplificado -->
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
         <rect width="32" height="32" rx="8" fill="#e63946"/>
         <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle"
@@ -71,17 +77,20 @@
       </div>
     </header>
 
-    <div id="chatkit-root">
-      <p id="chatkit-error"></p>
-    </div>
+    <!--
+      <openai-chatkit> é o custom element registrado pelo chatkit.js do CDN.
+      A subclasse registrada já define profile="chatkit" por padrão,
+      então não é necessário passar o atributo.
+    -->
+    <openai-chatkit id="chatWidget"></openai-chatkit>
+    <p id="error-msg"></p>
   </div>
 
   <script>
     (function () {
-      // Gera um user_id persistente para a sessão do browser
       function getUserId() {
-        const key = "sei_agent_user_id";
-        let id = sessionStorage.getItem(key);
+        var key = "sei_agent_user_id";
+        var id = sessionStorage.getItem(key);
         if (!id) {
           id = "browser-" + Math.random().toString(36).slice(2, 10) + "-" + Date.now();
           sessionStorage.setItem(key, id);
@@ -89,49 +98,54 @@
         return id;
       }
 
-      async function getClientSecret() {
-        const res = await fetch("/api/chatkit/session", {
+      async function getClientSecret(existing) {
+        // `existing` é o client_secret anterior (para refresh de sessão expirada)
+        // Para o nosso fluxo, sempre pedimos um novo token ao backend
+        var res = await fetch("/api/chatkit/session", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
           body:    JSON.stringify({ user_id: getUserId() }),
         });
         if (!res.ok) {
-          const txt = await res.text().catch(() => res.status);
-          throw new Error("Falha na criação de sessão (" + res.status + "): " + txt);
+          var txt = await res.text().catch(function () { return res.status; });
+          throw new Error("Falha na sessão (" + res.status + "): " + txt);
         }
-        const { client_secret, error } = await res.json();
-        if (error) throw new Error(error);
-        return client_secret;
+        var data = await res.json();
+        if (data.error) throw new Error(data.error);
+        return data.client_secret;
       }
 
       function showError(msg) {
-        const el = document.getElementById("chatkit-error");
+        var el = document.getElementById("error-msg");
         el.style.display = "block";
         el.textContent   = "⚠️  " + msg;
       }
 
-      function waitForChatKit(ms) {
-        return new Promise(function (resolve, reject) {
-          if (window.ChatKit) return resolve(window.ChatKit);
-          var deadline = Date.now() + ms;
-          var t = setInterval(function () {
-            if (window.ChatKit) { clearInterval(t); resolve(window.ChatKit); }
-            else if (Date.now() > deadline) { clearInterval(t); reject(new Error("chatkit.js não carregou no prazo")); }
-          }, 100);
-        });
-      }
+      var widget = document.getElementById("chatWidget");
 
-      waitForChatKit(12000)
-        .then(function (ChatKit) {
-          return ChatKit.mount({
-            container:       document.getElementById("chatkit-root"),
-            getClientSecret: getClientSecret,
-          });
-        })
-        .catch(function (err) {
-          console.error("[sei-agent]", err);
-          showError(err.message);
+      // O chatkit.js registra o custom element de forma síncrona.
+      // Aguardamos o connectedCallback via evento ou chamamos setOptions direto.
+      try {
+        widget.setOptions({
+          api: { getClientSecret: getClientSecret },
         });
+      } catch (err) {
+        // Fallback: espera o elemento ser upgradeado (caso o script ainda carregue)
+        widget.addEventListener("chatkit.ready", function () {
+          try {
+            widget.setOptions({ api: { getClientSecret: getClientSecret } });
+          } catch (e) {
+            showError(e.message);
+          }
+        }, { once: true });
+
+        // Timeout de segurança
+        setTimeout(function () {
+          if (!widget.dataset.loaded) {
+            showError("chatkit.js não inicializou. Verifique o console.");
+          }
+        }, 10000);
+      }
     })();
   </script>
 </body>
