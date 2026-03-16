@@ -4,7 +4,7 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import http from "http";
 
-import { seiAgentChat, clearSession, getAgentConfig } from "./sei-agent.js";
+import { seiAgentChat, clearSession, criarSessaoChatKit, getAgentConfig } from "./sei-agent.js";
 
 // ---------------------------------------------------------------------------
 // Definição das ferramentas MCP expostas
@@ -49,9 +49,26 @@ const TOOLS = [
     },
   },
   {
+    name: "sei_criar_sessao",
+    description:
+      "Cria uma sessão ChatKit com o workflow do Agente SEI hospedado na OpenAI e retorna o client_secret. " +
+      "Use este token no widget ChatKit JS do BROWSER para iniciar uma conversa direta com o workflow. " +
+      "NÃO use para chamadas server-to-server — use sei_agent_chat para isso.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        user_id: {
+          type: "string",
+          description: "Identificador único do usuário (ex: email, UUID). Usado para vincular a sessão ao usuário.",
+        },
+      },
+      required: ["user_id"],
+    },
+  },
+  {
     name: "sei_status_config",
     description:
-      "Retorna a configuração atual do Agente SEI: qual modelo ou workflow está sendo usado, e se a API key está configurada. Útil para diagnóstico.",
+      "Retorna a configuração atual do Agente SEI: modelo, workflow ID e status da API key. Útil para diagnóstico.",
     inputSchema: {
       type: "object",
       properties: {},
@@ -90,15 +107,22 @@ async function executeTool(name, args = {}) {
       return { content: [{ type: "text", text: `Sessão '${session_id}' limpa com sucesso.` }] };
     }
 
+    if (name === "sei_criar_sessao") {
+      const { user_id } = args;
+      if (!user_id) {
+        return { content: [{ type: "text", text: "Erro: parâmetro 'user_id' é obrigatório." }], isError: true };
+      }
+      const clientSecret = await criarSessaoChatKit(user_id);
+      return { content: [{ type: "text", text: `client_secret: ${clientSecret}\n\nUse este token no widget ChatKit JS do browser para conversar com o workflow SEI.` }] };
+    }
+
     if (name === "sei_status_config") {
       const config = getAgentConfig();
       const lines = [
         `**Configuração do Agente SEI**`,
         `- API Key configurada: ${config.api_key_configured ? 'Sim' : 'NÃO — OPENAI_API_KEY ausente!'}`,
-        `- Usando workflow AgentBuilder: ${config.using_workflow ? 'Sim' : 'Não'}`,
-        config.using_workflow
-          ? `- Workflow ID: \`${config.workflow_id}\``
-          : `- Modelo: \`${config.model}\` (defina OPENAI_SEI_WORKFLOW_ID para usar o AgentBuilder)`,
+        `- sei_agent_chat: Responses API, modelo \`${config.model}\``,
+        `- sei_criar_sessao (ChatKit/browser): ${config.workflow_id_for_chatkit ? `workflow \`${config.workflow_id_for_chatkit}\`` : 'indisponível — defina OPENAI_SEI_WORKFLOW_ID'}`,
       ];
       return { content: [{ type: "text", text: lines.join('\n') }] };
     }
