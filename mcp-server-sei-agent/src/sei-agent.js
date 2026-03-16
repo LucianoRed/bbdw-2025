@@ -1,15 +1,20 @@
 /**
  * Agente SEI — wrapper sobre a OpenAI Responses API.
  *
- * Mantém o estado de conversa por sessão usando `previous_response_id`,
- * o mecanismo nativo de continuação da Responses API.
+ * Quando OPENAI_SEI_WORKFLOW_ID está configurado, usa o workflow criado no
+ * AgentBuilder como `model` na Responses API — o workflow carrega suas próprias
+ * instruções, ferramentas e configurações, dispensando o `instructions` local.
+ *
+ * Quando não configurado, usa o modelo genérico com instruções locais.
+ *
+ * Mantém o estado de conversa por sessão usando `previous_response_id`.
  */
 
 const OPENAI_API_KEY   = process.env.OPENAI_API_KEY;
 const SEI_MODEL        = process.env.OPENAI_SEI_MODEL || 'gpt-4o-mini';
-// OPENAI_SEI_WORKFLOW_ID é reservado para uso futuro com o widget ChatKit frontend.
-// O workflow (wf_xxx) do AgentBuilder só é acessível via SDK JS browser (não REST server-to-server).
-// Para comunicação server-to-server (caso deste MCP server), usamos a Responses API abaixo.
+// ID do workflow criado no OpenAI AgentBuilder (wf_xxx).
+// Quando definido, é passado como `model` na Responses API para que o agente
+// use as instruções e ferramentas configuradas no workflow — não as locais.
 const SEI_WORKFLOW_ID  = process.env.OPENAI_SEI_WORKFLOW_ID || null;
 const SEI_INSTRUCTIONS = process.env.OPENAI_SEI_INSTRUCTIONS ||
   `Você é um agente especializado no SEI — Sistema Eletrônico de Informações do governo federal brasileiro.
@@ -29,8 +34,9 @@ ferramentas MCP do SEI disponíveis para isso.`;
 const sessionState = new Map();
 
 if (SEI_WORKFLOW_ID) {
-  console.log(`[sei-agent] OPENAI_SEI_WORKFLOW_ID configurado: ${SEI_WORKFLOW_ID}`);
-  console.log('[sei-agent] Nota: o workflow ID é para uso com widget ChatKit (frontend). Este servidor usa a Responses API para comunicação server-to-server.');
+  console.log(`[sei-agent] Usando workflow do AgentBuilder: ${SEI_WORKFLOW_ID}`);
+} else {
+  console.log(`[sei-agent] Usando modelo genérico: ${SEI_MODEL} (sem workflow configurado)`);
 }
 
 async function callOpenAI(body) {
@@ -64,11 +70,18 @@ export async function seiAgentChat(message, sessionId) {
     throw new Error('OPENAI_API_KEY não configurado no mcp-server-sei-agent');
   }
 
-  const body = {
-    model: SEI_MODEL,
-    instructions: SEI_INSTRUCTIONS,
-    input: message,
-  };
+  // Quando o workflow está configurado, usá-lo como model e omitir instructions
+  // locais — o workflow já carrega seu próprio system prompt configurado no AgentBuilder.
+  const body = SEI_WORKFLOW_ID
+    ? {
+        model: SEI_WORKFLOW_ID,
+        input: message,
+      }
+    : {
+        model: SEI_MODEL,
+        instructions: SEI_INSTRUCTIONS,
+        input: message,
+      };
 
   // Adiciona continuação de conversa se houver estado anterior
   const previousId = sessionState.get(sessionId);
