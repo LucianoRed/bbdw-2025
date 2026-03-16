@@ -1,8 +1,9 @@
-import { Server }              from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { SSEServerTransport }   from "@modelcontextprotocol/sdk/server/sse.js";
+import { Server }                        from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport }          from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import http     from "http";
+import http            from "http";
+import { randomUUID }  from "crypto";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join }  from "path";
@@ -11,7 +12,7 @@ import { criarSessao, getConfig } from "./chatkit.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT      = parseInt(process.env.PORT || "3000");
-const TRANSPORT = process.env.MCP_TRANSPORT || "stdio"; // "stdio" | "sse"
+const USE_STDIO = process.env.MCP_TRANSPORT === "stdio";
 
 // ---------------------------------------------------------------------------
 // Ferramentas MCP
@@ -49,97 +50,145 @@ const TOOLS = [
 ];
 
 // ---------------------------------------------------------------------------
-// MCP Server
+// MCP Server factory  (uma instância por sessão HTTP)
 // ---------------------------------------------------------------------------
-const server = new Server(
-  { name: "mcp-server-sei-agent", version: "2.0.0" },
-  { capabilities: { tools: {} } }
-);
+function makeMcpServer() {
+  const s = new Server(
+    { name: "mcp-server-sei-agent", version: "2.0.0" },
+    { capabilities: { tools: {} } }
+  );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
+  s.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-
-  try {
-    if (name === "sei_criar_sessao") {
-      const clientSecret = await criarSessao(args.user_id);
-      return {
-        content: [{ type: "text", text: JSON.stringify({ client_secret: clientSecret }, null, 2) }],
-      };
-    }
-
-    if (name === "sei_status_config") {
-      return {
-        content: [{ type: "text", text: JSON.stringify(getConfig(), null, 2) }],
-      };
-    }
-
-    throw new Error(`Tool desconhecida: ${name}`);
-  } catch (err) {
-    return { isError: true, content: [{ type: "text", text: `Erro: ${err.message}` }] };
-  }
-});
-
-// ---------------------------------------------------------------------------
-// HTTP Server  (chat UI  +  session token endpoint  +  SSE transport)
-// ---------------------------------------------------------------------------
-const sseTransports = new Map();
-
-function handleHttp(req, res) {
-  // ── POST /api/chatkit/session  ──────────────────────────────────────────
-  if (req.method === "POST" && req.url === "/api/chatkit/session") {
-    let body = "";
-    req.on("data", (chunk) => (body += chunk));
-    req.on("end", async () => {
-      try {
-        const { user_id } = JSON.parse(body || "{}");
-        const userId = (user_id && String(user_id).trim()) || `anon-${Date.now()}`;
-        const clientSecret = await criarSessao(userId);
-        res.writeHead(200, {
-          "Content-Type":                "application/json",
-          "Access-Control-Allow-Origin": "*",
-        });
-        res.end(JSON.stringify({ client_secret: clientSecret }));
-      } catch (err) {
-        console.error("[http] /api/chatkit/session erro:", err.message);
-        res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: err.message }));
+  s.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+    try {
+      if (name === "sei_criar_sessao") {
+        const clientSecret = await criarSessao(args.user_id);
+        return { content: [{ type: "text", text: JSON.stringify({ client_secret: clientSecret }, null, 2) }] };
       }
+      if (name === "sei_status_config") {
+        return { content: [{ type: "text", text: JSON.stringify(getConfig(), null, 2) }] };
+      }
+      throw new Error(`Tool desconhecida: ${name}`);
+    } catch (err) {
+      return { isError: true, content: [{ type: "text", text: `Erro: ${err.message}` }] };
+    }
+  });
+
+  return s;
+}
+
+// ---------------------------------------------------------------------------
+// CORS helpers
+// ---------------------------------------------------------------------------
+function setCORSHeaders(res) {
+  res.setHeader("Access-Control-Allow-Origin",  "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Mcp-Session-Id");
+  res.setHeader("Access-Control-Expose-Headers", "Mcp-Session-Id");
+}
+
+function readBody(req) {
+  return new Promise((resolve) => {
+    let data = "";
+    req.on("data", (c) => (data += c));
+    req.on("end", () => {
+      try { resolve(JSON.parse(data || "null")); }
+      catch { resolve(null); }
     });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Sessões StreamableHTTP  (sessionId → transport)
+// ---------------------------------------------------------------------------
+const sessions = new Map();
+
+// ---------------------------------------------------------------------------
+// HTTP handler
+// ---------------------------------------------------------------------------
+async function handleHttp(req, res) {
+  setCORSHeaders(res);
+
+  // ── Preflight CORS ─────────────────────────────────────────────────────
+  if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    res.end();
     return;
   }
 
-  // ── GET /health  ────────────────────────────────────────────────────────
-  if (req.method === "GET" && req.url === "/health") {
+  const url = req.url.split("?")[0];
+
+  // ── MCP  StreamableHTTP  (/mcp)  ───────────────────────────────────────
+  if (url === "/mcp") {
+    const sessionId = req.headers["mcp-session-id"];
+
+    // Nova sessão (POST sem session-id)
+    if (req.method === "POST" && !sessionId) {
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (id) => {
+          sessions.set(id, transport);
+          console.error(`[mcp] Nova sessão: ${id}`);
+        },
+      });
+      transport.onclose = () => {
+        if (transport.sessionId) {
+          sessions.delete(transport.sessionId);
+          console.error(`[mcp] Sessão encerrada: ${transport.sessionId}`);
+        }
+      };
+      const mcpServer = makeMcpServer();
+      await mcpServer.connect(transport);
+      const body = await readBody(req);
+      await transport.handleRequest(req, res, body);
+      return;
+    }
+
+    // Sessão existente (POST mensagem, GET stream, DELETE encerrar)
+    if (sessionId) {
+      const transport = sessions.get(sessionId);
+      if (!transport) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Sessão não encontrada" }));
+        return;
+      }
+      const body = req.method === "POST" ? await readBody(req) : undefined;
+      await transport.handleRequest(req, res, body);
+      return;
+    }
+
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "mcp-session-id obrigatório para requisições não-iniciais" }));
+    return;
+  }
+
+  // ── POST /api/chatkit/session ──────────────────────────────────────────
+  if (req.method === "POST" && url === "/api/chatkit/session") {
+    const body = await readBody(req);
+    try {
+      const userId = (body?.user_id && String(body.user_id).trim()) || `anon-${Date.now()}`;
+      const clientSecret = await criarSessao(userId);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ client_secret: clientSecret }));
+    } catch (err) {
+      console.error("[http] /api/chatkit/session erro:", err.message);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // ── GET /health ────────────────────────────────────────────────────────
+  if (req.method === "GET" && url === "/health") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ status: "ok", ...getConfig() }));
     return;
   }
 
-  // ── SSE transport  ──────────────────────────────────────────────────────
-  if (TRANSPORT === "sse") {
-    if (req.method === "GET" && req.url === "/sse") {
-      const transport = new SSEServerTransport("/message", res);
-      sseTransports.set(res, transport);
-      res.on("close", () => sseTransports.delete(res));
-      server.connect(transport);
-      return;
-    }
-    if (req.method === "POST" && req.url === "/message") {
-      const transport = [...sseTransports.values()][0];
-      if (transport) {
-        transport.handlePostMessage(req, res);
-      } else {
-        res.writeHead(400);
-        res.end("No active SSE session");
-      }
-      return;
-    }
-  }
-
-  // ── GET /  (Chat UI)  ───────────────────────────────────────────────────
-  if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
+  // ── GET /  (Chat UI) ──────────────────────────────────────────────────
+  if (req.method === "GET" && (url === "/" || url === "/index.html")) {
     try {
       const html = readFileSync(join(__dirname, "public", "index.html"), "utf8");
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
@@ -159,20 +208,26 @@ function handleHttp(req, res) {
 // Startup
 // ---------------------------------------------------------------------------
 async function main() {
-  const httpServer = http.createServer(handleHttp);
+  const httpServer = http.createServer((req, res) => {
+    handleHttp(req, res).catch((err) => {
+      console.error("[http] Erro não tratado:", err);
+      if (!res.headersSent) { res.writeHead(500); res.end("Internal server error"); }
+    });
+  });
 
   httpServer.listen(PORT, () => {
     const cfg = getConfig();
     console.error(`[sei-agent] HTTP na porta ${PORT}`);
-    console.error(`[sei-agent] Chat UI:      http://localhost:${PORT}/`);
-    console.error(`[sei-agent] Session API:  POST http://localhost:${PORT}/api/chatkit/session`);
-    console.error(`[sei-agent] Workflow ID:  ${cfg.workflow_id || "NÃO CONFIGURADO"}`);
-    console.error(`[sei-agent] API Key:      ${cfg.api_key_configured ? "OK" : "NÃO CONFIGURADA"}`);
+    console.error(`[sei-agent] Chat UI:     http://localhost:${PORT}/`);
+    console.error(`[sei-agent] Session API: POST http://localhost:${PORT}/api/chatkit/session`);
+    console.error(`[sei-agent] MCP HTTP:    http://localhost:${PORT}/mcp`);
+    console.error(`[sei-agent] Workflow ID: ${cfg.workflow_id || "NÃO CONFIGURADO"}`);
+    console.error(`[sei-agent] API Key:     ${cfg.api_key_configured ? "OK" : "NÃO CONFIGURADA"}`);
   });
 
-  if (TRANSPORT === "stdio") {
+  if (USE_STDIO) {
     const transport = new StdioServerTransport();
-    await server.connect(transport);
+    await makeMcpServer().connect(transport);
     console.error("[sei-agent] MCP via stdio pronto");
   }
 }

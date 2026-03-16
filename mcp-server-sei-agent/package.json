@@ -11,6 +11,6 @@
     "start": "node src/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.6.0"
+    "@modelcontextprotocol/sdk": "^1.0.0"
   }
 }
