@@ -60,9 +60,7 @@ const server = new Server(
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
 
-server.setRequestHandler(CallToolRequestSchema, async (req) => {
-  const { name, arguments: args } = req.params;
-
+async function executeTool(name, args = {}) {
   try {
     if (name === "sei_agent_chat") {
       const { message, session_id = "default" } = args;
@@ -87,6 +85,11 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
     console.error(`[SEI-AGENT] Erro ao executar '${name}':`, err.message);
     return { content: [{ type: "text", text: `Erro: ${err.message}` }], isError: true };
   }
+}
+
+server.setRequestHandler(CallToolRequestSchema, async (req) => {
+  const { name, arguments: args } = req.params;
+  return executeTool(name, args);
 });
 
 // ---------------------------------------------------------------------------
@@ -171,7 +174,8 @@ const httpServer = http.createServer(async (req, res) => {
         } else if (request.method === "tools/list") {
           response = { jsonrpc: "2.0", id: request.id, result: { tools: TOOLS } };
         } else if (request.method === "tools/call") {
-          const toolRes = await server.handleRequest(request);
+          const { name, arguments: args } = request.params || {};
+          const toolRes = await executeTool(name, args);
           response = { jsonrpc: "2.0", id: request.id, result: toolRes };
         } else {
           response = { jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found" } };
