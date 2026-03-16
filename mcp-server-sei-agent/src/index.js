@@ -4,7 +4,7 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import http from "http";
 
-import { seiAgentChat, clearSession } from "./sei-agent.js";
+import { seiAgentChat, clearSession, getAgentConfig } from "./sei-agent.js";
 
 // ---------------------------------------------------------------------------
 // Definição das ferramentas MCP expostas
@@ -48,6 +48,16 @@ const TOOLS = [
       required: ["session_id"],
     },
   },
+  {
+    name: "sei_status_config",
+    description:
+      "Retorna a configuração atual do Agente SEI: qual modelo ou workflow está sendo usado, e se a API key está configurada. Útil para diagnóstico.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -78,6 +88,19 @@ async function executeTool(name, args = {}) {
       }
       clearSession(session_id);
       return { content: [{ type: "text", text: `Sessão '${session_id}' limpa com sucesso.` }] };
+    }
+
+    if (name === "sei_status_config") {
+      const config = getAgentConfig();
+      const lines = [
+        `**Configuração do Agente SEI**`,
+        `- API Key configurada: ${config.api_key_configured ? 'Sim' : 'NÃO — OPENAI_API_KEY ausente!'}`,
+        `- Usando workflow AgentBuilder: ${config.using_workflow ? 'Sim' : 'Não'}`,
+        config.using_workflow
+          ? `- Workflow ID: \`${config.workflow_id}\``
+          : `- Modelo: \`${config.model}\` (defina OPENAI_SEI_WORKFLOW_ID para usar o AgentBuilder)`,
+      ];
+      return { content: [{ type: "text", text: lines.join('\n') }] };
     }
 
     return { content: [{ type: "text", text: `Ferramenta desconhecida: ${name}` }], isError: true };

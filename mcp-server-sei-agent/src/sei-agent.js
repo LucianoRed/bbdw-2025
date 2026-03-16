@@ -40,6 +40,8 @@ if (SEI_WORKFLOW_ID) {
 }
 
 async function callOpenAI(body) {
+  console.error('[sei-agent] Enviando para /v1/responses, body:', JSON.stringify({ ...body, instructions: body.instructions ? '(omitido)' : undefined }));
+
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
@@ -51,10 +53,25 @@ async function callOpenAI(body) {
 
   if (!response.ok) {
     const err = await response.text();
+    console.error(`[sei-agent] Erro da OpenAI API (${response.status}):`, err);
     throw new Error(`OpenAI API error ${response.status}: ${err}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  console.error('[sei-agent] Resposta recebida, id:', data.id, 'model:', data.model);
+  return data;
+}
+
+/**
+ * Retorna a configuração ativa do agente (sem expor a API key).
+ */
+export function getAgentConfig() {
+  return {
+    workflow_id: SEI_WORKFLOW_ID || null,
+    model: SEI_WORKFLOW_ID ? SEI_WORKFLOW_ID : SEI_MODEL,
+    using_workflow: !!SEI_WORKFLOW_ID,
+    api_key_configured: !!OPENAI_API_KEY,
+  };
 }
 
 /**
