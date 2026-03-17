@@ -33,8 +33,7 @@ public interface OrchestratorAgent {
         1. K8S_CLUSTER - Para consultas sobre estado atual do cluster (pods, deployments, nodes, eventos, logs, recursos)
         2. DOCUMENTATION - Para perguntas conceituais, configurações, boas práticas, tutoriais
         3. TROUBLESHOOTING - Para análise de problemas, debugging, investigação de erros
-        4. SEI - Para qualquer assunto relacionado ao SEI (Sistema Eletrônico de Informações do governo federal): processos, documentos, tramitações, assinaturas, unidades, tipos de processo, andamentos, interessados, autenticação no SEI, consulta de expedientes, etc.
-        5. GENERAL - Para perguntas genéricas que não se encaixam nas categorias acima
+        4. GENERAL - Para perguntas genéricas que não se encaixam nas categorias acima
         
         CRITÉRIOS DE DECISÃO:
         - Use K8S_CLUSTER quando a pergunta pede informações em tempo real do cluster
@@ -46,16 +45,12 @@ public interface OrchestratorAgent {
         - Use TROUBLESHOOTING quando há um problema específico ou erro para investigar
           Exemplos: "pod está crashando", "por que não consigo acessar?", "erro de ImagePullBackOff"
         
-        - Use SEI para qualquer pergunta ou ação relacionada ao Sistema Eletrônico de Informações
-          Exemplos: "abrir processo no SEI", "listar processos", "criar documento SEI", "assinar expediente",
-                    "quais unidades existem no SEI?", "consultar andamento do processo X", "SEI", "expediente"
-        
         - Use GENERAL para cumprimentos, perguntas não relacionadas, ou conversas genéricas
           Exemplos: "olá", "quem é você?", "me conte uma piada"
         
         FORMATO DE RESPOSTA (JSON):
         {
-          "specialist": "K8S_CLUSTER|DOCUMENTATION|TROUBLESHOOTING|SEI|GENERAL",
+          "specialist": "K8S_CLUSTER|DOCUMENTATION|TROUBLESHOOTING|GENERAL",
           "reason": "breve explicação da decisão",
           "useMcp": true|false,
           "useRag": true|false,
@@ -65,7 +60,6 @@ public interface OrchestratorAgent {
         REGRAS:
         - useMcp: true apenas para K8S_CLUSTER ou TROUBLESHOOTING (precisa acessar cluster)
         - useRag: true para DOCUMENTATION ou TROUBLESHOOTING (precisa consultar docs)
-        - Para SEI: useMcp=false, useRag=false (usa agente dedicado OpenAI)
         - confidence: sua confiança na decisão (0.0 = incerto, 1.0 = muito certo)
         - Retorne APENAS o JSON, sem texto adicional
         """)

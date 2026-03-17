@@ -135,12 +135,6 @@ public class OrchestratorService {
                         message);
                 }
             }
-            case SEI -> {
-                Log.info("🏛️ Delegando para agente SEI via MCP (mcp-server-sei-agent)");
-                yield agentK8s.sendMessageWithMcp(memoryId,
-                    systemPromptService.resolveSystemPrompt(SystemPromptService.SEI_SYSTEM_PROMPT),
-                    message);
-            }
             case GENERAL -> {
                 Log.info("💬 Delegando para agente GENERAL");
                 yield agentGeneral.sendMessage(memoryId,
@@ -193,7 +187,6 @@ public class OrchestratorService {
             case K8S_CLUSTER -> "*🔧 Respondido pelo especialista em Cluster K8s*";
             case DOCUMENTATION -> "*📚 Respondido pelo especialista em Documentação*";
             case TROUBLESHOOTING -> "*🔍 Respondido pelo especialista em Troubleshooting*";
-            case SEI -> "*🏛️ Respondido pelo Agente SEI (Sistema Eletrônico de Informações)*";
             case GENERAL -> "*💬 Respondido pelo assistente geral*";
         };
     }
@@ -216,7 +209,6 @@ public class OrchestratorService {
         K8S_CLUSTER,
         DOCUMENTATION,
         TROUBLESHOOTING,
-        SEI,
         GENERAL
     }
 }

@@ -10,10 +10,8 @@ import jakarta.inject.Inject;
  * Registra automaticamente servidores MCP configurados via variáveis de ambiente
  * na inicialização da aplicação.
  *
- * Variáveis de ambiente suportadas:
- *   MCP_SEI_AGENT_URL  — URL do mcp-server-sei-agent (ex: http://mcp-server-sei-agent.mcp-server-sei-agent.svc.cluster.local:3000/mcp)
- *
- * Adicione outras variáveis seguindo o mesmo padrão conforme necessário.
+ * Adicione variáveis de ambiente no padrão MCP_<NOME>_URL e chame autoRegister()
+ * no método onStart() conforme necessário.
  */
 @ApplicationScoped
 public class McpAutoRegistrar {
@@ -22,7 +20,7 @@ public class McpAutoRegistrar {
     McpManager mcpManager;
 
     void onStart(@Observes StartupEvent ev) {
-        autoRegister("sei-agent", System.getenv("MCP_SEI_AGENT_URL"));
+        // Adicione chamadas autoRegister() aqui para registrar MCPs via variáveis de ambiente
     }
 
     private void autoRegister(String name, String url) {
