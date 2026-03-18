@@ -353,6 +353,17 @@
             color: white;
         }
 
+        .badge-need {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: white;
+            margin: 1px;
+        }
+
         /* Loading animation */
         .loading {
             display: inline-block;
@@ -404,6 +415,12 @@
                         </div>
                     </div>
 
+                    <label for="escola"><i class="fas fa-school"></i> Escola</label>
+                    <select id="escola">
+                        <option value="">— Selecione uma escola (opcional) —</option>
+                    </select>
+                    <div id="escolaInfo" class="muted" style="margin-top:6px;display:none;"></div>
+
                     <div class="actions">
                         <button type="submit">
                             <i class="fas fa-check-circle"></i> Matricular
@@ -429,11 +446,12 @@
                     <table>
                         <thead>
                             <tr>
-                                <th style="width: 70px;"><i class="fas fa-hashtag"></i> ID</th>
+                                <th style="width: 50px;"><i class="fas fa-hashtag"></i> ID</th>
                                 <th><i class="fas fa-user"></i> Nome</th>
-                                <th style="width: 150px;"><i class="fas fa-id-card"></i> CPF</th>
-                                <th style="width: 130px;"><i class="fas fa-birthday-cake"></i> Nascimento</th>
-                                <th style="width: 100px;"><i class="fas fa-graduation-cap"></i> Ano</th>
+                                <th style="width: 140px;"><i class="fas fa-id-card"></i> CPF</th>
+                                <th style="width: 120px;"><i class="fas fa-birthday-cake"></i> Nasc.</th>
+                                <th style="width: 80px;"><i class="fas fa-graduation-cap"></i> Ano</th>
+                                <th><i class="fas fa-school"></i> Escola</th>
                             </tr>
                         </thead>
                         <tbody id="studentsTable">
@@ -447,6 +465,9 @@
 
     <script>
         const API_URL = '/api/students';
+        const SCHOOLS_API = '/api/schools';
+
+        let schoolsMap = {}; // id -> escola
 
         // Máscara de CPF
         document.getElementById('cpf').addEventListener('input', function(e) {
@@ -464,6 +485,22 @@
             }
         });
 
+        // Mostrar info da escola ao selecionar
+        document.getElementById('escola').addEventListener('change', function() {
+            const id = parseInt(this.value);
+            const infoEl = document.getElementById('escolaInfo');
+            if (id && schoolsMap[id]) {
+                const s = schoolsMap[id];
+                const needs = s.necessidadesEspeciais.length
+                    ? s.necessidadesEspeciais.map(n => `<span class="badge-need">${n}</span>`).join(' ')
+                    : '<em>sem atendimento especializado listado</em>';
+                infoEl.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${s.endereco} &nbsp;|&nbsp; ${s.telefone}<br>Necessidades especiais: ${needs}`;
+                infoEl.style.display = 'block';
+            } else {
+                infoEl.style.display = 'none';
+            }
+        });
+
         function showStatus(kind, message) {
             const el = document.getElementById('status');
             const icon = kind === 'ok' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-exclamation-circle"></i>';
@@ -475,6 +512,38 @@
             const n = Number(value);
             if ([5,6,7,8].includes(n)) return `<span class="badge">${n}º ano</span>`;
             return String(value || '');
+        }
+
+        async function loadSchools() {
+            try {
+                const resp = await fetch(SCHOOLS_API);
+                const schools = await resp.json();
+                schoolsMap = {};
+                schools.forEach(s => { schoolsMap[s.id] = s; });
+
+                const sel = document.getElementById('escola');
+                // agrupa por bairro
+                const byBairro = {};
+                schools.forEach(s => {
+                    if (!byBairro[s.bairro]) byBairro[s.bairro] = [];
+                    byBairro[s.bairro].push(s);
+                });
+
+                Object.keys(byBairro).sort().forEach(bairro => {
+                    const group = document.createElement('optgroup');
+                    group.label = bairro;
+                    byBairro[bairro].forEach(s => {
+                        const opt = document.createElement('option');
+                        opt.value = s.id;
+                        const tag = s.necessidadesEspeciais.length ? ` ★` : '';
+                        opt.textContent = s.nome + tag;
+                        group.appendChild(opt);
+                    });
+                    sel.appendChild(group);
+                });
+            } catch (err) {
+                console.error('Erro ao carregar escolas:', err);
+            }
         }
 
         async function loadStudents(query = '') {
@@ -493,19 +562,23 @@
             tbody.innerHTML = '';
             
             if (students.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 32px; color: #94a3b8;">Nenhum aluno matriculado</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 32px; color: #94a3b8;">Nenhum aluno matriculado</td></tr>';
                 return;
             }
             
             students.forEach((student, index) => {
                 const tr = document.createElement('tr');
                 tr.style.animationDelay = `${index * 0.05}s`;
+                const escola = student.escola_id && schoolsMap[student.escola_id]
+                    ? schoolsMap[student.escola_id].nome
+                    : '<span style="color:#94a3b8;font-style:italic;">—</span>';
                 tr.innerHTML = `
                     <td><strong>${student.id}</strong></td>
                     <td>${student.name}</td>
                     <td>${student.cpf || 'N/A'}</td>
                     <td>${student.dob}</td>
                     <td>${formatYear(student.year)}</td>
+                    <td>${escola}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -517,26 +590,33 @@
             const cpf = document.getElementById('cpf').value;
             const dob = document.getElementById('dob').value;
             const year = Number(document.getElementById('year').value);
+            const escolaId = document.getElementById('escola').value;
 
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<span class="loading"></span> Processando...';
             submitBtn.disabled = true;
 
+            const payload = { name, cpf, dob, year };
+            if (escolaId) payload.escola_id = parseInt(escolaId);
+
             try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, cpf, dob, year })
+                    body: JSON.stringify(payload)
                 });
 
                 if (response.ok) {
-                    showStatus('ok', 'Matrícula realizada com sucesso!');
+                    const escolaNome = escolaId && schoolsMap[parseInt(escolaId)]
+                        ? ` na ${schoolsMap[parseInt(escolaId)].nome}` : '';
+                    showStatus('ok', `Matrícula realizada com sucesso${escolaNome}!`);
                     document.getElementById('enrollForm').reset();
+                    document.getElementById('escolaInfo').style.display = 'none';
                     await loadStudents();
                 } else {
-                    const payload = await response.json().catch(() => null);
-                    showStatus('err', payload?.error || 'Erro ao realizar matrícula.');
+                    const payload2 = await response.json().catch(() => null);
+                    showStatus('err', payload2?.error || 'Erro ao realizar matrícula.');
                 }
             } catch (error) {
                 console.error('Erro:', error);
@@ -549,6 +629,7 @@
 
         document.getElementById('resetBtn').addEventListener('click', () => {
             document.getElementById('enrollForm').reset();
+            document.getElementById('escolaInfo').style.display = 'none';
             const el = document.getElementById('status');
             el.className = 'status';
             el.innerHTML = '';
@@ -559,15 +640,12 @@
             loadStudents(query);
         }
 
-        // Busca ao pressionar Enter no campo de busca
         document.getElementById('searchInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                searchStudents();
-            }
+            if (e.key === 'Enter') searchStudents();
         });
 
-        // Carregar inicialmente
-        loadStudents();
+        // Carregar dados iniciais
+        loadSchools().then(() => loadStudents());
     </script>
 </body>
 </html>

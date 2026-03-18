@@ -48,7 +48,7 @@ app.get('/api/students', (req, res) => {
 });
 
 app.post('/api/students', (req, res) => {
-  const { name, cpf, dob, year } = req.body;
+  const { name, cpf, dob, year, escola_id } = req.body;
   if (!name || !cpf || !dob || !year) {
     return res.status(400).json({ error: 'Dados incompletos' });
   }
@@ -58,7 +58,13 @@ app.post('/api/students', (req, res) => {
     return res.status(400).json({ error: `Ano inválido. Use apenas: ${ALLOWED_YEARS.join(', ')}.` });
   }
 
-  const newStudent = db.add({ name, cpf, dob, year: yearNumber });
+  if (escola_id && !schools.getById(escola_id)) {
+    return res.status(400).json({ error: `Escola com ID ${escola_id} não encontrada.` });
+  }
+
+  const studentData = { name, cpf, dob, year: yearNumber };
+  if (escola_id) studentData.escola_id = Number(escola_id);
+  const newStudent = db.add(studentData);
   res.status(201).json(newStudent);
 });
 
