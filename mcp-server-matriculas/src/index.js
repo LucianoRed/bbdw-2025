@@ -49,8 +49,8 @@ app.get('/api/students', (req, res) => {
 
 app.post('/api/students', (req, res) => {
   const { name, cpf, dob, year, escola_id } = req.body;
-  if (!name || !cpf || !dob || !year) {
-    return res.status(400).json({ error: 'Dados incompletos' });
+  if (!name || !cpf || !dob || !year || !escola_id) {
+    return res.status(400).json({ error: 'Dados incompletos. Escola é obrigatória.' });
   }
 
   const yearNumber = Number(year);
@@ -58,12 +58,11 @@ app.post('/api/students', (req, res) => {
     return res.status(400).json({ error: `Ano inválido. Use apenas: ${ALLOWED_YEARS.join(', ')}.` });
   }
 
-  if (escola_id && !schools.getById(escola_id)) {
+  if (!schools.getById(escola_id)) {
     return res.status(400).json({ error: `Escola com ID ${escola_id} não encontrada.` });
   }
 
-  const studentData = { name, cpf, dob, year: yearNumber };
-  if (escola_id) studentData.escola_id = Number(escola_id);
+  const studentData = { name, cpf, dob, year: yearNumber, escola_id: Number(escola_id) };
   const newStudent = db.add(studentData);
   res.status(201).json(newStudent);
 });
@@ -108,9 +107,9 @@ const TOOLS = [
         cpf: { type: "string", description: "CPF do aluno (formato: 000.000.000-00)" },
         dob: { type: "string", description: "Data de nascimento (DD/MM/AAAA)" },
         year: { type: "integer", enum: ALLOWED_YEARS, description: "Ano desejado (apenas 5, 6, 7 ou 8)" },
-        escola_id: { type: "integer", description: "ID da escola onde o aluno será matriculado (opcional, obtido via listar_escolas)" }
+        escola_id: { type: "integer", description: "ID da escola onde o aluno será matriculado (obrigatório, obtido via listar_escolas)" }
       },
-      required: ["name", "cpf", "dob", "year"]
+      required: ["name", "cpf", "dob", "year", "escola_id"]
     }
   },
   {
@@ -195,18 +194,15 @@ async function executeToolCall(name, args) {
       }
       case 'matricular_aluno': {
         const { name: studentName, cpf, dob, year, escola_id } = args || {};
-        if (!studentName || !cpf || !dob || !year) throw new Error("Parâmetros 'name', 'cpf', 'dob' e 'year' são obrigatórios.");
+        if (!studentName || !cpf || !dob || !year || !escola_id) throw new Error("Parâmetros 'name', 'cpf', 'dob', 'year' e 'escola_id' são obrigatórios.");
 
         const yearNumber = Number(year);
         if (!Number.isInteger(yearNumber) || !ALLOWED_YEARS.includes(yearNumber)) {
           throw new Error(`Ano inválido. Use apenas: ${ALLOWED_YEARS.join(', ')}.`);
         }
 
-        let escola = null;
-        if (escola_id) {
-          escola = schools.getById(escola_id);
-          if (!escola) throw new Error(`Escola com ID ${escola_id} não encontrada. Use listar_escolas para ver as opções.`);
-        }
+        const escola = schools.getById(escola_id);
+        if (!escola) throw new Error(`Escola com ID ${escola_id} não encontrada. Use listar_escolas para ver as opções.`);
 
         const studentData = { name: studentName, cpf, dob, year: yearNumber };
         if (escola) studentData.escola_id = escola.id;
