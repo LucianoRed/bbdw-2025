@@ -6,6 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DATA_FILE = path.join(__dirname, '..', 'data', 'students.json');
+const SCHOOLS_FILE = path.join(__dirname, '..', 'data', 'schools.json');
 
 export const ALLOWED_YEARS = [5, 6, 7, 8];
 
@@ -49,6 +50,37 @@ function saveData(data) {
     console.error("Erro ao salvar dados:", error);
   }
 }
+
+function loadSchools() {
+  try {
+    if (!fs.existsSync(SCHOOLS_FILE)) return [];
+    const data = fs.readFileSync(SCHOOLS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error("Erro ao carregar escolas:", error);
+    return [];
+  }
+}
+
+export const schools = {
+  getAll: () => loadSchools(),
+
+  getById: (id) => {
+    return loadSchools().find(s => s.id === Number(id)) || null;
+  },
+
+  getBySpecialNeed: (need) => {
+    const lowerNeed = need.toLowerCase();
+    return loadSchools().filter(s =>
+      s.necessidadesEspeciais.some(n => n.toLowerCase().includes(lowerNeed))
+    );
+  },
+
+  getByBairro: (bairro) => {
+    const lowerBairro = bairro.toLowerCase();
+    return loadSchools().filter(s => s.bairro.toLowerCase().includes(lowerBairro));
+  }
+};
 
 const db = {
   getAll: () => loadData(),

@@ -7,7 +7,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import db, { ALLOWED_YEARS } from './db.js';
+import db, { ALLOWED_YEARS, schools } from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,6 +30,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api', express.json());
 
 // --- API Endpoints para a interface Web ---
+app.get('/api/schools', (req, res) => {
+  const need = req.query.necessidade;
+  const bairro = req.query.bairro;
+  if (need) return res.json(schools.getBySpecialNeed(need));
+  if (bairro) return res.json(schools.getByBairro(bairro));
+  res.json(schools.getAll());
+});
+
 app.get('/api/students', (req, res) => {
   const query = req.query.q;
   if (query) {
@@ -80,16 +88,48 @@ const TOOLS = [
   },
   {
     name: "matricular_aluno",
-    description: `Realiza a matrícula de um novo aluno (anos permitidos: ${ALLOWED_YEARS.join(', ')}).`,
+    description: `Realiza a matrícula de um novo aluno (anos permitidos: ${ALLOWED_YEARS.join(', ')}). Use listar_escolas ou buscar_escolas_por_necessidade para obter o id da escola antes de matricular.`,
     inputSchema: {
       type: "object",
       properties: {
         name: { type: "string", description: "Nome completo do aluno" },
         cpf: { type: "string", description: "CPF do aluno (formato: 000.000.000-00)" },
         dob: { type: "string", description: "Data de nascimento (DD/MM/AAAA)" },
-        year: { type: "integer", enum: ALLOWED_YEARS, description: "Ano desejado (apenas 5, 6, 7 ou 8)" }
+        year: { type: "integer", enum: ALLOWED_YEARS, description: "Ano desejado (apenas 5, 6, 7 ou 8)" },
+        escola_id: { type: "integer", description: "ID da escola onde o aluno será matriculado (opcional, obtido via listar_escolas)" }
       },
       required: ["name", "cpf", "dob", "year"]
+    }
+  },
+  {
+    name: "listar_escolas",
+    description: "Lista todas as escolas disponíveis com seus bairros, endereços e suporte a necessidades especiais.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: "buscar_escolas_por_necessidade",
+    description: "Busca escolas que possuem atendimento especializado para uma necessidade específica (ex: TDAH, autismo, dislexia, deficiência visual, deficiência auditiva).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        necessidade: { type: "string", description: "Necessidade especial a filtrar (ex: TDAH, autismo, dislexia)" }
+      },
+      required: ["necessidade"]
+    }
+  },
+  {
+    name: "buscar_escolas_por_bairro",
+    description: "Lista as escolas de um determinado bairro.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        bairro: { type: "string", description: "Nome do bairro (ex: Centro, Vila Nova, Bela Vista)" }
+      },
+      required: ["bairro"]
     }
   },
   {
@@ -142,7 +182,7 @@ async function executeToolCall(name, args) {
         return { content: [{ type: 'text', text: JSON.stringify(students, null, 2) }] };
       }
       case 'matricular_aluno': {
-        const { name: studentName, cpf, dob, year } = args || {};
+        const { name: studentName, cpf, dob, year, escola_id } = args || {};
         if (!studentName || !cpf || !dob || !year) throw new Error("Parâmetros 'name', 'cpf', 'dob' e 'year' são obrigatórios.");
 
         const yearNumber = Number(year);
@@ -150,8 +190,36 @@ async function executeToolCall(name, args) {
           throw new Error(`Ano inválido. Use apenas: ${ALLOWED_YEARS.join(', ')}.`);
         }
 
-        const student = db.add({ name: studentName, cpf, dob, year: yearNumber });
-        return { content: [{ type: 'text', text: `Aluno matriculado com sucesso: ID ${student.id} - ${student.name}` }] };
+        let escola = null;
+        if (escola_id) {
+          escola = schools.getById(escola_id);
+          if (!escola) throw new Error(`Escola com ID ${escola_id} não encontrada. Use listar_escolas para ver as opções.`);
+        }
+
+        const studentData = { name: studentName, cpf, dob, year: yearNumber };
+        if (escola) studentData.escola_id = escola.id;
+        const student = db.add(studentData);
+
+        const escolaInfo = escola ? ` na ${escola.nome} (${escola.bairro})` : '';
+        return { content: [{ type: 'text', text: `Aluno matriculado com sucesso: ID ${student.id} - ${student.name}${escolaInfo}` }] };
+      }
+      case 'listar_escolas': {
+        const all = schools.getAll();
+        return { content: [{ type: 'text', text: JSON.stringify(all, null, 2) }] };
+      }
+      case 'buscar_escolas_por_necessidade': {
+        const { necessidade } = args || {};
+        if (!necessidade) throw new Error("Parâmetro 'necessidade' é obrigatório.");
+        const result = schools.getBySpecialNeed(necessidade);
+        if (!result.length) return { content: [{ type: 'text', text: `Nenhuma escola encontrada com suporte a: ${necessidade}` }] };
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      }
+      case 'buscar_escolas_por_bairro': {
+        const { bairro } = args || {};
+        if (!bairro) throw new Error("Parâmetro 'bairro' é obrigatório.");
+        const result = schools.getByBairro(bairro);
+        if (!result.length) return { content: [{ type: 'text', text: `Nenhuma escola encontrada no bairro: ${bairro}` }] };
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       }
       case 'buscar_aluno': {
         const { query } = args || {};
