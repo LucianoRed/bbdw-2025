@@ -57,6 +57,9 @@ public class ChatResource {
     
     @Inject
     AgentGPT5Mini agentGPT5Mini;
+
+    @Inject
+    AgentGPT54 agentGPT54;
     
     @Inject
     OrchestratorService orchestratorService;
@@ -173,6 +176,10 @@ public class ChatResource {
             case "gpt-5-mini", "gpt5-mini" -> {
                 if (useMcp) yield agentGPT5Mini.sendMessageWithMcp(memoryId, sysPrompt, message);
                 else yield agentGPT5Mini.sendMessage(memoryId, sysPrompt, message);
+            }
+            case "gpt-5.4", "gpt54" -> {
+                if (useMcp) yield agentGPT54.sendMessageWithMcp(memoryId, sysPrompt, message);
+                else yield agentGPT54.sendMessage(memoryId, sysPrompt, message);
             }
             default -> {
                 // Fallback para o agente padrão com RAG support
