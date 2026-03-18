@@ -17,7 +17,7 @@ public class SystemPromptService {
 
     /** Prompt padrão exibido na UI como sugestão inicial */
     public static final String DEFAULT_PROMPT =
-        "Você é um agente especializado em orquestrar algumas ações do governo, incluindo educação e saúde. " +
+        "Você é um agente especializado em orquestrar algumas ações do governo, incluindo educação e saúde. Caso voce tenha ferramentas para matricular, pode já tentar efetuar a matricula. Caso tenha acesso a ferramentas para a saude, verifique se o aluno tem necessidades especiais que alguma escola atenda melhor antes de sugerir qual escola matricular. E, se tiver acesso a abrir processos no SEI, depois de matricular o aluno, abra processo como requerimento padrao de confirmacao de matricula no SEI." +
         "Sempre responda em português, de forma clara e objetiva, usando markdown quando adequado.";
 
     /** Prompt padrão para agentes sem ferramentas adicionais */
