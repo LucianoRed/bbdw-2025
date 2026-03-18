@@ -353,6 +353,22 @@
             color: white;
         }
 
+        .btn-remove {
+            padding: 6px 10px;
+            background: transparent;
+            border: 1.5px solid var(--error);
+            color: var(--error);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-remove:hover {
+            background: var(--error);
+            color: white;
+        }
+
         .badge-need {
             display: inline-block;
             padding: 2px 8px;
@@ -452,6 +468,7 @@
                                 <th style="width: 120px;"><i class="fas fa-birthday-cake"></i> Nasc.</th>
                                 <th style="width: 80px;"><i class="fas fa-graduation-cap"></i> Ano</th>
                                 <th><i class="fas fa-school"></i> Escola</th>
+                                <th style="width: 60px;"></th>
                             </tr>
                         </thead>
                         <tbody id="studentsTable">
@@ -579,6 +596,7 @@
                     <td>${student.dob}</td>
                     <td>${formatYear(student.year)}</td>
                     <td>${escola}</td>
+                    <td><button type="button" class="btn-remove" title="Desmatricular" onclick="desmatricular(${student.id}, '${student.name.replace(/'/g, "\\'")}')"><i class="fas fa-user-minus"></i></button></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -643,6 +661,22 @@
         document.getElementById('searchInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') searchStudents();
         });
+
+        async function desmatricular(id, name) {
+            if (!confirm(`Deseja cancelar a matrícula de ${name}?`)) return;
+            try {
+                const resp = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                if (resp.ok) {
+                    showStatus('ok', `Matrícula de ${name} cancelada com sucesso.`);
+                    await loadStudents();
+                } else {
+                    const data = await resp.json().catch(() => null);
+                    showStatus('err', data?.error || 'Erro ao desmatricular.');
+                }
+            } catch (err) {
+                showStatus('err', 'Erro de rede ao desmatricular.');
+            }
+        }
 
         // Carregar dados iniciais
         loadSchools().then(() => loadStudents());

@@ -68,6 +68,12 @@ app.post('/api/students', (req, res) => {
   res.status(201).json(newStudent);
 });
 
+app.delete('/api/students/:id', (req, res) => {
+  const removed = db.remove(req.params.id);
+  if (!removed) return res.status(404).json({ error: 'Aluno não encontrado.' });
+  res.json({ message: `Matrícula de ${removed.name} cancelada com sucesso.` });
+});
+
 // --- Configuração do Servidor MCP ---
 const server = new Server(
   {

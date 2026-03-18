@@ -189,6 +189,15 @@ const db = {
     const data = loadData();
     const lowerQuery = query.toLowerCase();
     return data.filter(s => s.name.toLowerCase().includes(lowerQuery));
+  },
+
+  remove: (id) => {
+    const data = loadData();
+    const idx = data.findIndex(s => s.id === Number(id));
+    if (idx === -1) return null;
+    const [removed] = data.splice(idx, 1);
+    saveData(data);
+    return removed;
   }
 };
 
