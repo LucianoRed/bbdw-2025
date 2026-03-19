@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>GAIA - Portal do Governo</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,9 +34,9 @@
             --accent: #1351B4;
         }
 
-        html, body {
+        html {
             height: 100%;
-            overflow: hidden;
+            height: -webkit-fill-available;
         }
 
         body {
@@ -44,8 +44,10 @@
             background: var(--gov-bg);
             color: var(--gov-text);
             height: 100vh;
+            height: 100dvh;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
         /* ===== TOPO DO PORTAL ===== */
@@ -377,13 +379,15 @@
 
         .chat-header {
             background: white;
-            padding: 16px 24px;
+            padding: 12px 16px;
             border-bottom: 1px solid var(--gov-border);
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-shrink: 0;
             box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .chat-header-info {
@@ -434,7 +438,8 @@
         .chat-header-actions {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            flex-shrink: 0;
         }
 
         .model-selector-compact {
@@ -851,7 +856,8 @@
 
         /* ===== BARRA DE INPUT ===== */
         .input-area {
-            padding: 16px 24px;
+            padding: 12px 16px;
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
             background: white;
             border-top: 1px solid var(--gov-border);
             flex-shrink: 0;
@@ -980,6 +986,58 @@
             }
 
             .gov-top-bar {
+                display: none;
+            }
+
+            .gov-header {
+                height: auto;
+                padding: 10px 14px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .gov-nav {
+                display: none;
+            }
+
+            .chat-header {
+                padding: 10px 12px;
+            }
+
+            .chat-header-name {
+                font-size: 14px;
+            }
+
+            .chat-header-status {
+                font-size: 11px;
+            }
+
+            .model-selector-compact {
+                max-width: 110px;
+                font-size: 11px;
+                padding: 5px 7px;
+            }
+
+            .clear-btn {
+                padding: 5px 10px;
+                font-size: 11px;
+            }
+
+            .chat-messages {
+                padding: 16px 14px;
+            }
+
+            .input-area {
+                padding: 10px 12px;
+                padding-bottom: max(10px, env(safe-area-inset-bottom));
+            }
+
+            #messageInput {
+                font-size: 16px; /* evita zoom no iOS */
+                padding: 10px 14px;
+            }
+
+            .input-footer {
                 display: none;
             }
         }
