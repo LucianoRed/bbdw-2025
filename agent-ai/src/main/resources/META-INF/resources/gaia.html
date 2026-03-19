@@ -34,11 +34,16 @@
             --accent: #1351B4;
         }
 
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
             font-family: 'Inter', 'Rawline', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--gov-bg);
             color: var(--gov-text);
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             flex-direction: column;
         }
@@ -169,13 +174,14 @@
         .main-layout {
             display: flex;
             flex: 1;
-            height: calc(100vh - 112px);
+            min-height: 0;
             overflow: hidden;
         }
 
         /* ===== PAINEL ESQUERDO ===== */
         .left-panel {
             width: 340px;
+            flex-shrink: 0;
             background: linear-gradient(160deg, var(--gov-blue-dark) 0%, var(--gov-blue) 60%, #1a6abf 100%);
             display: flex;
             flex-direction: column;
@@ -183,8 +189,8 @@
             justify-content: center;
             padding: 32px 24px;
             position: relative;
-            overflow: hidden;
-            flex-shrink: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
         .left-panel::before {
@@ -362,6 +368,7 @@
         /* ===== PAINEL DIREITO (CHAT) ===== */
         .right-panel {
             flex: 1;
+            min-width: 0;
             display: flex;
             flex-direction: column;
             background: var(--chat-bg);
