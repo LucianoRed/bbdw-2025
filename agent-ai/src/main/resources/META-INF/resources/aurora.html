@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>GAIA - Portal do Governo</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rawline:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --gov-blue: #1351B4;
+            --gov-blue-dark: #0C326F;
+            --gov-blue-light: #2670E8;
+            --gov-green: #168821;
+            --gov-yellow: #FFCD07;
+            --gov-bg: #F0F0F5;
+            --gov-white: #FFFFFF;
+            --gov-gray-light: #E8E8E8;
+            --gov-gray: #9E9D9D;
+            --gov-text: #1B1B1B;
+            --gov-text-secondary: #555555;
+            --gov-border: #D9D9D9;
+            --chat-bg: #F8F9FA;
+            --ai-bubble: #FFFFFF;
+            --user-bubble: #1351B4;
+            --accent: #1351B4;
+        }
+
+        html {
+            height: 100%;
+            height: -webkit-fill-available;
+        }
+
+        body {
+            font-family: 'Inter', 'Rawline', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--gov-bg);
+            color: var(--gov-text);
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ===== TOPO DO PORTAL ===== */
+        .gov-top-bar {
+            background: var(--gov-blue-dark);
+            padding: 6px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.9);
+        }
+
+        .gov-top-bar a {
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            padding: 2px 8px;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+
+        .gov-top-bar a:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        .gov-top-bar .separator {
+            color: rgba(255,255,255,0.4);
+        }
+
+        .gov-header {
+            background: var(--gov-blue);
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .gov-logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .gov-logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gov-yellow);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--gov-blue-dark);
+        }
+
+        .gov-logo-text {
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .gov-logo-text span {
+            font-weight: 400;
+            opacity: 0.9;
+        }
+
+        .gov-nav {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            height: 100%;
+        }
+
+        .gov-nav a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 14px;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 6px;
+            transition: background 0.2s;
+            height: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+        .gov-nav a:hover,
+        .gov-nav a.active {
+            background: rgba(255,255,255,0.15);
+        }
+
+        .gov-nav a.active {
+            border-bottom: 3px solid var(--gov-yellow);
+        }
+
+        .gov-nav-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .gov-user-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: white;
+            font-size: 18px;
+            transition: background 0.2s;
+        }
+
+        .gov-user-btn:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        /* ===== LAYOUT PRINCIPAL ===== */
+        .main-layout {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* ===== PAINEL ESQUERDO ===== */
+        .left-panel {
+            width: 340px;
+            flex-shrink: 0;
+            background: linear-gradient(160deg, var(--gov-blue-dark) 0%, var(--gov-blue) 60%, #1a6abf 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 24px;
+            position: relative;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .left-panel::before {
+            content: '';
+            position: absolute;
+            top: -80px;
+            right: -80px;
+            width: 300px;
+            height: 300px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 50%;
+        }
+
+        .left-panel::after {
+            content: '';
+            position: absolute;
+            bottom: -60px;
+            left: -60px;
+            width: 200px;
+            height: 200px;
+            background: rgba(255,205,7,0.08);
+            border-radius: 50%;
+        }
+
+        .avatar-container {
+            position: relative;
+            margin-bottom: 24px;
+            z-index: 1;
+        }
+
+        .avatar-circle {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
+            border: 3px solid rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .avatar-svg {
+            width: 170px;
+            height: 170px;
+        }
+
+        .avatar-badge {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            width: 36px;
+            height: 36px;
+            background: var(--gov-yellow);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            border: 3px solid var(--gov-blue-dark);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .pulse-ring {
+            position: absolute;
+            top: -6px;
+            left: -6px;
+            right: -6px;
+            bottom: -6px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,205,7,0.4);
+            animation: pulse-ring 2.5s ease-out infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            70% { transform: scale(1.03); opacity: 0; }
+            100% { transform: scale(0.95); opacity: 0; }
+        }
+
+        .agent-name {
+            font-size: 32px;
+            font-weight: 800;
+            color: white;
+            text-align: center;
+            margin-bottom: 8px;
+            z-index: 1;
+            letter-spacing: -0.5px;
+        }
+
+        .agent-name span {
+            color: var(--gov-yellow);
+        }
+
+        .agent-acronym {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 3px;
+            color: rgba(255,255,255,0.6);
+            text-transform: uppercase;
+            text-align: center;
+            margin-bottom: 12px;
+            z-index: 1;
+        }
+
+        .agent-description {
+            font-size: 14px;
+            color: rgba(255,255,255,0.8);
+            text-align: center;
+            line-height: 1.6;
+            z-index: 1;
+            max-width: 260px;
+            margin-bottom: 28px;
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            max-width: 260px;
+            z-index: 1;
+            margin-bottom: 20px;
+        }
+
+        .quick-btn {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .quick-btn:hover {
+            background: rgba(255,255,255,0.22);
+            transform: translateX(4px);
+        }
+
+        .quick-btn .btn-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .tip-card {
+            background: rgba(255,205,7,0.15);
+            border: 1px solid rgba(255,205,7,0.3);
+            border-radius: 10px;
+            padding: 12px 16px;
+            z-index: 1;
+            max-width: 260px;
+            width: 100%;
+        }
+
+        .tip-card-text {
+            font-size: 12px;
+            color: rgba(255,255,255,0.85);
+            line-height: 1.5;
+        }
+
+        .tip-card-text strong {
+            color: var(--gov-yellow);
+        }
+
+        /* ===== PAINEL DIREITO (CHAT) ===== */
+        .right-panel {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            background: var(--chat-bg);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: white;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--gov-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .chat-header-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-header-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--gov-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .chat-header-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gov-blue-dark);
+        }
+
+        .chat-header-status {
+            font-size: 12px;
+            color: var(--gov-green);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            background: var(--gov-green);
+            border-radius: 50%;
+            display: inline-block;
+            animation: status-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes status-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .chat-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .model-selector-compact {
+            padding: 6px 10px;
+            background: var(--gov-bg);
+            border: 1px solid var(--gov-border);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--gov-text);
+            font-family: inherit;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .model-selector-compact:focus {
+            outline: none;
+            border-color: var(--gov-blue);
+        }
+
+        .clear-btn {
+            padding: 6px 14px;
+            background: white;
+            color: #CC2929;
+            border: 1px solid #e8c5c5;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .clear-btn:hover {
+            background: #fff0f0;
+            border-color: #CC2929;
+        }
+
+        /* ===== MENSAGENS ===== */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--gov-border);
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: var(--gov-gray);
+        }
+
+        /* Data separador */
+        .date-separator {
+            text-align: center;
+            font-size: 11px;
+            color: var(--gov-gray);
+            font-weight: 500;
+            padding: 4px 0;
+            position: relative;
+        }
+
+        .date-separator::before,
+        .date-separator::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 35%;
+            height: 1px;
+            background: var(--gov-border);
+        }
+
+        .date-separator::before { left: 0; }
+        .date-separator::after { right: 0; }
+
+        /* Mensagem */
+        .message-row {
+            display: flex;
+            gap: 10px;
+            animation: msg-in 0.25s ease;
+        }
+
+        @keyframes msg-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-row.user-row {
+            flex-direction: row-reverse;
+        }
+
+        .msg-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .msg-avatar.ai-av {
+            background: var(--gov-blue);
+        }
+
+        .msg-avatar.user-av {
+            background: var(--gov-gray-light);
+        }
+
+        .msg-body {
+            display: flex;
+            flex-direction: column;
+            max-width: 72%;
+            gap: 3px;
+        }
+
+        .user-row .msg-body {
+            align-items: flex-end;
+        }
+
+        .msg-bubble {
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.6;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .ai-bubble {
+            background: var(--ai-bubble);
+            color: var(--gov-text);
+            border: 1px solid var(--gov-border);
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+
+        .user-bubble {
+            background: var(--user-bubble);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .msg-time {
+            font-size: 10px;
+            color: var(--gov-gray);
+            padding: 0 4px;
+        }
+
+        /* Markdown dentro das mensagens AI */
+        .ai-bubble h1, .ai-bubble h2, .ai-bubble h3 {
+            margin: 0.8em 0 0.4em;
+            color: var(--gov-blue-dark);
+            font-size: 1em;
+        }
+
+        .ai-bubble h1:first-child, .ai-bubble h2:first-child, .ai-bubble h3:first-child {
+            margin-top: 0;
+        }
+
+        .ai-bubble ul, .ai-bubble ol {
+            margin: 0.6em 0;
+            padding-left: 1.5em;
+        }
+
+        .ai-bubble li {
+            margin: 0.3em 0;
+        }
+
+        .ai-bubble p {
+            margin: 0.5em 0;
+        }
+
+        .ai-bubble p:first-child { margin-top: 0; }
+        .ai-bubble p:last-child { margin-bottom: 0; }
+
+        .ai-bubble code {
+            background: #f0f4ff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.88em;
+            color: var(--gov-blue-dark);
+        }
+
+        .ai-bubble pre {
+            background: #f0f4ff;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 0.6em 0;
+        }
+
+        .ai-bubble pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .ai-bubble strong {
+            font-weight: 600;
+            color: var(--gov-blue-dark);
+        }
+
+        .ai-bubble table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin: 0.6em 0;
+        }
+
+        .ai-bubble th, .ai-bubble td {
+            padding: 7px 10px;
+            border: 1px solid var(--gov-border);
+            text-align: left;
+        }
+
+        .ai-bubble th {
+            background: #f0f4ff;
+            font-weight: 600;
+            color: var(--gov-blue-dark);
+        }
+
+        /* Próximos Passos Card */
+        .next-steps-card {
+            background: #f0f6ff;
+            border: 1px solid #c8dcff;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-top: 6px;
+            max-width: 72%;
+        }
+
+        .next-steps-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--gov-blue-dark);
+            margin-bottom: 10px;
+        }
+
+        .next-step-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--gov-text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .next-step-icon {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid var(--gov-gray);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 10px;
+        }
+
+        .next-step-icon.done {
+            background: var(--gov-blue);
+            border-color: var(--gov-blue);
+            color: white;
+        }
+
+        .cta-btn {
+            background: var(--gov-blue-dark);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 11px 20px;
+            width: 100%;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+
+        .cta-btn:hover {
+            background: var(--gov-blue-light);
+        }
+
+        /* Typing indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            padding: 14px 18px;
+        }
+
+        .typing-dot {
+            width: 7px;
+            height: 7px;
+            background: var(--gov-gray);
+            border-radius: 50%;
+            animation: typing-bounce 1.4s ease-in-out infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing-bounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
+
+        /* MCP Tools indicator */
+        .mcp-indicator {
+            background: #f0f6ff;
+            border: 1px solid #c8dcff;
+            border-left: 3px solid var(--gov-blue);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+
+        .mcp-tool-call {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid #e0eaff;
+        }
+
+        .mcp-tool-call:last-child {
+            border-bottom: none;
+        }
+
+        .mcp-tool-name {
+            font-family: monospace;
+            font-weight: 600;
+            color: var(--gov-blue);
+        }
+
+        .mcp-tool-status {
+            margin-left: auto;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .mcp-tool-status.executing {
+            background: #fff3cd;
+            color: #856404;
+            animation: pulse-opacity 1.5s ease-in-out infinite;
+        }
+
+        .mcp-tool-status.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .mcp-tool-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        @keyframes pulse-opacity {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* Estado vazio */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            padding: 40px;
+            text-align: center;
+            color: var(--gov-gray);
+        }
+
+        .empty-state-icon {
+            font-size: 52px;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gov-blue-dark);
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            max-width: 320px;
+            line-height: 1.6;
+        }
+
+        /* ===== BARRA DE INPUT ===== */
+        .input-area {
+            padding: 12px 16px;
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
+            background: white;
+            border-top: 1px solid var(--gov-border);
+            flex-shrink: 0;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        #messageInput {
+            width: 100%;
+            padding: 12px 18px;
+            background: var(--gov-bg);
+            border: 1.5px solid var(--gov-border);
+            border-radius: 24px;
+            font-size: 14px;
+            color: var(--gov-text);
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            resize: none;
+        }
+
+        #messageInput:focus {
+            outline: none;
+            border-color: var(--gov-blue);
+            box-shadow: 0 0 0 3px rgba(19, 81, 180, 0.1);
+        }
+
+        #messageInput::placeholder {
+            color: var(--gov-gray);
+        }
+
+        #sendButton {
+            width: 44px;
+            height: 44px;
+            background: var(--gov-blue);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            padding: 0;
+        }
+
+        #sendButton:hover:not(:disabled) {
+            background: var(--gov-blue-light);
+            transform: scale(1.08);
+        }
+
+        #sendButton:disabled {
+            background: var(--gov-border);
+            cursor: not-allowed;
+        }
+
+        .input-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 11px;
+            color: var(--gov-gray);
+        }
+
+        .input-footer a {
+            color: var(--gov-blue);
+            text-decoration: none;
+        }
+
+        .sos-btn {
+            background: #E52207;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 7px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+
+        .sos-btn:hover {
+            background: #c41a05;
+        }
+
+        /* ===== NOTIFICAÇÕES ===== */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--gov-blue-dark);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            z-index: 9999;
+            animation: notif-in 0.3s ease;
+        }
+
+        @keyframes notif-in {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* ===== RESPONSIVIDADE ===== */
+        @media (max-width: 768px) {
+            .left-panel {
+                display: none;
+            }
+
+            .gov-top-bar {
+                display: none;
+            }
+
+            .gov-header {
+                height: auto;
+                padding: 10px 14px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .gov-nav {
+                display: none;
+            }
+
+            .chat-header {
+                padding: 10px 12px;
+            }
+
+            .chat-header-name {
+                font-size: 14px;
+            }
+
+            .chat-header-status {
+                font-size: 11px;
+            }
+
+            .model-selector-compact {
+                max-width: 110px;
+                font-size: 11px;
+                padding: 5px 7px;
+            }
+
+            .clear-btn {
+                padding: 5px 10px;
+                font-size: 11px;
+            }
+
+            .chat-messages {
+                padding: 16px 14px;
+            }
+
+            .input-area {
+                padding: 10px 12px;
+                padding-bottom: max(10px, env(safe-area-inset-bottom));
+            }
+
+            #messageInput {
+                font-size: 16px; /* evita zoom no iOS */
+                padding: 10px 14px;
+            }
+
+            .input-footer {
+                display: none;
+            }
+        }
+
+        /* Streaming cursor */
+        .streaming-cursor::after {
+            content: '|';
+            animation: blink-cursor 0.8s infinite;
+            color: var(--gov-blue);
+        }
+
+        @keyframes blink-cursor {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Barra superior do governo -->
+    <div class="gov-top-bar">
+        <span>🇧🇷</span>
+        <span>Portal do Governo Federal</span>
+        <span class="separator">|</span>
+        <a href="#">Acessibilidade</a>
+        <a href="#">Contraste</a>
+        <a href="#">Mapa do Site</a>
+    </div>
+
+    <!-- Header do portal -->
+    <header class="gov-header">
+        <div class="gov-logo-area">
+            <div class="gov-logo-icon">G</div>
+            <div class="gov-logo-text">Portal <span>do Governo</span></div>
+        </div>
+
+        <nav class="gov-nav">
+            <a href="#" class="active">Início</a>
+            <a href="#">Serviços</a>
+            <a href="#">Notícias</a>
+            <a href="#">Participação</a>
+        </nav>
+
+        <div class="gov-nav-right">
+            <div class="gov-user-btn">👤</div>
+        </div>
+    </header>
+
+    <!-- Layout principal -->
+    <div class="main-layout">
+
+        <!-- Painel esquerdo: perfil do agente -->
+        <div class="left-panel">
+            <div class="avatar-container">
+                <div class="pulse-ring"></div>
+                <div class="avatar-circle">
+                    <img src="/aurora_redhat.jpg" alt="Aurora" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />
+                </div>
+                <div class="avatar-badge">🤖</div>
+            </div>
+
+            <div class="agent-name">Olá, sou <span>GAIA!</span></div>
+            <div class="agent-acronym">G · A · I · A</div>
+            <div class="agent-description">
+                Governo Assistido por Inteligência Artificial.<br>
+                Como posso tornar seu dia mais fácil hoje?
+            </div>
+
+            <div class="quick-actions">
+                <button class="quick-btn" onclick="sendQuickMessage('Quais serviços digitais estão disponíveis?')">
+                    <span class="btn-icon">📋</span>
+                    <span>Serviços Disponíveis</span>
+                </button>
+                <button class="quick-btn" onclick="sendQuickMessage('Como agendar um serviço presencial?')">
+                    <span class="btn-icon">📅</span>
+                    <span>Agendar Serviço</span>
+                </button>
+                <button class="quick-btn" onclick="sendQuickMessage('Tenho uma dúvida')">
+                    <span class="btn-icon">❓</span>
+                    <span>Dúvidas Frequentes</span>
+                </button>
+            </div>
+
+            <div class="tip-card">
+                <div class="tip-card-text">
+                    <strong>💡 Dica:</strong> Você pode perguntar sobre serviços, agendamentos, documentos e muito mais. Experimente!
+                </div>
+            </div>
+        </div>
+
+        <!-- Painel direito: chat -->
+        <div class="right-panel">
+
+            <!-- Cabeçalho do chat -->
+            <div class="chat-header">
+                <div class="chat-header-info">
+                    <div class="chat-header-avatar" style="overflow:hidden;padding:0;"><img src="/aurora_redhat.jpg" alt="Aurora" style="width:100%;height:100%;object-fit:cover;" /></div>
+                    <div>
+                        <div class="chat-header-name">GAIA</div>
+                        <div class="chat-header-status">
+                            <span class="status-dot"></span>
+                            <span>Online — pronta para ajudar</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-header-actions">
+                    <select id="model-selector" class="model-selector-compact" title="Selecionar modelo de IA">
+                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                        <option value="gpt-4o-nano">GPT-4o</option>
+                        <option value="gpt-4.1-nano">GPT-4.1 Nano</option>
+                        <option value="gpt-5">GPT-5</option>
+                        <option value="gpt-5-mini" selected>GPT-5 Mini</option>
+                        <option value="gpt-5.4">GPT-5.4</option>
+                    </select>
+                    <button class="clear-btn" onclick="clearConversation()">
+                        <span>🗑️</span>
+                        <span>Limpar</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Área de mensagens -->
+            <div id="chatMessages" class="chat-messages">
+                <div class="date-separator">HOJE</div>
+
+                <!-- Mensagem de boas-vindas -->
+                <div class="message-row" id="welcome-row">
+                    <div class="msg-avatar ai-av">🤖</div>
+                    <div class="msg-body">
+                        <div class="msg-bubble ai-bubble">
+                            Bem-vindo ao Portal do Governo. Eu sou a GAIA — <strong>Governo Assistido por Inteligência Artificial</strong> — e estou aqui para agilizar sua vida. Por onde quer começar?
+                        </div>
+                        <div class="msg-time" id="welcome-time"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Área de input -->
+            <div class="input-area">
+                <div class="input-row">
+                    <div class="input-wrapper">
+                        <input
+                            type="text"
+                            id="messageInput"
+                            placeholder="Digite sua mensagem aqui..."
+                            autocomplete="off"
+                        />
+                    </div>
+                    <button id="sendButton" title="Enviar mensagem">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-footer">
+                    <span>GAIA está em constante aprendizado. <a href="#">Privacidade e Termos de Uso</a>.</span>
+                    <button class="sos-btn" onclick="sendQuickMessage('Preciso de ajuda urgente')">
+                        <span>✦</span>
+                        <span>SOS Cidadão</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ====== Elementos DOM ======
+        const chatMessages   = document.getElementById('chatMessages');
+        const messageInput   = document.getElementById('messageInput');
+        const sendButton     = document.getElementById('sendButton');
+        const modelSelector  = document.getElementById('model-selector');
+
+        // ====== Estado — compartilhado com a interface principal via localStorage ======
+        const features = {
+            orchestrator: localStorage.getItem('feature-orchestrator') === 'true',
+            memory:       localStorage.getItem('feature-memory')       === 'true',
+            mcp:          localStorage.getItem('feature-mcp')          === 'true',
+            rag:          localStorage.getItem('feature-rag')          === 'true',
+        };
+
+        // Sessão compartilhada
+        let sessionId = localStorage.getItem('chatSessionId');
+        if (!sessionId) {
+            sessionId = 'user-' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('chatSessionId', sessionId);
+        }
+
+        // Modelo compartilhado
+        const savedModel = localStorage.getItem('selectedModel');
+        if (savedModel) {
+            modelSelector.value = savedModel;
+        }
+
+        // Persiste modelo ao mudar
+        modelSelector.addEventListener('change', () => {
+            localStorage.setItem('selectedModel', modelSelector.value);
+            showNotification('🤖 Modelo: ' + modelSelector.options[modelSelector.selectedIndex].text);
+        });
+
+        // Escuta mudanças de configuração feitas na outra aba
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'selectedModel' && e.newValue) {
+                modelSelector.value = e.newValue;
+            }
+            if (e.key && e.key.startsWith('feature-')) {
+                const feat = e.key.replace('feature-', '');
+                if (feat in features) {
+                    features[feat] = e.newValue === 'true';
+                }
+            }
+            if (e.key === 'chatSessionId' && e.newValue) {
+                sessionId = e.newValue;
+            }
+        });
+
+        // ====== Hora da mensagem de boas-vindas ======
+        document.getElementById('welcome-time').textContent = formatTime(new Date());
+
+        function formatTime(date) {
+            return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // ====== Markdown ======
+        marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
+
+        function parseMarkdown(text) {
+            if (!text) return '';
+            text = String(text);
+            text = text.replace(/([^\n])(#{1,3}\s)/g, '$1\n\n$2');
+            text = text.replace(/([^\n])(\d+\.\s)/g, '$1\n\n$2');
+            return marked.parse(text);
+        }
+
+        // ====== Notificação ======
+        function showNotification(msg) {
+            const el = document.createElement('div');
+            el.className = 'notification';
+            el.textContent = msg;
+            document.body.appendChild(el);
+            setTimeout(() => {
+                el.style.transition = 'opacity 0.3s';
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 300);
+            }, 2500);
+        }
+
+        // ====== Scroll automático ======
+        function scrollToBottom() {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // ====== Remover estado vazio ======
+        function removeEmptyState() {
+            const el = chatMessages.querySelector('.empty-state');
+            if (el) el.remove();
+        }
+
+        // ====== Adicionar mensagem ======
+        function addMessage(content, isUser, time) {
+            removeEmptyState();
+
+            const now = time || new Date();
+            const row = document.createElement('div');
+            row.className = 'message-row' + (isUser ? ' user-row' : '');
+
+            const avatar = document.createElement('div');
+            avatar.className = 'msg-avatar ' + (isUser ? 'user-av' : 'ai-av');
+            avatar.textContent = isUser ? '👤' : '🤖';
+
+            const body = document.createElement('div');
+            body.className = 'msg-body';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'msg-bubble ' + (isUser ? 'user-bubble' : 'ai-bubble');
+
+            if (isUser) {
+                bubble.textContent = content;
+            } else {
+                bubble.innerHTML = parseMarkdown(content);
+            }
+
+            const timeEl = document.createElement('div');
+            timeEl.className = 'msg-time';
+            timeEl.textContent = formatTime(now);
+
+            body.appendChild(bubble);
+            body.appendChild(timeEl);
+
+            row.appendChild(avatar);
+            row.appendChild(body);
+
+            chatMessages.appendChild(row);
+            scrollToBottom();
+
+            return bubble;
+        }
+
+        // ====== Carregar histórico ======
+        async function loadHistory() {
+            if (!features.memory) return;
+
+            try {
+                const res = await fetch(`/chat/history/${sessionId}`);
+                if (!res.ok) return;
+                const history = await res.json();
+
+                if (history && history.length > 0) {
+                    // Remove mensagem de boas-vindas se houver histórico
+                    const welcomeRow = document.getElementById('welcome-row');
+                    if (welcomeRow) welcomeRow.remove();
+
+                    for (const msg of history) {
+                        addMessage(msg.content, msg.role === 'user');
+                    }
+                }
+            } catch (e) {
+                console.error('Erro ao carregar histórico:', e);
+            }
+        }
+
+        // ====== Limpar conversa ======
+        async function clearConversation() {
+            if (!confirm('Deseja realmente limpar toda a conversa?')) return;
+
+            try {
+                await fetch(`/chat/memory/${sessionId}`, { method: 'DELETE' });
+
+                // Limpa UI
+                chatMessages.innerHTML = '';
+
+                // Novo sessionId
+                sessionId = 'user-' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('chatSessionId', sessionId);
+
+                // Re-adiciona separador e boas-vindas
+                const sep = document.createElement('div');
+                sep.className = 'date-separator';
+                sep.textContent = 'HOJE';
+                chatMessages.appendChild(sep);
+
+                addMessage('Conversa reiniciada. Como posso ajudar você?', false);
+                showNotification('✓ Conversa limpa com sucesso');
+            } catch (e) {
+                console.error('Erro ao limpar conversa:', e);
+                alert('Erro ao limpar a conversa');
+            }
+        }
+
+        // ====== Mensagem rápida (botões) ======
+        function sendQuickMessage(text) {
+            messageInput.value = text;
+            sendMessage();
+        }
+
+        // ====== Enviar mensagem ======
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || sendButton.disabled) return;
+
+            // Lê as configs mais recentes do localStorage antes de enviar
+            const useOrchestrator = localStorage.getItem('feature-orchestrator') === 'true';
+            const useMemory       = localStorage.getItem('feature-memory')       === 'true';
+            const useMcp          = localStorage.getItem('feature-mcp')          === 'true';
+            const useRag          = localStorage.getItem('feature-rag')          === 'true';
+            const currentModel    = localStorage.getItem('selectedModel') || modelSelector.value;
+            const currentSession  = useMemory ? sessionId : null;
+
+            addMessage(message, true);
+            messageInput.value = '';
+            sendButton.disabled = true;
+
+            // Cria linha da resposta
+            removeEmptyState();
+            const row = document.createElement('div');
+            row.className = 'message-row';
+
+            const avatar = document.createElement('div');
+            avatar.className = 'msg-avatar ai-av';
+            avatar.textContent = '🤖';
+
+            const body = document.createElement('div');
+            body.className = 'msg-body';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'msg-bubble ai-bubble';
+
+            // Typing indicator
+            bubble.innerHTML = `
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+
+            body.appendChild(bubble);
+            row.appendChild(avatar);
+            row.appendChild(body);
+            chatMessages.appendChild(row);
+            scrollToBottom();
+
+            // Indicador de MCP
+            let mcpIndicator = null;
+            let mcpToolsList = null;
+            let mcpToolsMap  = new Map();
+            let pollingInterval = null;
+            let currentRequestId = { value: null };
+
+            if (useMcp) {
+                mcpIndicator = document.createElement('div');
+                mcpIndicator.className = 'mcp-indicator';
+                mcpIndicator.innerHTML = '<strong style="font-size:11px;color:var(--gov-blue);">🔌 Consultando ferramentas MCP...</strong>';
+                mcpToolsList = document.createElement('div');
+                mcpIndicator.appendChild(mcpToolsList);
+            }
+
+            try {
+                const controller = new AbortController();
+                const timeoutId  = setTimeout(() => controller.abort(), useMcp ? 300000 : 60000);
+
+                const fetchPromise = fetch('/chat/message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message:          message,
+                        sessionId:        currentSession,
+                        useMcp:           useMcp,
+                        useRag:           useRag,
+                        useOrchestrator:  useOrchestrator,
+                        model:            currentModel
+                    }),
+                    signal: controller.signal
+                }).finally(() => clearTimeout(timeoutId));
+
+                // Inicia polling MCP assim que tiver o requestId
+                fetchPromise.then(response => {
+                    if (response.ok) {
+                        const reqId = response.headers.get('X-Request-Id');
+                        if (reqId) {
+                            currentRequestId.value = reqId;
+                            if (useMcp && mcpIndicator && !pollingInterval) {
+                                // Insere indicador MCP no topo do bubble
+                                bubble.innerHTML = '';
+                                bubble.appendChild(mcpIndicator);
+
+                                pollMcpCalls(reqId, mcpToolsMap, mcpToolsList);
+                                pollingInterval = setInterval(() => {
+                                    pollMcpCalls(currentRequestId.value, mcpToolsMap, mcpToolsList);
+                                }, 300);
+                            }
+                        }
+                    }
+                });
+
+                const response = await fetchPromise;
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const text = await response.text();
+
+                // Aguarda eventos finais
+                await new Promise(r => setTimeout(r, 800));
+                if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
+
+                // Renderiza resposta
+                if (mcpIndicator && mcpToolsMap.size > 0) {
+                    const summary = document.createElement('div');
+                    summary.style.cssText = 'font-size:11px;color:#555;padding:6px 8px;background:#f0f6ff;border-radius:5px;border-left:3px solid var(--gov-blue);margin-bottom:10px;';
+                    summary.innerHTML = `🔧 <span style="opacity:0.8">Tools usadas:</span> <strong>${Array.from(mcpToolsMap.keys()).join(', ')}</strong>`;
+                    bubble.innerHTML = '';
+                    bubble.appendChild(summary);
+
+                    const contentEl = document.createElement('div');
+                    contentEl.innerHTML = parseMarkdown(text);
+                    bubble.appendChild(contentEl);
+                } else {
+                    bubble.innerHTML = parseMarkdown(text);
+                }
+
+                bubble.classList.remove('streaming-cursor');
+
+                // Adiciona hora
+                const timeEl = document.createElement('div');
+                timeEl.className = 'msg-time';
+                timeEl.textContent = formatTime(new Date());
+                body.appendChild(timeEl);
+
+            } catch (err) {
+                if (pollingInterval) clearInterval(pollingInterval);
+                console.error('Erro:', err);
+
+                if (err.name === 'AbortError') {
+                    bubble.innerHTML = '<p>⏱️ Tempo limite excedido. As MCP tools podem estar demorando. Tente novamente.</p>';
+                } else if (err.message.includes('Failed to fetch')) {
+                    bubble.innerHTML = '<p>❌ Erro de conexão com o servidor.</p>';
+                } else {
+                    bubble.innerHTML = '<p>❌ Erro ao comunicar com o servidor.</p>';
+                }
+            } finally {
+                sendButton.disabled = false;
+                messageInput.focus();
+                scrollToBottom();
+            }
+        }
+
+        // ====== Polling MCP ======
+        async function pollMcpCalls(requestId, toolsMap, toolListEl) {
+            if (!requestId || !toolListEl) return;
+            try {
+                const res = await fetch(`/chat/mcp-calls/${requestId}`);
+                if (!res.ok) return;
+                const events = await res.json();
+
+                for (const event of events) {
+                    const { name, status } = event;
+                    if (!toolsMap.has(name) || toolsMap.get(name) !== status) {
+                        toolsMap.set(name, status);
+
+                        let el = document.getElementById('mcp-tool-' + name.replace(/[^a-zA-Z0-9]/g, '_'));
+                        if (!el) {
+                            el = document.createElement('div');
+                            el.id = 'mcp-tool-' + name.replace(/[^a-zA-Z0-9]/g, '_');
+                            el.className = 'mcp-tool-call';
+                            toolListEl.appendChild(el);
+                        }
+
+                        const statusClass = status === 'calling' ? 'executing' : status;
+                        const statusLabel = status === 'calling' ? 'Executando...' : status === 'completed' ? '✓ Concluído' : '✗ Erro';
+
+                        el.innerHTML = `
+                            <span>🔧</span>
+                            <span class="mcp-tool-name">${name}</span>
+                            <span class="mcp-tool-status ${statusClass}">${statusLabel}</span>
+                        `;
+                        scrollToBottom();
+                    }
+                }
+            } catch (e) {
+                console.error('Erro polling MCP:', e);
+            }
+        }
+
+        // ====== Event listeners ======
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // ====== Carrega histórico ao iniciar ======
+        loadHistory();
+    </script>
+</body>
+</html>
