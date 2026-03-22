@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Fundo com gradiente azul governo -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1351B4"/>
+      <stop offset="100%" stop-color="#0C326F"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fundo arredondado -->
+  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+
+  <!-- Arco aurora (aurora boreal estilizada) -->
+  <path d="M4 22 Q10 10 16 14 Q22 18 28 8" stroke="#FFCD07" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.9"/>
+  <path d="M4 26 Q10 15 16 18 Q22 21 28 13" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.6"/>
+
+  <!-- Letra A centralizada -->
+  <text x="16" y="28" font-family="Arial,sans-serif" font-size="14" font-weight="800" text-anchor="middle" fill="white" opacity="0.95">A</text>
+</svg>
