@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.redhat.redis.RedisService;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
@@ -13,46 +16,79 @@ import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
 import io.quarkus.logging.Log;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 @ApplicationScoped
 public class McpManager {
 
+    private static final String REDIS_KEY = "aurora:mcp:servers";
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     private final Map<String, McpClient> clients = new ConcurrentHashMap<>();
     private final Map<String, McpServerConfig> configs = new ConcurrentHashMap<>();
-    
+
     @Inject
     McpEventService mcpEventService;
 
+    @Inject
+    RedisService redisService;
+
+    @PostConstruct
+    void init() {
+        try {
+            String json = redisService.getValue(REDIS_KEY);
+            if (json != null && !json.isBlank()) {
+                List<McpServerConfig> saved = objectMapper.readValue(json, new TypeReference<>() {});
+                for (McpServerConfig config : saved) {
+                    try {
+                        connectServer(config);
+                        Log.infof("[McpManager] Servidor MCP restaurado do Redis: %s", config.name());
+                    } catch (Exception e) {
+                        Log.errorf("[McpManager] Falha ao restaurar servidor MCP '%s': %s", config.name(), e.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.errorf("[McpManager] Erro ao carregar configurações MCP do Redis: %s", e.getMessage());
+        }
+    }
+
+    private void connectServer(McpServerConfig config) {
+        McpTransport transport;
+        if ("stdio".equalsIgnoreCase(config.transportType())) {
+            List<String> cmd = List.of(config.url().split(" "));
+            transport = new StdioMcpTransport.Builder()
+                    .command(cmd)
+                    .logEvents(config.logRequests())
+                    .build();
+        } else {
+            transport = new StreamableHttpMcpTransport.Builder()
+                    .url(config.url())
+                    .logRequests(config.logRequests())
+                    .logResponses(config.logResponses())
+                    .build();
+        }
+        McpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .build();
+        clients.put(config.name(), client);
+        configs.put(config.name(), config);
+    }
+
+    private void saveConfigsToRedis() {
+        try {
+            redisService.setValue(REDIS_KEY, new ArrayList<>(configs.values()));
+        } catch (Exception e) {
+            Log.errorf("[McpManager] Erro ao salvar configurações MCP no Redis: %s", e.getMessage());
+        }
+    }
+
     public void addServer(McpServerConfig config) {
         try {
-            McpTransport transport;
-            if ("stdio".equalsIgnoreCase(config.transportType())) {
-                // Assuming url contains the command for stdio
-                List<String> cmd = List.of(config.url().split(" "));
-                transport = new StdioMcpTransport.Builder()
-                        .command(cmd)
-                        .logEvents(config.logRequests())
-                        .build();
-            } else {
-                // Default to HTTP
-                transport = new StreamableHttpMcpTransport.Builder()
-                        .url(config.url())
-                        .logRequests(config.logRequests())
-                        .logResponses(config.logResponses())
-                        .build();
-            }
-
-            McpClient client = new DefaultMcpClient.Builder()
-                    .transport(transport)
-                    .build();
-
-            // Initialize/Check health if possible, or just store it
-            // client.initialize(); // Some versions require this
-
-            clients.put(config.name(), client);
-            configs.put(config.name(), config);
+            connectServer(config);
+            saveConfigsToRedis();
             Log.infof("MCP Server added: %s", config.name());
         } catch (Exception e) {
             Log.errorf("Failed to add MCP server %s: %s", config.name(), e.getMessage());
@@ -70,6 +106,7 @@ public class McpManager {
                 Log.errorf("Error closing MCP client %s: %s", name, e.getMessage());
             }
         }
+        saveConfigsToRedis();
     }
 
     public List<McpServerConfig> listServers() {

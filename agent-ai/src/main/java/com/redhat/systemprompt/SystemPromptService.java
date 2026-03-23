@@ -1,7 +1,10 @@
 package com.redhat.systemprompt;
 
+import com.redhat.redis.RedisService;
 import io.quarkus.logging.Log;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 /**
  * Serviço que armazena e fornece o system prompt customizável em tempo real.
@@ -85,7 +88,25 @@ public class SystemPromptService {
         📚 *Baseado na documentação oficial*
         """;
 
+    private static final String REDIS_KEY = "aurora:system:prompt";
+
+    @Inject
+    RedisService redisService;
+
     private volatile String customPrompt = null;
+
+    @PostConstruct
+    void init() {
+        try {
+            String saved = redisService.getValue(REDIS_KEY);
+            if (saved != null && !saved.isBlank()) {
+                this.customPrompt = saved;
+                Log.infof("[SystemPrompt] Prompt customizado restaurado do Redis (%d chars)", saved.length());
+            }
+        } catch (Exception e) {
+            Log.errorf("[SystemPrompt] Erro ao carregar system prompt do Redis: %s", e.getMessage());
+        }
+    }
 
     /**
      * Retorna o prompt customizado atual, ou null se não houver nenhum definido.
@@ -102,10 +123,20 @@ public class SystemPromptService {
         if (prompt == null || prompt.isBlank()) {
             this.customPrompt = null;
             Log.info("[SystemPrompt] Prompt customizado removido — agentes voltam ao padrão.");
+            try {
+                redisService.deleteKey(REDIS_KEY);
+            } catch (Exception e) {
+                Log.errorf("[SystemPrompt] Erro ao remover system prompt do Redis: %s", e.getMessage());
+            }
         } else {
             this.customPrompt = prompt.strip();
-            Log.infof("[SystemPrompt] Novo prompt definido (%d chars): %.80s...", 
+            Log.infof("[SystemPrompt] Novo prompt definido (%d chars): %.80s...",
                       this.customPrompt.length(), this.customPrompt);
+            try {
+                redisService.setValue(REDIS_KEY, this.customPrompt);
+            } catch (Exception e) {
+                Log.errorf("[SystemPrompt] Erro ao salvar system prompt no Redis: %s", e.getMessage());
+            }
         }
     }
 
