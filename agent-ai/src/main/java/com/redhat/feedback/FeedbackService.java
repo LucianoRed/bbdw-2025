@@ -1,9 +1,14 @@
 package com.redhat.feedback;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.redhat.redis.RedisService;
 import io.quarkus.logging.Log;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.annotation.PreDestroy;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,23 +25,53 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class FeedbackService {
 
+    private static final String REDIS_KEY_FEEDBACKS = "aurora:feedback:all";
+    private static final String REDIS_KEY_ANALYSIS  = "aurora:feedback:analysis";
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
     @Inject
     SentimentAnalysisAgent sentimentAgent;
 
+    @Inject
+    RedisService redisService;
+
     // Fila thread-safe para processar feedbacks
     private final ConcurrentLinkedQueue<Feedback> feedbackQueue = new ConcurrentLinkedQueue<>();
-    
+
     // Lista thread-safe de todos os feedbacks recebidos
     private final CopyOnWriteArrayList<Feedback> allFeedbacks = new CopyOnWriteArrayList<>();
-    
+
     // Análise consolidada atual
     private volatile String currentAnalysis = "";
-    
+
     // Flag para indicar se há processamento em andamento
     private final AtomicBoolean processing = new AtomicBoolean(false);
-    
+
     // Flag para indicar shutdown
     private volatile boolean shuttingDown = false;
+
+    @PostConstruct
+    void init() {
+        try {
+            String feedbacksJson = redisService.getValue(REDIS_KEY_FEEDBACKS);
+            if (feedbacksJson != null && !feedbacksJson.isBlank()) {
+                List<Feedback> saved = objectMapper.readValue(feedbacksJson, new TypeReference<>() {});
+                allFeedbacks.addAll(saved);
+                Log.infof("[FeedbackService] %d feedbacks restaurados do Redis", allFeedbacks.size());
+            }
+        } catch (Exception e) {
+            Log.errorf("[FeedbackService] Erro ao restaurar feedbacks do Redis: %s", e.getMessage());
+        }
+        try {
+            String savedAnalysis = redisService.getValue(REDIS_KEY_ANALYSIS);
+            if (savedAnalysis != null && !savedAnalysis.isBlank()) {
+                currentAnalysis = savedAnalysis;
+                Log.info("[FeedbackService] An\u00e1lise de sentimento restaurada do Redis");
+            }
+        } catch (Exception e) {
+            Log.errorf("[FeedbackService] Erro ao restaurar an\u00e1lise do Redis: %s", e.getMessage());
+        }
+    }
 
     /**
      * Adiciona um novo feedback à fila para processamento
@@ -45,8 +80,17 @@ public class FeedbackService {
         Feedback feedback = new Feedback(feedbackText);
         feedbackQueue.offer(feedback);
         allFeedbacks.add(feedback);
-        Log.infof("Feedback recebido: %s (Total: %d, Fila: %d)", 
+        saveFeedbacksToRedis();
+        Log.infof("Feedback recebido: %s (Total: %d, Fila: %d)",
             feedback.id(), allFeedbacks.size(), feedbackQueue.size());
+    }
+
+    private void saveFeedbacksToRedis() {
+        try {
+            redisService.setValue(REDIS_KEY_FEEDBACKS, new ArrayList<>(allFeedbacks));
+        } catch (Exception e) {
+            Log.errorf("[FeedbackService] Erro ao salvar feedbacks no Redis: %s", e.getMessage());
+        }
     }
 
     /**
@@ -117,7 +161,13 @@ public class FeedbackService {
             
             // Chama o agent para análise
             currentAnalysis = sentimentAgent.analyzeConsolidatedSentiment(feedbacksSummary);
-            
+
+            try {
+                redisService.setValue(REDIS_KEY_ANALYSIS, currentAnalysis);
+            } catch (Exception re) {
+                Log.errorf("[FeedbackService] Erro ao salvar an\u00e1lise no Redis: %s", re.getMessage());
+            }
+
             Log.info("Análise de sentimento gerada com sucesso");
         } catch (Exception e) {
             if (!shuttingDown) {
@@ -202,6 +252,22 @@ public class FeedbackService {
      */
     public boolean isProcessing() {
         return processing.get();
+    }
+
+    /**
+     * Remove todos os feedbacks e a análise consolidada
+     */
+    public void clearAll() {
+        allFeedbacks.clear();
+        feedbackQueue.clear();
+        currentAnalysis = "";
+        try {
+            redisService.deleteKey(REDIS_KEY_FEEDBACKS);
+            redisService.deleteKey(REDIS_KEY_ANALYSIS);
+            Log.info("[FeedbackService] Todos os feedbacks removidos do Redis");
+        } catch (Exception e) {
+            Log.errorf("[FeedbackService] Erro ao limpar feedbacks no Redis: %s", e.getMessage());
+        }
     }
 
     /**

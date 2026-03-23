@@ -100,6 +100,17 @@ public class FeedbackResource {
     }
 
     /**
+     * Apaga todos os feedbacks e a análise acumulada
+     */
+    @DELETE
+    @Path("/clear")
+    public Response clearAll() {
+        Log.warn("[FeedbackResource] Solicitada limpeza de todos os feedbacks");
+        feedbackService.clearAll();
+        return Response.ok(new FeedbackResponse(true, "Todos os feedbacks foram removidos")).build();
+    }
+
+    /**
      * Força reprocessamento da análise (útil para debug)
      */
     @POST

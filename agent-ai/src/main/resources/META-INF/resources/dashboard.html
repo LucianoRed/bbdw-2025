@@ -312,6 +312,7 @@
                 <a href="/feedback.html" style="text-decoration: none;">
                     <button class="nav-button primary">💭 Enviar Feedback</button>
                 </a>
+                <button class="nav-button" id="clear-btn" style="background:#c0392b;color:#fff;border-color:#c0392b;" onclick="openClearModal()">🗑️ Limpar Feedbacks</button>
             </div>
             <div class="stats">
                 <div class="stat-item">
@@ -345,6 +346,20 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Modal de confirmação -->
+    <div id="clear-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;align-items:center;justify-content:center;">
+        <div style="background:#1a1f2e;border:1px solid #2d3748;border-radius:16px;padding:36px 32px;max-width:420px;width:90%;text-align:center;">
+            <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+            <h2 style="color:#e4e6eb;margin-bottom:12px;">Apagar todos os feedbacks?</h2>
+            <p style="color:#a8adb7;margin-bottom:28px;line-height:1.6;">Esta ação removerá <strong style="color:#e4e6eb;">todos</strong> os feedbacks e a análise de sentimento acumulada. Não é possível desfazer.</p>
+            <div style="display:flex;gap:12px;justify-content:center;">
+                <button onclick="closeClearModal()" style="padding:10px 24px;border-radius:8px;border:1px solid #2d3748;background:#252d3d;color:#e4e6eb;cursor:pointer;font-size:14px;">Cancelar</button>
+                <button onclick="confirmClear()" id="confirm-clear-btn" style="padding:10px 24px;border-radius:8px;border:none;background:#c0392b;color:#fff;cursor:pointer;font-size:14px;font-weight:600;">Sim, apagar tudo</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentAnalysis = '';
 
@@ -434,6 +449,43 @@
 
         // Inicia conexão SSE
         connectToAnalysis();
+
+        function openClearModal() {
+            document.getElementById('clear-modal').style.display = 'flex';
+        }
+
+        function closeClearModal() {
+            document.getElementById('clear-modal').style.display = 'none';
+        }
+
+        async function confirmClear() {
+            const btn = document.getElementById('confirm-clear-btn');
+            btn.disabled = true;
+            btn.textContent = 'Apagando...';
+            try {
+                const res = await fetch('/feedback/clear', { method: 'DELETE' });
+                if (res.ok) {
+                    document.getElementById('analysis-content').innerHTML = `
+                        <div class="loading-state">
+                            <div class="loading-icon">⏳</div>
+                            <h2>Aguardando feedbacks...</h2>
+                            <p>A análise será exibida assim que os primeiros feedbacks chegarem.</p>
+                        </div>`;
+                    updateStats(0, 0);
+                }
+            } catch(e) {
+                console.error('Erro ao limpar feedbacks:', e);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Sim, apagar tudo';
+                closeClearModal();
+            }
+        }
+
+        // Fecha modal ao clicar fora
+        document.getElementById('clear-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeClearModal();
+        });
     </script>
 </body>
 </html>
