@@ -38,10 +38,11 @@
     "studentName": "Eduarda Lima",
     "cpf": "567.890.123-45",
     "diseases": [
-      "Doença Celíaca"
+      "Doença Celíaca",
+      "TDAH"
     ],
     "medications": "Nenhum",
-    "observations": "Dieta estritamente sem glúten",
+    "observations": "Dieta estritamente sem glúten. Necessita acompanhamento pedagógico especializado",
     "emergencyContact": "(11) 98765-4324"
   },
   {
