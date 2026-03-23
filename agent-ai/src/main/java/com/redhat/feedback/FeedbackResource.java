@@ -146,9 +146,19 @@ public class FeedbackResource {
             + "\"";
     }
 
+    /**
+     * Retorna o status da coleta de feedbacks (timestamp da última limpeza)
+     */
+    @GET
+    @Path("/status")
+    public Response getStatus() {
+        return Response.ok(new StatusResponse(feedbackService.getClearedAt())).build();
+    }
+
     // Records para requests/responses
     public record FeedbackRequest(String feedback, String timestamp) {}
     public record FeedbackResponse(boolean success, String message) {}
     public record RecentFeedbacksResponse(List<Feedback> feedbacks) {}
     public record StatsResponse(int totalFeedbacks, int processingCount, boolean isProcessing) {}
+    public record StatusResponse(long clearedAt) {}
 }

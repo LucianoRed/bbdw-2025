@@ -279,7 +279,7 @@
     </div>
 
     <script>
-        const STORAGE_KEY = 'bbdw2025-feedback-submitted';
+        const STORAGE_KEY = 'bbdw2025-feedback-submittedAt';
         const textarea = document.getElementById('feedback');
         const charCount = document.getElementById('char-count');
         const form = document.getElementById('feedback-form');
@@ -287,10 +287,26 @@
         const errorMessage = document.getElementById('error-message');
         const formContainer = document.getElementById('form-container');
 
-        // Verifica se já enviou feedback
-        if (localStorage.getItem(STORAGE_KEY) === 'true') {
-            showAlreadySubmitted();
+        // Verifica se já enviou feedback e se a limpeza não aconteceu depois
+        async function checkSubmissionStatus() {
+            const submittedAt = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
+            if (!submittedAt) return; // nunca enviou
+            try {
+                const res = await fetch('/feedback/status');
+                const data = await res.json();
+                const clearedAt = data.clearedAt || 0;
+                if (clearedAt > submittedAt) {
+                    // feedbacks foram apagados depois do envio => libera o formulário
+                    localStorage.removeItem(STORAGE_KEY);
+                } else {
+                    showAlreadySubmitted();
+                }
+            } catch (e) {
+                // Se não conseguir checar o servidor, confia no localStorage
+                showAlreadySubmitted();
+            }
         }
+        checkSubmissionStatus();
 
         // Contador de caracteres
         textarea.addEventListener('input', () => {
@@ -340,9 +356,9 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    // Marca como enviado no localStorage
-                    localStorage.setItem(STORAGE_KEY, 'true');
-                    
+                    // Salva timestamp do envio no localStorage
+                    localStorage.setItem(STORAGE_KEY, String(Date.now()));
+
                     // Mostra mensagem de sucesso
                     showSuccess();
                 } else {

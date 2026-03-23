@@ -27,6 +27,7 @@ public class FeedbackService {
 
     private static final String REDIS_KEY_FEEDBACKS = "aurora:feedback:all";
     private static final String REDIS_KEY_ANALYSIS  = "aurora:feedback:analysis";
+    private static final String REDIS_KEY_CLEARED_AT = "aurora:feedback:clearedAt";
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     @Inject
@@ -46,6 +47,9 @@ public class FeedbackService {
 
     // Flag para indicar se há processamento em andamento
     private final AtomicBoolean processing = new AtomicBoolean(false);
+
+    // Epoch millis da última limpeza (0 = nunca limpo)
+    private volatile long clearedAt = 0L;
 
     // Flag para indicar shutdown
     private volatile boolean shuttingDown = false;
@@ -70,6 +74,14 @@ public class FeedbackService {
             }
         } catch (Exception e) {
             Log.errorf("[FeedbackService] Erro ao restaurar an\u00e1lise do Redis: %s", e.getMessage());
+        }
+        try {
+            String savedClearedAt = redisService.getValue(REDIS_KEY_CLEARED_AT);
+            if (savedClearedAt != null && !savedClearedAt.isBlank()) {
+                clearedAt = Long.parseLong(savedClearedAt);
+            }
+        } catch (Exception e) {
+            Log.errorf("[FeedbackService] Erro ao restaurar clearedAt do Redis: %s", e.getMessage());
         }
     }
 
@@ -261,13 +273,19 @@ public class FeedbackService {
         allFeedbacks.clear();
         feedbackQueue.clear();
         currentAnalysis = "";
+        clearedAt = System.currentTimeMillis();
         try {
             redisService.deleteKey(REDIS_KEY_FEEDBACKS);
             redisService.deleteKey(REDIS_KEY_ANALYSIS);
+            redisService.setValue(REDIS_KEY_CLEARED_AT, String.valueOf(clearedAt));
             Log.info("[FeedbackService] Todos os feedbacks removidos do Redis");
         } catch (Exception e) {
             Log.errorf("[FeedbackService] Erro ao limpar feedbacks no Redis: %s", e.getMessage());
         }
+    }
+
+    public long getClearedAt() {
+        return clearedAt;
     }
 
     /**
