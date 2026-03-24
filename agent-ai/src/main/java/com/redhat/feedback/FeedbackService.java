@@ -34,6 +34,9 @@ public class FeedbackService {
     SentimentAnalysisAgent sentimentAgent;
 
     @Inject
+    FeedbackChatAgent feedbackChatAgent;
+
+    @Inject
     RedisService redisService;
 
     // Fila thread-safe para processar feedbacks
@@ -294,5 +297,23 @@ public class FeedbackService {
     public void reanalyze() {
         Log.info("Forçando reanálise de todos os feedbacks");
         updateConsolidatedAnalysis();
+    }
+
+    /**
+     * Retorna todos os feedbacks
+     */
+    public List<Feedback> getAllFeedbacks() {
+        return new ArrayList<>(allFeedbacks);
+    }
+
+    /**
+     * Responde uma pergunta sobre os feedbacks usando AI
+     */
+    public String chatAboutFeedbacks(String question) {
+        if (allFeedbacks.isEmpty()) {
+            return "Ainda não há feedbacks disponíveis para responder sua pergunta.";
+        }
+        String contextWithQuestion = buildFeedbacksSummary() + "\n\nPergunta do usuário: " + question;
+        return feedbackChatAgent.chat(contextWithQuestion);
     }
 }

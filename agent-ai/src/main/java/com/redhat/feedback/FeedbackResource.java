@@ -155,10 +155,43 @@ public class FeedbackResource {
         return Response.ok(new StatusResponse(feedbackService.getClearedAt())).build();
     }
 
+    /**
+     * Retorna todos os feedbacks (para a interface de exploração)
+     */
+    @GET
+    @Path("/all")
+    public Response getAllFeedbacks() {
+        return Response.ok(new RecentFeedbacksResponse(feedbackService.getAllFeedbacks())).build();
+    }
+
+    /**
+     * Responde uma pergunta específica sobre os feedbacks usando AI
+     */
+    @POST
+    @Path("/chat")
+    public Response chatAboutFeedbacks(ChatRequest request) {
+        if (request.question() == null || request.question().trim().isEmpty()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity(new FeedbackResponse(false, "Pergunta não pode ser vazia"))
+                .build();
+        }
+        try {
+            String answer = feedbackService.chatAboutFeedbacks(request.question().trim());
+            return Response.ok(new ChatResponse(true, answer)).build();
+        } catch (Exception e) {
+            Log.errorf(e, "Erro ao processar pergunta sobre feedbacks");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                .entity(new ChatResponse(false, "Erro ao processar sua pergunta"))
+                .build();
+        }
+    }
+
     // Records para requests/responses
     public record FeedbackRequest(String feedback, String timestamp) {}
     public record FeedbackResponse(boolean success, String message) {}
     public record RecentFeedbacksResponse(List<Feedback> feedbacks) {}
     public record StatsResponse(int totalFeedbacks, int processingCount, boolean isProcessing) {}
     public record StatusResponse(long clearedAt) {}
+    public record ChatRequest(String question) {}
+    public record ChatResponse(boolean success, String answer) {}
 }
