@@ -106,6 +106,7 @@
             flex-direction: column;
             border-right: 1px solid var(--border-color);
             overflow: hidden;
+            min-height: 0;
         }
 
         .panel-header {
@@ -274,7 +275,7 @@
         .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* ── Feedbacks Panel ── */
-        .feedbacks-panel { display: flex; flex-direction: column; overflow: hidden; }
+        .feedbacks-panel { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
         .feedbacks-toolbar {
             padding: 10px 16px;
