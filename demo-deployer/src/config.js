@@ -198,7 +198,7 @@ export const CATEGORIES = {
   mcp: { label: "MCP Servers", color: "#9C27B0" },
   demo: { label: "Demo", color: "#FF9800" },
   core: { label: "Core", color: "#4CAF50" },
-  gov: { label: "Governo", color: "#1976D2" },
+  redhat: { label: "Red Hat", color: "#EE0000" },
 };
 
 // ============================================================
@@ -207,24 +207,24 @@ export const CATEGORIES = {
 
 export const OFERTAS = [
   {
-    id: "demo-governo",
-    name: "Demo para Governo",
-    description: "Demonstração completa para o setor público: agente de IA com acesso a dados de saúde e matrículas escolares.",
-    icon: "🏛️",
-    color: "#1976D2",    // System prompt que será aplicado automaticamente no agent-ai ao abrir esta oferta
-    systemPrompt: "Você é um agente de governo que faz algumas ações, algumas informando e outras agindo, como o caso de matrículas e dados de saúde quando está conectado com MCP server. Você também tem acesso ao SEI (Sistema Eletrônico de Informações) para consultar e criar processos e documentos oficiais. Você deve evitar, respeitosamente, que responda coisas não relacionadas ao governo. Coisas básicas como horário e coisas que estão no RAG, você pode responder.",    // Componentes que fazem parte desta oferta (devem existir em COMPONENTS)
-    componentIds: ["agent-ai", "mcp-inspector", "mcp-server-matriculas", "mcp-server-saude", "mcp-server-sei", "mcp-server-sei-agent", "sei-installer"],
+    id: "demo-redhat",
+    name: "Demo Red Hat",
+    description: "Demonstração completa da plataforma Red Hat: agente de IA com acesso a dados de matrículas, saúde e planejamento de Red Hat Days.",
+    icon: "🎩",
+    color: "#EE0000",
+    // System prompt que será aplicado automaticamente no agent-ai ao abrir esta oferta
+    systemPrompt: "Você é a Dora, assistente de demo da Red Hat. Demonstre as soluções Red Hat como OpenShift, Ansible, RHEL e OpenShift AI. Você também tem acesso a ferramentas de matrículas, saúde e planejamento de Red Hat Days via MCP server. Use-as de forma proativa para mostrar as capacidades reais de integração. Sempre responda em português.",
+    // Componentes que fazem parte desta oferta (devem existir em COMPONENTS)
+    componentIds: ["agent-ai", "mcp-inspector", "mcp-server-matriculas", "mcp-server-saude", "mcp-server-redhat-day"],
     // Nodos na topologia (centro + satélites)
     topology: {
-      center: { label: "Governo", icon: "🏛️", color: "#1976D2" },
+      center: { label: "Red Hat Demo", icon: "🎩", color: "#EE0000" },
       nodes: [
-        { componentId: "agent-ai",              label: "Agent AI",       icon: "🤖", color: "#4CAF50" },
-        { componentId: "mcp-inspector",         label: "MCP Inspector",  icon: "🔍", color: "#FF9800" },
-        { componentId: "mcp-server-matriculas", label: "Matrículas",     icon: "🎓", color: "#9C27B0" },
-        { componentId: "mcp-server-saude",      label: "Saúde",          icon: "🏥", color: "#E91E63" },
-        { componentId: "mcp-server-sei",        label: "MCP SEI",        icon: "📄", color: "#0D47A1" },
-        { componentId: "mcp-server-sei-agent",  label: "SEI Agent",      icon: "🏛️", color: "#1565C0" },
-        { componentId: "sei-installer",         label: "SEI",            icon: "https://www.gov.br/pt-br/apps/sei/@@images/imagem/mini", color: "#1976D2" },
+        { componentId: "agent-ai",                label: "Dora (Agent AI)",  icon: "🤖", color: "#4CAF50" },
+        { componentId: "mcp-inspector",           label: "MCP Inspector",    icon: "🔍", color: "#FF9800" },
+        { componentId: "mcp-server-matriculas",   label: "Matrículas",       icon: "🎓", color: "#9C27B0" },
+        { componentId: "mcp-server-saude",        label: "Saúde",            icon: "🏥", color: "#E91E63" },
+        { componentId: "mcp-server-redhat-day",   label: "Red Hat Day",      icon: "📅", color: "#EE0000" },
       ],
     },
   },

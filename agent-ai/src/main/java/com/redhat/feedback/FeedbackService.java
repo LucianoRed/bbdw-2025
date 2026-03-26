@@ -25,9 +25,9 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class FeedbackService {
 
-    private static final String REDIS_KEY_FEEDBACKS = "aurora:feedback:all";
-    private static final String REDIS_KEY_ANALYSIS  = "aurora:feedback:analysis";
-    private static final String REDIS_KEY_CLEARED_AT = "aurora:feedback:clearedAt";
+    private static final String REDIS_KEY_FEEDBACKS = "dora:feedback:all";
+    private static final String REDIS_KEY_ANALYSIS  = "dora:feedback:analysis";
+    private static final String REDIS_KEY_CLEARED_AT = "dora:feedback:clearedAt";
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     @Inject

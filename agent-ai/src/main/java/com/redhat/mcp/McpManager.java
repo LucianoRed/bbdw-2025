@@ -23,7 +23,7 @@ import jakarta.inject.Inject;
 @ApplicationScoped
 public class McpManager {
 
-    private static final String REDIS_KEY = "aurora:mcp:servers";
+    private static final String REDIS_KEY = "dora:mcp:servers";
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final Map<String, McpClient> clients = new ConcurrentHashMap<>();

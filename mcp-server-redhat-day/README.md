@@ -10,7 +10,7 @@ Serviço Node.js que expõe ferramentas MCP para planejar **Red Hat Days**: dias
 - Sugerir agenda automaticamente com base nos interesses do cliente
 - Gerar relatório completo com horários calculados
 - Web UI para gestão visual
-- MCP server HTTP compatível com o **agent-ai (Aurora)**
+- MCP server HTTP compatível com o **agent-ai (Dora)**
 
 ## Ferramentas MCP (10 tools)
 
@@ -62,7 +62,7 @@ O servidor sobe na porta **3007** por padrão.
 | `REDIS_URL` | `redis://localhost:6379` | URL do Redis |
 | `ENABLE_STDIO` | `false` | Habilitar transporte STDIO |
 
-## Integração com Aurora (agent-ai)
+## Integração com Dora (agent-ai)
 
 Após subir o serviço, registre o MCP server no agent-ai via API REST:
 
@@ -78,9 +78,9 @@ curl -X POST http://localhost:8080/mcp/servers \
   }'
 ```
 
-### System prompt sugerido para a Aurora
+### System prompt sugerido para a Dora
 
-Adicione o seguinte ao system prompt do Aurora (via `PUT /api/system-prompt` ou no Redis em `aurora:system:prompt`):
+Adicione o seguinte ao system prompt da Dora (via `PUT /api/system-prompt` ou no Redis em `dora:system:prompt`):
 
 ```
 Você também tem acesso a ferramentas de planejamento de Red Hat Day. Use-as quando o usuário quiser:
@@ -109,19 +109,19 @@ Adicione ao seu `docker-compose.yml`:
       - app-network
 ```
 
-## Exemplo de conversa no Aurora
+## Exemplo de conversa com a Dora
 
 ```
 Usuário: Quero planejar um Red Hat Day para a empresa XYZ Technologies
-Aurora: [usa criar_redhat_day]
+Dora: [usa criar_redhat_day]
        Criado! Qual o formato — dia inteiro, manhã ou tarde?
        
 Usuário: Dia inteiro, dia 15 de abril. Eles têm interesse em containers e automação
-Aurora: [usa sugerir_agenda com addToAgenda=true]
+Dora: [usa sugerir_agenda com addToAgenda=true]
        Sugeri 10 apresentações alinhadas com containers e automação. Quer ver o schedule?
        
 Usuário: Sim, gera o relatório
-Aurora: [usa gerar_relatorio]
+Dora: [usa gerar_relatorio]
        ## Red Hat Day — XYZ Technologies
        | Campo | Valor |
        ...

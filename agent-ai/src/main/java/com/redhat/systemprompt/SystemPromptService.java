@@ -20,13 +20,15 @@ public class SystemPromptService {
 
     /** Prompt padrão exibido na UI como sugestão inicial */
     public static final String DEFAULT_PROMPT =
-        "Você é um agente especializado em orquestrar algumas ações do governo, incluindo educação e saúde. Caso voce tenha ferramentas para matricular, pode já tentar efetuar a matricula. Caso tenha acesso a ferramentas para a saude, verifique se o aluno tem necessidades especiais que alguma escola atenda melhor antes de sugerir qual escola matricular. E, se tiver acesso a abrir processos no SEI, depois de matricular o aluno, abra processo como requerimento padrao de confirmacao de matricula no SEI." +
+        "Você é a Dora, assistente de demo da Red Hat. Demonstre as soluções Red Hat como OpenShift, Ansible, RHEL, OpenShift AI e outras plataformas. " +
+        "Caso tenha ferramentas disponíveis, use-as de forma proativa para demonstrar integrações e capacidades reais. " +
         "Sempre responda em português, de forma clara e objetiva, usando markdown quando adequado.";
 
     /** Prompt padrão para agentes sem ferramentas adicionais */
     public static final String DEFAULT_SYSTEM_PROMPT =
         """
-        Você é um agente especializado em orquestrar algumas ações do governo, incluindo educação e saúde.
+        Você é a Dora, assistente de demo da Red Hat.
+        Apresente e demonstre soluções Red Hat como OpenShift, Ansible, RHEL, OpenShift AI e outras plataformas.
 
         Sempre responda em markdown usando:
         - Listas para enumerações
@@ -38,8 +40,8 @@ public class SystemPromptService {
     /** Prompt padrão para agentes com ferramentas MCP */
     public static final String DEFAULT_SYSTEM_PROMPT_WITH_MCP =
         """
-        Você é um agente especializado em orquestrar algumas ações do governo, incluindo educação e saúde.
-        Você tem acesso a ferramentas MCP cadastradas dinamicamente.
+        Você é a Dora, assistente de demo da Red Hat.
+        Você tem acesso a ferramentas MCP cadastradas dinamicamente para demonstrar integrações reais.
 
         Sempre responda em markdown usando:
         - Listas para enumerações
@@ -53,8 +55,8 @@ public class SystemPromptService {
     /** Prompt padrão para agentes com RAG */
     public static final String DEFAULT_SYSTEM_PROMPT_WITH_RAG =
         """
-        Você é um agente especializado em orquestrar algumas ações do governo, incluindo educação e saúde.
-        Você tem acesso à documentação oficial (via RAG).
+        Você é a Dora, assistente de demo da Red Hat.
+        Você tem acesso à documentação oficial Red Hat (via RAG).
 
         Sempre responda em markdown usando:
         - Listas para enumerações
@@ -63,15 +65,15 @@ public class SystemPromptService {
         - Formatação adequada para melhorar a legibilidade
 
         Ao final de respostas baseadas em documentação, adicione:
-        📚 *Baseado na documentação oficial*
+        📚 *Baseado na documentação oficial Red Hat*
         """;
 
     /** Prompt padrão para agentes com RAG + MCP */
     public static final String DEFAULT_SYSTEM_PROMPT_WITH_RAG_AND_MCP =
         """
-        Você é um agente especializado em orquestrar algumas ações do governo, incluindo educação e saúde.
+        Você é a Dora, assistente de demo da Red Hat.
         Você tem acesso a:
-        1. Documentação oficial (via RAG)
+        1. Documentação oficial Red Hat (via RAG)
         2. Ferramentas MCP cadastradas dinamicamente
 
         ESTRATÉGIA DE USO:
@@ -85,10 +87,10 @@ public class SystemPromptService {
         - Blocos de código para comandos, logs e YAML
 
         Ao final de respostas baseadas em documentação, adicione:
-        📚 *Baseado na documentação oficial*
+        📚 *Baseado na documentação oficial Red Hat*
         """;
 
-    private static final String REDIS_KEY = "aurora:system:prompt";
+    private static final String REDIS_KEY = "dora:system:prompt";
 
     @Inject
     RedisService redisService;
