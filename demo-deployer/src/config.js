@@ -108,6 +108,22 @@ export const COMPONENTS = [
     ],
   },
   {
+    id: "mcp-server-brasil",
+    name: "MCP Server Brasil",
+    description: "213 ferramentas sobre 28 APIs públicas brasileiras: transparência, legislativo, judiciário, eleições, IBGE, Bacen e muito mais",
+    icon: "🇧🇷",
+    category: "mcp",
+    order: 8,
+    namespace: "mcp-server-brasil",
+    playbook: "deploy-component.yml",
+    contextDir: "mcp-server-brasil",
+    port: 8000,
+    envVars: [
+      { key: "TRANSPARENCIA_API_KEY", value: "{{transparencia_api_key}}" },
+      { key: "DATAJUD_API_KEY",       value: "{{datajud_api_key}}" },
+    ],
+  },
+  {
     id: "mcp-server-redhat-day",
     name: "MCP Server Red Hat Day",
     description: "Planejador de Red Hat Day: agenda de apresentações no cliente com cálculo automático de horários",
@@ -150,6 +166,7 @@ export const COMPONENTS = [
       { key: "K8S_SKIP_TLS_VERIFY",   value: "true" },
       { key: "OPENAI_API_KEY",        value: "{{openai_api_key}}" },
       { key: "MCP_SEI_AGENT_URL",     value: "http://mcp-server-sei-agent.mcp-server-sei-agent.svc.cluster.local:3000/mcp" },
+      { key: "MCP_BRASIL_URL",         value: "http://mcp-server-brasil.mcp-server-brasil.svc.cluster.local:8000/mcp" },
     ],
     subSteps: [
       { id: "redis", name: "Redis", playbook: "deploy-redis.yml" },
@@ -225,9 +242,9 @@ export const OFERTAS = [
     icon: "🏛️",
     color: "#1976D2",
     // System prompt que será aplicado automaticamente no agent-ai ao abrir esta oferta
-    systemPrompt: "Você é um agente de governo que faz algumas ações, algumas informando e outras agindo, como o caso de matrículas e dados de saúde quando está conectado com MCP server. Você também tem acesso ao SEI (Sistema Eletrônico de Informações) para consultar e criar processos e documentos oficiais. Você deve evitar, respeitosamente, que responda coisas não relacionadas ao governo. Coisas básicas como horário e coisas que estão no RAG, você pode responder.",
+    systemPrompt: "Você é Nex, agente de IA do governo brasileiro. Você tem acesso a ferramentas MCP para: (1) dados de saúde escolar e matrículas de alunos; (2) o SEI — Sistema Eletrônico de Informações — para consultar e criar processos e documentos oficiais; (3) o MCP Brasil, com 213 ferramentas sobre APIs públicas brasileiras — Portal da Transparência, Câmara dos Deputados, Senado Federal, TSE, TCU, TCEs estaduais, DataJud/CNJ, IBGE, Banco Central, INPE, PNCP, DataSUS e muito mais. Use essas ferramentas para responder perguntas sobre transparência pública, legislação, dados econômicos, licitações, contratos, eleições e gestão governamental. Evite, respeitosamente, responder coisas não relacionadas ao governo. Sempre responda em português.",
     // Componentes que fazem parte desta oferta (devem existir em COMPONENTS)
-    componentIds: ["agent-ai", "mcp-inspector", "mcp-server-matriculas", "mcp-server-saude", "mcp-server-sei", "mcp-server-sei-agent", "sei-installer"],
+    componentIds: ["agent-ai", "mcp-inspector", "mcp-server-matriculas", "mcp-server-saude", "mcp-server-sei", "mcp-server-sei-agent", "mcp-server-brasil", "sei-installer"],
     // Nodos na topologia (centro + satélites)
     topology: {
       center: { label: "Governo", icon: "🏛️", color: "#1976D2" },
@@ -238,6 +255,7 @@ export const OFERTAS = [
         { componentId: "mcp-server-saude",      label: "Saúde",         icon: "🏥", color: "#E91E63" },
         { componentId: "mcp-server-sei",        label: "MCP SEI",       icon: "📄", color: "#0D47A1" },
         { componentId: "mcp-server-sei-agent",  label: "SEI Agent",     icon: "🏛️", color: "#1565C0" },
+        { componentId: "mcp-server-brasil",      label: "MCP Brasil",    icon: "🇧🇷", color: "#009C3B" },
         { componentId: "sei-installer",         label: "SEI",           icon: "https://www.gov.br/pt-br/apps/sei/@@images/imagem/mini", color: "#1976D2" },
       ],
     },
