@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Red Hat Day Planner</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --rh-red: #ee0000;
+      --rh-red-dark: #a30000;
+      --rh-red-light: #fff0f0;
+      --rh-gray: #151515;
+      --rh-gray-mid: #4a4a4a;
+      --rh-gray-light: #f5f5f5;
+      --rh-border: #d2d2d2;
+      --rh-white: #ffffff;
+      --rh-blue: #0066cc;
+      --rh-green: #3e8635;
+      --rh-yellow: #f0ab00;
+    }
+
+    body {
+      font-family: 'Red Hat Display', 'RedHatDisplay', system-ui, -apple-system, sans-serif;
+      background: var(--rh-gray-light);
+      color: var(--rh-gray);
+      min-height: 100vh;
+    }
+
+    /* ---- Header ---- */
+    header {
+      background: var(--rh-gray);
+      color: var(--rh-white);
+      padding: 0 2rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,.4);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .logo-hat {
+      width: 32px;
+      height: 32px;
+    }
+
+    .logo-name { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-badge {
+      background: var(--rh-red);
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ---- Layout ---- */
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    .page-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--rh-gray);
+      margin-bottom: 0.25rem;
+    }
+    .page-subtitle { color: var(--rh-gray-mid); margin-bottom: 2rem; font-size: 0.95rem; }
+
+    /* ---- Cards / Panels ---- */
+    .card {
+      background: var(--rh-white);
+      border: 1px solid var(--rh-border);
+      border-radius: 6px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--rh-gray);
+      margin-bottom: 1.2rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid var(--rh-red);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* ---- Form ---- */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    label { font-size: 0.85rem; font-weight: 600; color: var(--rh-gray-mid); }
+
+    input, select, textarea {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--rh-border);
+      border-radius: 4px;
+      font-size: 0.9rem;
+      color: var(--rh-gray);
+      background: white;
+      outline: none;
+      transition: border-color .15s;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--rh-red); box-shadow: 0 0 0 2px rgba(238,0,0,.12); }
+    textarea { resize: vertical; min-height: 60px; }
+
+    .form-actions { margin-top: 1rem; display: flex; gap: 0.75rem; }
+
+    /* ---- Buttons ---- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1.1rem;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border: none;
+      transition: background .15s, opacity .15s;
+      font-family: inherit;
+      text-decoration: none;
+    }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-primary { background: var(--rh-red); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--rh-red-dark); }
+
+    .btn-secondary { background: transparent; color: var(--rh-gray-mid); border: 1px solid var(--rh-border); }
+    .btn-secondary:hover:not(:disabled) { background: var(--rh-gray-light); }
+
+    .btn-danger { background: transparent; color: var(--rh-red); border: 1px solid var(--rh-red); }
+    .btn-danger:hover:not(:disabled) { background: var(--rh-red-light); }
+
+    .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+
+    /* ---- Tags ---- */
+    .tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .tag-full { background: #e7f3ff; color: #0066cc; }
+    .tag-morning { background: #fffae5; color: #795600; }
+    .tag-afternoon { background: #f3ffe7; color: #2d6a16; }
+
+    /* ---- Days table ---- */
+    .days-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .days-table th {
+      background: var(--rh-gray);
+      color: white;
+      padding: 0.6rem 0.9rem;
+      text-align: left;
+      font-weight: 600;
+    }
+    .days-table td { padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--rh-border); vertical-align: middle; }
+    .days-table tr:hover td { background: var(--rh-red-light); }
+    .days-table .actions { display: flex; gap: 0.4rem; }
+    .empty-row td { text-align: center; color: var(--rh-gray-mid); padding: 2rem; }
+
+    /* ---- Schedule modal / panel ---- */
+    #schedule-panel { display: none; }
+    #schedule-panel.visible { display: block; }
+
+    .schedule-slot {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 0;
+      margin-bottom: 0;
+    }
+
+    .slot-time {
+      padding: 0.8rem 1rem;
+      background: var(--rh-gray);
+      color: white;
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-right: 3px solid var(--rh-red);
+    }
+
+    .slot-content {
+      padding: 0.8rem 1rem;
+      background: white;
+      border-bottom: 1px solid var(--rh-border);
+    }
+    .slot-content .slot-title { font-weight: 700; font-size: 0.95rem; color: var(--rh-gray); }
+    .slot-content .slot-meta { font-size: 0.8rem; color: var(--rh-gray-mid); margin-top: 0.2rem; }
+    .slot-content .slot-presenter { font-size: 0.82rem; color: var(--rh-blue); font-weight: 600; margin-top: 0.15rem; }
+
+    .slot-break {
+      grid-column: 1 / -1;
+      background: #f9f9f9;
+      border: 1px dashed var(--rh-border);
+      text-align: center;
+      padding: 0.5rem;
+      font-size: 0.82rem;
+      color: var(--rh-gray-mid);
+      margin: 0.25rem 0;
+    }
+
+    .schedule-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .schedule-stats {
+      display: flex;
+      gap: 1.2rem;
+      font-size: 0.82rem;
+      color: var(--rh-gray-mid);
+    }
+    .schedule-stats span strong { color: var(--rh-gray); }
+
+    /* ---- Alert ---- */
+    .alert {
+      padding: 0.7rem 1rem;
+      border-radius: 4px;
+      font-size: 0.88rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .alert.visible { display: block; }
+    .alert-success { background: #e7f9e7; border: 1px solid var(--rh-green); color: var(--rh-green); }
+    .alert-error { background: #ffe7e7; border: 1px solid var(--rh-red); color: var(--rh-red-dark); }
+
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="/">
+    <!-- Red Hat fedora hat SVG -->
+    <svg class="logo-hat" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="20" cy="28" rx="16" ry="5" fill="#EE0000"/>
+      <path d="M10 28 Q8 16 20 12 Q32 16 30 28" fill="#CC0000"/>
+      <ellipse cx="20" cy="12" rx="6" ry="4" fill="#EE0000"/>
+      <path d="M14 28 Q14 22 20 20 Q26 22 26 28" fill="#BB0000"/>
+    </svg>
+    <span class="logo-name">Red Hat Day Planner</span>
+    <span class="logo-badge">Beta</span>
+  </a>
+</header>
+
+<div class="container">
+  <h1 class="page-title">Planejador de Red Hat Day</h1>
+  <p class="page-subtitle">Organize apresentações de produtos Red Hat para seus clientes. Para interação com IA, use o Aurora (agent-ai) com este MCP registrado.</p>
+
+  <div id="alert" class="alert"></div>
+
+  <!-- Create Day Form -->
+  <div class="card">
+    <div class="card-title">
+      <span>＋</span> Novo Red Hat Day
+    </div>
+    <form id="create-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="clientName">Cliente / Empresa *</label>
+          <input type="text" id="clientName" placeholder="Ex: ACME Corp" required />
+        </div>
+        <div class="form-group">
+          <label for="clientContact">Contato no cliente</label>
+          <input type="text" id="clientContact" placeholder="Ex: João da Silva" />
+        </div>
+        <div class="form-group">
+          <label for="date">Data do evento *</label>
+          <input type="date" id="date" required />
+        </div>
+        <div class="form-group">
+          <label for="type">Formato do dia *</label>
+          <select id="type" required>
+            <option value="full">Dia inteiro (09h–17h)</option>
+            <option value="morning">Somente manhã (09h–12h)</option>
+            <option value="afternoon">Somente tarde (13h30–17h)</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label for="clientInterests">Interesses / Temas do cliente</label>
+          <input type="text" id="clientInterests" placeholder="Ex: OpenShift, Ansible, RHEL, segurança (separados por vírgula)" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Criar Red Hat Day</button>
+        <button type="reset" class="btn btn-secondary">Limpar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Days list -->
+  <div class="card">
+    <div class="card-title">
+      <span>📅</span> Red Hat Days Cadastrados
+      <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="loadDays()">↻ Atualizar</button>
+    </div>
+    <div id="days-container">
+      <table class="days-table">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Contato</th>
+            <th>Data</th>
+            <th>Formato</th>
+            <th>Interesses</th>
+            <th>Apresentações</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="days-tbody">
+          <tr class="empty-row"><td colspan="7">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Schedule Panel -->
+  <div id="schedule-panel" class="card">
+    <div class="schedule-header">
+      <div>
+        <div class="card-title" style="border:none;padding:0;margin:0">
+          <span>🗓️</span> <span id="schedule-title">Agenda</span>
+        </div>
+        <div class="schedule-stats" id="schedule-stats"></div>
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-secondary btn-sm" onclick="hideSchedule()">✕ Fechar</button>
+      </div>
+    </div>
+
+    <!-- Add Presentation inline form -->
+    <details style="margin-bottom:1rem">
+      <summary style="cursor:pointer;font-weight:600;font-size:.9rem;padding:.4rem 0;color:var(--rh-red)">
+        ＋ Adicionar apresentação
+      </summary>
+      <div style="margin-top:.75rem">
+        <form id="pres-form" class="form-grid" style="margin-top:.5rem">
+          <input type="hidden" id="pres-day-id" />
+          <div class="form-group">
+            <label>Produto *</label>
+            <input type="text" id="pres-product" list="products-list" required placeholder="Ex: OpenShift" />
+            <datalist id="products-list"></datalist>
+          </div>
+          <div class="form-group">
+            <label>Título</label>
+            <input type="text" id="pres-title" placeholder="Deixe em branco para usar o nome do produto" />
+          </div>
+          <div class="form-group">
+            <label>Apresentador</label>
+            <input type="text" id="pres-presenter" placeholder="Nome do apresentador" />
+          </div>
+          <div class="form-group">
+            <label>Descrição (tópicos)</label>
+            <input type="text" id="pres-desc" placeholder="Tópicos abordados" />
+          </div>
+          <div class="form-group">
+            <label>Duração apresentação (min)</label>
+            <input type="number" id="pres-duration" value="20" min="5" max="120" />
+          </div>
+          <div class="form-group">
+            <label>Discussão (min)</label>
+            <input type="number" id="pres-discussion" value="10" min="0" max="60" />
+          </div>
+          <div class="form-group full form-actions">
+            <button type="submit" class="btn btn-primary btn-sm">Adicionar</button>
+          </div>
+        </form>
+      </div>
+    </details>
+
+    <!-- Schedule timeline -->
+    <div id="schedule-slots"></div>
+  </div>
+</div>
+
+<script>
+  const API = '';
+
+  function showAlert(msg, type = 'success') {
+    const el = document.getElementById('alert');
+    el.textContent = msg;
+    el.className = `alert visible alert-${type}`;
+    setTimeout(() => { el.classList.remove('visible'); }, 4000);
+  }
+
+  const TYPE_LABEL = { full: 'Dia inteiro', morning: 'Manhã', afternoon: 'Tarde' };
+  const TYPE_TAG = { full: 'tag-full', morning: 'tag-morning', afternoon: 'tag-afternoon' };
+
+  // ---- Load days ----
+  async function loadDays() {
+    const tbody = document.getElementById('days-tbody');
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Carregando...</td></tr>';
+    try {
+      const res = await fetch(`${API}/api/days`);
+      const days = await res.json();
+      if (!days.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Nenhum Red Hat Day cadastrado ainda.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = days.map((d) => `
+        <tr>
+          <td><strong>${esc(d.clientName)}</strong></td>
+          <td>${esc(d.clientContact || '—')}</td>
+          <td>${formatDate(d.date)}</td>
+          <td><span class="tag ${TYPE_TAG[d.type]}">${TYPE_LABEL[d.type] || d.type}</span></td>
+          <td style="font-size:.8rem;max-width:160px;word-break:break-word">${(d.clientInterests||[]).join(', ') || '—'}</td>
+          <td style="text-align:center">${d.presentations.length}</td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-secondary btn-sm" onclick="showSchedule('${d.id}')">📋 Agenda</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteDay('${d.id}', '${esc(d.clientName)}')">🗑</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="7">Erro ao carregar: ${e.message}</td></tr>`;
+    }
+  }
+
+  // ---- Create day ----
+  document.getElementById('create-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('[type=submit]');
+    btn.disabled = true;
+    try {
+      const interests = document.getElementById('clientInterests').value
+        .split(',').map(s => s.trim()).filter(Boolean);
+      const body = {
+        clientName: document.getElementById('clientName').value.trim(),
+        clientContact: document.getElementById('clientContact').value.trim(),
+        date: document.getElementById('date').value,
+        type: document.getElementById('type').value,
+        clientInterests: interests,
+      };
+      const res = await fetch(`${API}/api/days`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+      showAlert('Red Hat Day criado com sucesso!');
+      e.target.reset();
+      loadDays();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    } finally { btn.disabled = false; }
+  });
+
+  // ---- Delete day ----
+  async function deleteDay(id, name) {
+    if (!confirm(`Remover Red Hat Day de "${name}"?`)) return;
+    try {
+      const res = await fetch(`${API}/api/days/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Erro ao remover');
+      showAlert(`Red Hat Day de "${name}" removido.`);
+      hideSchedule();
+      loadDays();
+    } catch (e) {
+      showAlert(e.message, 'error');
+    }
+  }
+
+  // ---- Show schedule ----
+  let currentDayId = null;
+
+  async function showSchedule(id) {
+    currentDayId = id;
+    document.getElementById('pres-day-id').value = id;
+    await renderSchedule(id);
+    document.getElementById('schedule-panel').classList.add('visible');
+    document.getElementById('schedule-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    loadProductsDatalist();
+  }
+
+  function hideSchedule() {
+    document.getElementById('schedule-panel').classList.remove('visible');
+    currentDayId = null;
+  }
+
+  async function renderSchedule(id) {
+    try {
+      const [dayRes, schedRes] = await Promise.all([
+        fetch(`${API}/api/days/${id}`),
+        fetch(`${API}/api/days/${id}/schedule`),
+      ]);
+      const day = await dayRes.json();
+      const { scheduled, usedMinutes, availableMinutes } = await schedRes.json();
+
+      document.getElementById('schedule-title').textContent =
+        `${day.clientName} — ${formatDate(day.date)} (${TYPE_LABEL[day.type] || day.type})`;
+
+      const remaining = availableMinutes - usedMinutes;
+      document.getElementById('schedule-stats').innerHTML =
+        `<span>Disponível: <strong>${availableMinutes} min</strong></span>` +
+        `<span>Usado: <strong>${usedMinutes} min</strong></span>` +
+        `<span>Restante: <strong style="color:${remaining < 0 ? 'var(--rh-red)' : 'var(--rh-green)'}">${remaining} min</strong></span>`;
+
+      const container = document.getElementById('schedule-slots');
+      if (!scheduled.length) {
+        container.innerHTML = '<p style="text-align:center;color:#888;padding:1rem">Nenhuma apresentação cadastrada ainda.</p>';
+        return;
+      }
+
+      container.innerHTML = scheduled.map((slot) => {
+        if (slot.type === 'break') {
+          return `<div class="slot-break">${slot.label} — ${slot.start} às ${slot.end}</div>`;
+        }
+        if (slot.type === 'warning') {
+          return `<div class="slot-break" style="color:var(--rh-red);border-color:var(--rh-red)">${slot.label}</div>`;
+        }
+        return `
+          <div class="schedule-slot">
+            <div class="slot-time">
+              <span>${slot.startTime}</span>
+              <span style="font-size:.7rem;margin-top:2px;opacity:.7">${slot.durationMinutes + slot.discussionMinutes}min</span>
+            </div>
+            <div class="slot-content">
+              <div class="slot-title">${slot.slot}. ${esc(slot.title)}</div>
+              <div class="slot-meta">📦 ${esc(slot.product)} &nbsp;•&nbsp; ${slot.durationMinutes}' apres. + ${slot.discussionMinutes}' disc.</div>
+              ${slot.presenter ? `<div class="slot-presenter">👤 ${esc(slot.presenter)}</div>` : ''}
+              ${slot.description ? `<div style="font-size:.8rem;color:#666;margin-top:.2rem">${esc(slot.description)}</div>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+    } catch (e) {
+      document.getElementById('schedule-slots').innerHTML = `<p style="color:red">Erro: ${e.message}</p>`;
+    }
+  }
+
+  // ---- Add presentation ----
+  document.getElementById('pres-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('[type=submit]');
+    btn.disabled = true;
+    try {
+      const dayId = document.getElementById('pres-day-id').value;
+      const body = {
+        product: document.getElementById('pres-product').value.trim(),
+        title: document.getElementById('pres-title').value.trim() || undefined,
+        description: document.getElementById('pres-desc').value.trim() || undefined,
+        presenter: document.getElementById('pres-presenter').value.trim() || undefined,
+        durationMinutes: parseInt(document.getElementById('pres-duration').value) || 20,
+        discussionMinutes: parseInt(document.getElementById('pres-discussion').value) || 10,
+      };
+      const res = await fetch(`${API}/api/days/${dayId}/presentations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+      document.getElementById('pres-product').value = '';
+      document.getElementById('pres-title').value = '';
+      document.getElementById('pres-desc').value = '';
+      document.getElementById('pres-presenter').value = '';
+      showAlert('Apresentação adicionada!');
+      await renderSchedule(dayId);
+      await loadDays();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    } finally { btn.disabled = false; }
+  });
+
+  // ---- Products datalist ----
+  async function loadProductsDatalist() {
+    try {
+      const res = await fetch(`${API}/api/products`);
+      const products = await res.json();
+      const dl = document.getElementById('products-list');
+      dl.innerHTML = products.map((p) => `<option value="${esc(p.name)}">`).join('');
+    } catch { /* ignore */ }
+  }
+
+  // ---- Helpers ----
+  function esc(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  // ---- Init ----
+  loadDays();
+</script>
+</body>
+</html>
