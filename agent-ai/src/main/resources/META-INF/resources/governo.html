@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Dora - Red Hat Demo</title>
+    <title>Nex - Red Hat Demo</title>
     <link rel="icon" type="image/svg+xml" href="/dora-favicon.svg">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,12 +17,12 @@
         }
 
         :root {
-            --gov-blue: #EE0000;           /* Red Hat Red */
-            --gov-blue-dark: #1A1A1A;      /* Near Black */
-            --gov-blue-light: #FF3333;     /* Lighter Red */
+            --gov-blue: #1351B4;
+            --gov-blue-dark: #0C326F;
+            --gov-blue-light: #2670E8;
             --gov-green: #168821;
-            --gov-yellow: #FFFFFF;         /* White as accent */
-            --gov-bg: #F5F5F5;
+            --gov-yellow: #FFCD07;
+            --gov-bg: #F0F0F5;
             --gov-white: #FFFFFF;
             --gov-gray-light: #E8E8E8;
             --gov-gray: #9E9D9D;
@@ -31,8 +31,8 @@
             --gov-border: #D9D9D9;
             --chat-bg: #F8F9FA;
             --ai-bubble: #FFFFFF;
-            --user-bubble: #EE0000;
-            --accent: #EE0000;
+            --user-bubble: #1351B4;
+            --accent: #1351B4;
         }
 
         html {
@@ -214,7 +214,7 @@
             left: -60px;
             width: 200px;
             height: 200px;
-            background: rgba(255,255,255,0.06);
+            background: rgba(255,205,7,0.08);
             border-radius: 50%;
         }
 
@@ -265,7 +265,7 @@
             right: -6px;
             bottom: -6px;
             border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.4);
+            border: 2px solid rgba(255,205,7,0.4);
             animation: pulse-ring 2.5s ease-out infinite;
         }
 
@@ -349,8 +349,8 @@
         }
 
         .tip-card {
-            background: rgba(255,255,255,0.12);
-            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,205,7,0.15);
+            border: 1px solid rgba(255,205,7,0.3);
             border-radius: 10px;
             padding: 12px 16px;
             z-index: 1;
@@ -636,7 +636,7 @@
         .ai-bubble p:last-child { margin-bottom: 0; }
 
         .ai-bubble code {
-            background: #fff0f0;
+            background: #f0f4ff;
             padding: 2px 6px;
             border-radius: 4px;
             font-size: 0.88em;
@@ -644,7 +644,7 @@
         }
 
         .ai-bubble pre {
-            background: #fff0f0;
+            background: #f0f4ff;
             padding: 12px;
             border-radius: 8px;
             overflow-x: auto;
@@ -675,15 +675,15 @@
         }
 
         .ai-bubble th {
-            background: #fff0f0;
+            background: #f0f4ff;
             font-weight: 600;
             color: var(--gov-blue-dark);
         }
 
         /* Próximos Passos Card */
         .next-steps-card {
-            background: #fff5f5;
-            border: 1px solid #ffc8c8;
+            background: #f0f6ff;
+            border: 1px solid #c8dcff;
             border-radius: 12px;
             padding: 14px 16px;
             margin-top: 6px;
@@ -769,8 +769,8 @@
 
         /* MCP Tools indicator */
         .mcp-indicator {
-            background: #fff5f5;
-            border: 1px solid #ffc8c8;
+            background: #f0f6ff;
+            border: 1px solid #c8dcff;
             border-left: 3px solid var(--gov-blue);
             border-radius: 8px;
             padding: 10px 14px;
@@ -891,7 +891,7 @@
         #messageInput:focus {
             outline: none;
             border-color: var(--gov-blue);
-            box-shadow: 0 0 0 3px rgba(238, 0, 0, 0.1);
+            box-shadow: 0 0 0 3px rgba(19, 81, 180, 0.1);
         }
 
         #messageInput::placeholder {
@@ -1095,13 +1095,13 @@
             <div class="avatar-container">
                 <div class="pulse-ring"></div>
                 <div class="avatar-circle">
-                    <img src="/aurora_redhat.jpg" alt="Dora" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />
+                    <img src="/aurora_redhat.jpg" alt="Nex" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />
                 </div>
                 <div class="avatar-badge">🤖</div>
             </div>
 
-            <div class="agent-name">Olá, sou <span>Dora!</span></div>
-            <div class="agent-acronym">D · O · R · A</div>
+            <div class="agent-name">Olá, sou <span>Nex!</span></div>
+            <div class="agent-acronym">N · E · X</div>
             <div class="agent-description">
                 Sua assistente de demo Red Hat.<br>
                 Como posso demonstrar nossas soluções hoje?
@@ -1135,9 +1135,9 @@
             <!-- Cabeçalho do chat -->
             <div class="chat-header">
                 <div class="chat-header-info">
-                    <div class="chat-header-avatar" style="overflow:hidden;padding:0;"><img src="/aurora_redhat.jpg" alt="Dora" style="width:100%;height:100%;object-fit:cover;" /></div>
+                    <div class="chat-header-avatar" style="overflow:hidden;padding:0;"><img src="/aurora_redhat.jpg" alt="Nex" style="width:100%;height:100%;object-fit:cover;" /></div>
                     <div>
-                        <div class="chat-header-name">Dora</div>
+                        <div class="chat-header-name">Nex</div>
                         <div class="chat-header-status">
                             <span class="status-dot"></span>
                             <span>Online — pronta para ajudar</span>
@@ -1171,7 +1171,7 @@
                     <div class="msg-avatar ai-av">🤖</div>
                     <div class="msg-body">
                         <div class="msg-bubble ai-bubble">
-                            Bem-vindo ao Red Hat Demo. Eu sou a Dora — sua assistente de demonstração — e estou aqui para mostrar o poder das soluções Red Hat. Por onde quer começar?
+                            Bem-vindo ao Red Hat Demo. Eu sou a Nex — sua assistente de demonstração — e estou aqui para mostrar o poder das soluções Red Hat. Por onde quer começar?
                         </div>
                         <div class="msg-time" id="welcome-time"></div>
                     </div>
@@ -1197,7 +1197,7 @@
                     </button>
                 </div>
                 <div class="input-footer">
-                    <span>Dora está em constante aprendizado. <a href="#">Privacidade e Termos de Uso</a>.</span>
+                    <span>Nex está em constante aprendizado. <a href="#">Privacidade e Termos de Uso</a>.</span>
                     <button class="sos-btn" onclick="sendQuickMessage('Preciso de suporte técnico')">
                         <span>✦</span>
                         <span>Suporte Red Hat</span>
