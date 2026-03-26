@@ -108,6 +108,18 @@ export const COMPONENTS = [
     ],
   },
   {
+    id: "mcp-server-redhat-day",
+    name: "MCP Server Red Hat Day",
+    description: "Planejador de Red Hat Day: agenda de apresentações no cliente com cálculo automático de horários",
+    icon: "🎩",
+    category: "mcp",
+    order: 7,
+    namespace: "mcp-server-redhat-day",
+    playbook: "deploy-component.yml",
+    contextDir: "mcp-server-redhat-day",
+    port: 3007,
+  },
+  {
     id: "imagem-crash",
     name: "Imagem Crash (Demo)",
     description: "Container que entra em CrashLoopBackOff para demonstração",
