@@ -1814,7 +1814,15 @@
         }
 
         // ====== Painel MCP ======
-        let savedMcpConfigs = JSON.parse(localStorage.getItem('mcp-saved-configs') || '{}');
+
+        // Catálogo fixo dos MCPs disponíveis na demo governo
+        const MCP_CATALOG = [
+            { name: 'MCP Brasil',     url: 'http://mcp-server-brasil.mcp-server-brasil.svc.cluster.local:8000/mcp',         transportType: 'http', logRequests: false, logResponses: false },
+            { name: 'MCP Saúde',      url: 'http://mcp-server-saude.mcp-server-saude.svc.cluster.local:3001/mcp',           transportType: 'http', logRequests: false, logResponses: false },
+            { name: 'MCP Matrículas', url: 'http://mcp-server-matriculas.mcp-server-matriculas.svc.cluster.local:3000/mcp', transportType: 'http', logRequests: false, logResponses: false },
+            { name: 'MCP SEI',        url: 'http://mcp-server-sei.mcp-server-sei.svc.cluster.local:3000/mcp',               transportType: 'http', logRequests: false, logResponses: false },
+            { name: 'MCP SEI Agent',  url: 'http://mcp-server-sei-agent.mcp-server-sei-agent.svc.cluster.local:3000/mcp',   transportType: 'http', logRequests: false, logResponses: false },
+        ];
 
         function toggleMcpPanel() {
             const drawer = document.getElementById('mcpDrawer');
@@ -1840,23 +1848,30 @@
             try {
                 const res = await fetch('/api/mcp/servers');
                 if (!res.ok) throw new Error('HTTP ' + res.status);
-                const servers = await res.json();
+                const activeServers = await res.json();
 
-                document.getElementById('mcpCountBadge').textContent = servers.length;
+                // Índice dos servidores ativos pelo nome (case-insensitive)
+                const activeMap = new Map(activeServers.map(s => [s.name.toLowerCase(), s]));
+
+                document.getElementById('mcpCountBadge').textContent = activeServers.length;
                 list.innerHTML = '';
 
-                const activeNames = new Set(servers.map(s => s.name));
-                for (const server of servers) {
-                    list.appendChild(buildMcpItem(server, true));
+                // Mostra todos os servidores do catálogo, marcando quais estão ativos
+                for (const catalogEntry of MCP_CATALOG) {
+                    const activeConfig = activeMap.get(catalogEntry.name.toLowerCase());
+                    const enabled = !!activeConfig;
+                    // Usa a config ativa quando disponível (pode ter URL diferente da padrão)
+                    list.appendChild(buildMcpItem(activeConfig || catalogEntry, enabled));
                 }
-                for (const [name, config] of Object.entries(savedMcpConfigs)) {
-                    if (!activeNames.has(name)) {
-                        list.appendChild(buildMcpItem(config, false));
+
+                // Servidores ativos que não estão no catálogo (adicionados manualmente)
+                for (const server of activeServers) {
+                    const inCatalog = MCP_CATALOG.some(c => c.name.toLowerCase() === server.name.toLowerCase());
+                    if (!inCatalog) {
+                        list.appendChild(buildMcpItem(server, true));
                     }
                 }
-                if (!list.hasChildNodes()) {
-                    list.innerHTML = '<div class="mcp-empty">Nenhum servidor MCP registrado.</div>';
-                }
+
                 document.getElementById('mcpDrawerStatus').textContent = 'Atualizado às ' + formatTime(new Date());
             } catch (e) {
                 list.innerHTML = '<div class="mcp-empty" style="color:#c41a05">Erro: ' + e.message + '</div>';
@@ -1906,26 +1921,17 @@
             checkbox.disabled = true;
             try {
                 if (enable) {
-                    const toAdd = savedMcpConfigs[config.name] || config;
                     const res = await fetch('/api/mcp/servers', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(toAdd)
+                        body: JSON.stringify(config)
                     });
                     if (!res.ok) throw new Error(await res.text());
-                    delete savedMcpConfigs[config.name];
-                    localStorage.setItem('mcp-saved-configs', JSON.stringify(savedMcpConfigs));
                     itemEl.classList.remove('mcp-disabled');
                     showNotification('✅ ' + config.name + ' ativado');
                 } else {
-                    savedMcpConfigs[config.name] = config;
-                    localStorage.setItem('mcp-saved-configs', JSON.stringify(savedMcpConfigs));
                     const res = await fetch('/api/mcp/servers/' + encodeURIComponent(config.name), { method: 'DELETE' });
-                    if (!res.ok) {
-                        delete savedMcpConfigs[config.name];
-                        localStorage.setItem('mcp-saved-configs', JSON.stringify(savedMcpConfigs));
-                        throw new Error(await res.text());
-                    }
+                    if (!res.ok) throw new Error(await res.text());
                     itemEl.classList.add('mcp-disabled');
                     showNotification('⛔ ' + config.name + ' desativado');
                 }
