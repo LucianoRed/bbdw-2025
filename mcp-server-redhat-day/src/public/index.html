@@ -266,6 +266,25 @@
       .form-grid { grid-template-columns: 1fr; }
       .form-group.full { grid-column: 1; }
     }
+
+    /* ---- Modals ---- */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.5); z-index: 200;
+      align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .modal-overlay.visible { display: flex; }
+    .modal-box {
+      background: white; border-radius: 8px; padding: 2rem;
+      width: 100%; max-width: 580px; max-height: 90vh;
+      overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,.3);
+    }
+    .modal-title {
+      font-size: 1.1rem; font-weight: 700;
+      margin-bottom: 1.5rem; padding-bottom: .75rem;
+      border-bottom: 2px solid var(--rh-red);
+    }
   </style>
 </head>
 <body>
@@ -318,8 +337,12 @@
           </select>
         </div>
         <div class="form-group full">
-          <label for="clientInterests">Interesses / Temas do cliente</label>
-          <input type="text" id="clientInterests" placeholder="Ex: OpenShift, Ansible, RHEL, segurança (separados por vírgula)" />
+          <label for="clientInterests">Interesses / Temas (separados por vírgula)</label>
+          <textarea id="clientInterests" rows="2" placeholder="Ex: OpenShift, Ansible, RHEL, segurança, automação de redes"></textarea>
+        </div>
+        <div class="form-group full">
+          <label for="clientDescription">Contexto e objetivos do cliente</label>
+          <textarea id="clientDescription" rows="4" placeholder="Descreva o contexto do cliente: principais dores, projetos em andamento, objetivos estratégicos e o que esperam do Red Hat Day..."></textarea>
         </div>
       </div>
       <div class="form-actions">
@@ -459,6 +482,92 @@
     </div>
     <div id="reg-panel-body"></div>
   </div>
+  <!-- Edit Day Modal -->
+  <div id="edit-day-modal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-title">✏️ Editar Red Hat Day</div>
+      <form id="edit-day-form">
+        <input type="hidden" id="edit-day-id" />
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Cliente / Empresa *</label>
+            <input type="text" id="edit-clientName" required />
+          </div>
+          <div class="form-group">
+            <label>Contato no cliente</label>
+            <input type="text" id="edit-clientContact" />
+          </div>
+          <div class="form-group">
+            <label>Data do evento *</label>
+            <input type="date" id="edit-date" required />
+          </div>
+          <div class="form-group">
+            <label>Formato do dia *</label>
+            <select id="edit-type" required>
+              <option value="full">Dia inteiro (09h–17h)</option>
+              <option value="morning">Somente manhã (09h–12h)</option>
+              <option value="afternoon">Somente tarde (13h30–17h)</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label>Interesses / Temas (separados por vírgula)</label>
+            <textarea id="edit-clientInterests" rows="2" placeholder="Ex: OpenShift, segurança, automação de redes"></textarea>
+          </div>
+          <div class="form-group full">
+            <label>Contexto e objetivos do cliente</label>
+            <textarea id="edit-clientDescription" rows="5" placeholder="Descreva o contexto, dores e objetivos do cliente..."></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar alterações</button>
+          <button type="button" class="btn btn-secondary" onclick="closeEditDay()">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Presentation Modal -->
+  <div id="edit-pres-modal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-title">✏️ Editar Apresentação</div>
+      <form id="edit-pres-form">
+        <input type="hidden" id="edit-pres-day-id" />
+        <input type="hidden" id="edit-pres-id" />
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Produto *</label>
+            <input type="text" id="edit-pres-product" required />
+          </div>
+          <div class="form-group">
+            <label>Título</label>
+            <input type="text" id="edit-pres-title" placeholder="Deixar vazio usa o nome do produto" />
+          </div>
+          <div class="form-group">
+            <label>Apresentador</label>
+            <input type="text" id="edit-pres-presenter" />
+          </div>
+          <div class="form-group">
+            <label>Duração (min)</label>
+            <input type="number" id="edit-pres-duration" min="5" max="120" />
+          </div>
+          <div class="form-group">
+            <label>Discussão (min)</label>
+            <input type="number" id="edit-pres-discussion" min="0" max="60" />
+          </div>
+          <div class="form-group full">
+            <label>Descrição / tópicos abordados</label>
+            <textarea id="edit-pres-desc" rows="5" placeholder="Tópicos, demos, casos de uso e pontos de destaque da apresentação..."></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar</button>
+          <button type="button" class="btn btn-secondary" onclick="closeEditPres()">Cancelar</button>
+          <button type="button" class="btn btn-danger btn-sm" onclick="confirmRemoveSlot()" style="margin-left:auto">🗑 Remover palestra</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -497,6 +606,7 @@
           <td>
             <div class="actions">
               <button class="btn btn-secondary btn-sm" onclick="showSchedule('${d.id}')">📋 Agenda</button>
+              <button class="btn btn-secondary btn-sm" onclick="editDay('${d.id}')" title="Editar">✏️</button>
               <button class="btn btn-secondary btn-sm" onclick="showRegistrations('${d.id}', '${esc(d.clientName)}')">👥 Inscrições</button>
               <button class="btn btn-secondary btn-sm" onclick="copyLink('${d.id}')" title="Copiar link de inscrição">🔗</button>
               <button class="btn btn-danger btn-sm" onclick="deleteDay('${d.id}', '${esc(d.clientName)}')">🗑</button>
@@ -525,6 +635,7 @@
         date: document.getElementById('date').value,
         type: document.getElementById('type').value,
         clientInterests: interests,
+        clientDescription: document.getElementById('clientDescription').value.trim(),
       };
       const res = await fetch(`${API}/api/days`, {
         method: 'POST',
@@ -612,10 +723,18 @@
               <span style="font-size:.7rem;margin-top:2px;opacity:.7">${slot.durationMinutes + slot.discussionMinutes}min</span>
             </div>
             <div class="slot-content">
-              <div class="slot-title">${slot.slot}. ${esc(slot.title)}</div>
-              <div class="slot-meta">📦 ${esc(slot.product)} &nbsp;•&nbsp; ${slot.durationMinutes}' apres. + ${slot.discussionMinutes}' disc.</div>
-              ${slot.presenter ? `<div class="slot-presenter">👤 ${esc(slot.presenter)}</div>` : ''}
-              ${slot.description ? `<div style="font-size:.8rem;color:#666;margin-top:.2rem">${esc(slot.description)}</div>` : ''}
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+                <div style="flex:1;min-width:0">
+                  <div class="slot-title">${slot.slot}. ${esc(slot.title)}</div>
+                  <div class="slot-meta">📦 ${esc(slot.product)} &nbsp;•&nbsp; ${slot.durationMinutes}' apres. + ${slot.discussionMinutes}' disc.</div>
+                  ${slot.presenter ? `<div class="slot-presenter">👤 ${esc(slot.presenter)}</div>` : ''}
+                  ${slot.description ? `<div style="font-size:.8rem;color:#666;margin-top:.2rem">${esc(slot.description)}</div>` : ''}
+                </div>
+                <div style="display:flex;gap:.3rem;flex-shrink:0;margin-top:.1rem">
+                  <button class="btn btn-secondary btn-sm" onclick="editPresentation('${id}','${slot.id}')">✏️</button>
+                  <button class="btn btn-danger btn-sm" onclick="removeSlot('${id}','${slot.id}','${esc(slot.title)}')">🗑</button>
+                </div>
+              </div>
             </div>
           </div>`;
       }).join('');
@@ -712,6 +831,133 @@
     if (!dateStr) return '—';
     const [y, m, d] = dateStr.split('-');
     return `${d}/${m}/${y}`;
+  }
+
+  // ---- Edit Day ----
+  async function editDay(id) {
+    try {
+      const res = await fetch(`${API}/api/days/${id}`);
+      if (!res.ok) throw new Error('Não encontrado');
+      const day = await res.json();
+      document.getElementById('edit-day-id').value = day.id;
+      document.getElementById('edit-clientName').value = day.clientName;
+      document.getElementById('edit-clientContact').value = day.clientContact || '';
+      document.getElementById('edit-date').value = day.date;
+      document.getElementById('edit-type').value = day.type;
+      document.getElementById('edit-clientInterests').value = (day.clientInterests || []).join(', ');
+      document.getElementById('edit-clientDescription').value = day.clientDescription || '';
+      document.getElementById('edit-day-modal').classList.add('visible');
+    } catch (e) { showAlert(e.message, 'error'); }
+  }
+
+  function closeEditDay() {
+    document.getElementById('edit-day-modal').classList.remove('visible');
+  }
+
+  document.getElementById('edit-day-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('[type=submit]');
+    btn.disabled = true;
+    try {
+      const id = document.getElementById('edit-day-id').value;
+      const interests = document.getElementById('edit-clientInterests').value
+        .split(',').map((s) => s.trim()).filter(Boolean);
+      const body = {
+        clientName:        document.getElementById('edit-clientName').value.trim(),
+        clientContact:     document.getElementById('edit-clientContact').value.trim(),
+        date:              document.getElementById('edit-date').value,
+        type:              document.getElementById('edit-type').value,
+        clientInterests:   interests,
+        clientDescription: document.getElementById('edit-clientDescription').value.trim(),
+      };
+      const res = await fetch(`${API}/api/days/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+      closeEditDay();
+      showAlert('Red Hat Day atualizado!');
+      await loadDays();
+      if (currentDayId === id) await renderSchedule(id);
+    } catch (err) { showAlert(err.message, 'error'); }
+    finally { btn.disabled = false; }
+  });
+
+  // ---- Edit Presentation ----
+  let _editPresData = null;
+
+  async function editPresentation(dayId, presId) {
+    try {
+      const res = await fetch(`${API}/api/days/${dayId}`);
+      if (!res.ok) throw new Error('Não encontrado');
+      const day = await res.json();
+      const pres = day.presentations.find((p) => p.id === presId);
+      if (!pres) throw new Error('Apresentação não encontrada');
+      _editPresData = { dayId, presId };
+      document.getElementById('edit-pres-day-id').value = dayId;
+      document.getElementById('edit-pres-id').value = presId;
+      document.getElementById('edit-pres-product').value = pres.product;
+      document.getElementById('edit-pres-title').value = pres.title || '';
+      document.getElementById('edit-pres-presenter').value = pres.presenter || '';
+      document.getElementById('edit-pres-duration').value = pres.durationMinutes || 20;
+      document.getElementById('edit-pres-discussion').value = pres.discussionMinutes || 10;
+      document.getElementById('edit-pres-desc').value = pres.description || '';
+      document.getElementById('edit-pres-modal').classList.add('visible');
+    } catch (e) { showAlert(e.message, 'error'); }
+  }
+
+  function closeEditPres() {
+    document.getElementById('edit-pres-modal').classList.remove('visible');
+    _editPresData = null;
+  }
+
+  document.getElementById('edit-pres-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('[type=submit]');
+    btn.disabled = true;
+    try {
+      const dayId = document.getElementById('edit-pres-day-id').value;
+      const presId = document.getElementById('edit-pres-id').value;
+      const body = {
+        product:           document.getElementById('edit-pres-product').value.trim(),
+        title:             document.getElementById('edit-pres-title').value.trim() || undefined,
+        presenter:         document.getElementById('edit-pres-presenter').value.trim() || undefined,
+        description:       document.getElementById('edit-pres-desc').value.trim() || undefined,
+        durationMinutes:   parseInt(document.getElementById('edit-pres-duration').value) || 20,
+        discussionMinutes: parseInt(document.getElementById('edit-pres-discussion').value) || 10,
+      };
+      const res = await fetch(`${API}/api/days/${dayId}/presentations/${presId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+      closeEditPres();
+      showAlert('Apresentação atualizada!');
+      await renderSchedule(dayId);
+      await loadDays();
+    } catch (err) { showAlert(err.message, 'error'); }
+    finally { btn.disabled = false; }
+  });
+
+  async function removeSlot(dayId, presId, title) {
+    if (!confirm(`Remover apresentação "${title}"?`)) return;
+    try {
+      const res = await fetch(`${API}/api/days/${dayId}/presentations/${presId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Erro ao remover');
+      showAlert(`Apresentação "${title}" removida.`);
+      await renderSchedule(dayId);
+      await loadDays();
+    } catch (e) { showAlert(e.message, 'error'); }
+  }
+
+  async function confirmRemoveSlot() {
+    if (!_editPresData) return;
+    const { dayId, presId } = _editPresData;
+    const title = document.getElementById('edit-pres-product').value;
+    closeEditPres();
+    await removeSlot(dayId, presId, title);
   }
 
   // ---- Registration counts ----

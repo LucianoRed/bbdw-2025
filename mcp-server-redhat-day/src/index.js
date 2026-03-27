@@ -9,8 +9,9 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 import { toolsRegistry } from './tools/registry.js';
-import { listDays, getDay, createDay, deleteDay, saveDay, addPresentation, addRegistration, listRegistrations, deleteRegistration } from './db.js';
+import { listDays, getDay, createDay, deleteDay, saveDay, addPresentation, updatePresentation, removePresentation, addRegistration, listRegistrations, deleteRegistration } from './db.js';
 import { buildSchedule } from './tools/reports.js';
+import { generateDescription } from './auto-agenda.js';
 import { getProducts } from './products.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -39,7 +40,7 @@ app.get('/api/days/:id', async (req, res, next) => {
 
 app.post('/api/days', async (req, res, next) => {
   try {
-    const { clientName, clientContact, date, type, clientInterests } = req.body || {};
+    const { clientName, clientContact, date, type, clientInterests, clientDescription } = req.body || {};
     if (!clientName || !date || !type) {
       return res.status(400).json({ error: 'clientName, date e type são obrigatórios' });
     }
@@ -47,7 +48,7 @@ app.post('/api/days', async (req, res, next) => {
     if (!valid.includes(type)) {
       return res.status(400).json({ error: `type deve ser: ${valid.join(' | ')}` });
     }
-    const day = await createDay({ clientName, clientContact, date, type, clientInterests });
+    const day = await createDay({ clientName, clientContact, date, type, clientInterests, clientDescription });
     res.status(201).json(day);
   } catch (e) { next(e); }
 });
@@ -60,6 +61,22 @@ app.delete('/api/days/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+app.put('/api/days/:id', async (req, res, next) => {
+  try {
+    const day = await getDay(req.params.id);
+    if (!day) return res.status(404).json({ error: 'Não encontrado' });
+    const allowed = ['clientName', 'clientContact', 'date', 'type', 'clientInterests', 'clientDescription'];
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) day[key] = req.body[key];
+    }
+    if (day.type && !['full', 'morning', 'afternoon'].includes(day.type)) {
+      return res.status(400).json({ error: 'type inválido' });
+    }
+    await saveDay(day);
+    res.json(day);
+  } catch (e) { next(e); }
+});
+
 app.post('/api/days/:id/presentations', async (req, res, next) => {
   try {
     const day = await getDay(req.params.id);
@@ -67,6 +84,28 @@ app.post('/api/days/:id/presentations', async (req, res, next) => {
     const p = addPresentation(day, req.body);
     await saveDay(day);
     res.status(201).json(p);
+  } catch (e) { next(e); }
+});
+
+app.put('/api/days/:id/presentations/:presId', async (req, res, next) => {
+  try {
+    const day = await getDay(req.params.id);
+    if (!day) return res.status(404).json({ error: 'Não encontrado' });
+    const updated = updatePresentation(day, req.params.presId, req.body);
+    if (!updated) return res.status(404).json({ error: 'Apresentação não encontrada' });
+    await saveDay(day);
+    res.json(updated);
+  } catch (e) { next(e); }
+});
+
+app.delete('/api/days/:id/presentations/:presId', async (req, res, next) => {
+  try {
+    const day = await getDay(req.params.id);
+    if (!day) return res.status(404).json({ error: 'Não encontrado' });
+    const removed = removePresentation(day, req.params.presId);
+    if (!removed) return res.status(404).json({ error: 'Apresentação não encontrada' });
+    await saveDay(day);
+    res.json({ message: `Apresentação "${removed.title}" removida.` });
   } catch (e) { next(e); }
 });
 
@@ -129,7 +168,13 @@ app.post('/api/days/:id/auto-agenda', async (req, res, next) => {  try {
       .slice(0, maxSlots);
 
     for (const product of selected) {
-      addPresentation(day, { product: product.name, durationMinutes: Number(durationMinutes), discussionMinutes: Number(discussionMinutes) });
+      const description = generateDescription(product.name, day.clientInterests || [], day.clientDescription || '');
+      addPresentation(day, {
+        product: product.name,
+        description: description || undefined,
+        durationMinutes: Number(durationMinutes),
+        discussionMinutes: Number(discussionMinutes),
+      });
     }
 
     await saveDay(day);

@@ -26,7 +26,7 @@ const KEY_INDEX = 'rhd:days:all';
 
 // ------------------------------------------------------------------ Days CRUD
 
-export async function createDay({ clientName, clientContact, date, type, clientInterests }) {
+export async function createDay({ clientName, clientContact, date, type, clientInterests, clientDescription }) {
   const r = getRedis();
   const id = uuidv4();
   const now = new Date().toISOString();
@@ -37,6 +37,7 @@ export async function createDay({ clientName, clientContact, date, type, clientI
     date,
     type, // 'full' | 'morning' | 'afternoon'
     clientInterests: clientInterests || [],
+    clientDescription: clientDescription || '',
     presentations: [],
     createdAt: now,
     updatedAt: now,
