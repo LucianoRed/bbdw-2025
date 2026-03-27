@@ -345,11 +345,12 @@
             <th>Formato</th>
             <th>Interesses</th>
             <th>Apresentações</th>
+            <th>Inscrições</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody id="days-tbody">
-          <tr class="empty-row"><td colspan="7">Carregando...</td></tr>
+          <tr class="empty-row"><td colspan="8">Carregando...</td></tr>
         </tbody>
       </table>
     </div>
@@ -440,6 +441,24 @@
     <!-- Schedule timeline -->
     <div id="schedule-slots"></div>
   </div>
+
+  <!-- Registrations Panel -->
+  <div id="reg-panel" class="card" style="display:none">
+    <div class="schedule-header">
+      <div>
+        <div class="card-title" style="border:none;padding:0;margin:0">
+          <span>👥</span> <span id="reg-panel-title">Inscrições</span>
+        </div>
+        <div class="schedule-stats" id="reg-panel-stats"></div>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" id="reg-link-btn" onclick="copyCurrentLink()">🔗 Copiar link</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportCsv()">⬇ Exportar CSV</button>
+        <button class="btn btn-secondary btn-sm" onclick="hideRegistrations()">✕ Fechar</button>
+      </div>
+    </div>
+    <div id="reg-panel-body"></div>
+  </div>
 </div>
 
 <script>
@@ -458,12 +477,12 @@
   // ---- Load days ----
   async function loadDays() {
     const tbody = document.getElementById('days-tbody');
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Carregando...</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">Carregando...</td></tr>';
     try {
       const res = await fetch(`${API}/api/days`);
       const days = await res.json();
       if (!days.length) {
-        tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Nenhum Red Hat Day cadastrado ainda.</td></tr>';
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="8">Nenhum Red Hat Day cadastrado ainda.</td></tr>';
         return;
       }
       tbody.innerHTML = days.map((d) => `
@@ -474,17 +493,22 @@
           <td><span class="tag ${TYPE_TAG[d.type]}">${TYPE_LABEL[d.type] || d.type}</span></td>
           <td style="font-size:.8rem;max-width:160px;word-break:break-word">${(d.clientInterests||[]).join(', ') || '—'}</td>
           <td style="text-align:center">${d.presentations.length}</td>
+          <td style="text-align:center" id="reg-count-${d.id}">—</td>
           <td>
             <div class="actions">
               <button class="btn btn-secondary btn-sm" onclick="showSchedule('${d.id}')">📋 Agenda</button>
+              <button class="btn btn-secondary btn-sm" onclick="showRegistrations('${d.id}', '${esc(d.clientName)}')">👥 Inscrições</button>
+              <button class="btn btn-secondary btn-sm" onclick="copyLink('${d.id}')" title="Copiar link de inscrição">🔗</button>
               <button class="btn btn-danger btn-sm" onclick="deleteDay('${d.id}', '${esc(d.clientName)}')">🗑</button>
             </div>
           </td>
         </tr>
       `).join('');
     } catch (e) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="7">Erro ao carregar: ${e.message}</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="8">Erro ao carregar: ${e.message}</td></tr>`;
     }
+    // load registration counts async
+    loadRegCounts();
   }
 
   // ---- Create day ----
@@ -688,6 +712,152 @@
     if (!dateStr) return '—';
     const [y, m, d] = dateStr.split('-');
     return `${d}/${m}/${y}`;
+  }
+
+  // ---- Registration counts ----
+  async function loadRegCounts() {
+    const rows = document.querySelectorAll('[id^="reg-count-"]');
+    for (const cell of rows) {
+      const dayId = cell.id.replace('reg-count-', '');
+      try {
+        const res = await fetch(`${API}/api/days/${dayId}/registrations`);
+        if (res.ok) {
+          const regs = await res.json();
+          cell.textContent = regs.length || '0';
+        }
+      } catch { cell.textContent = '—'; }
+    }
+  }
+
+  // ---- Copy registration link ----
+  let currentRegDayId = null;
+
+  function copyLink(dayId) {
+    const url = `${window.location.origin}/inscricao/${dayId}`;
+    navigator.clipboard.writeText(url).then(() => showAlert('Link de inscrição copiado!')).catch(() => {
+      prompt('Copie o link:', url);
+    });
+  }
+
+  function copyCurrentLink() {
+    if (currentRegDayId) copyLink(currentRegDayId);
+  }
+
+  // ---- Registrations panel ----
+  async function showRegistrations(dayId, clientName) {
+    currentRegDayId = dayId;
+    document.getElementById('reg-panel-title').textContent = `Inscrições — ${clientName}`;
+    await renderRegistrations(dayId);
+    const panel = document.getElementById('reg-panel');
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function hideRegistrations() {
+    document.getElementById('reg-panel').style.display = 'none';
+    currentRegDayId = null;
+  }
+
+  const NIVEL_LABEL = (n) => n <= 3 ? 'Iniciante' : n <= 6 ? 'Intermediário' : n <= 9 ? 'Avançado' : 'Expert';
+
+  async function renderRegistrations(dayId) {
+    const body = document.getElementById('reg-panel-body');
+    body.innerHTML = '<p style="color:#888;padding:1rem">Carregando...</p>';
+    try {
+      const res = await fetch(`${API}/api/days/${dayId}/registrations`);
+      const regs = await res.json();
+
+      document.getElementById('reg-panel-stats').innerHTML =
+        `<span>Total: <strong>${regs.length} inscrito(s)</strong></span>`;
+
+      if (!regs.length) {
+        body.innerHTML = `
+          <p style="text-align:center;color:#888;padding:1.5rem">Nenhuma inscrição ainda.</p>
+          <p style="text-align:center;font-size:.85rem;color:#888;margin-bottom:1rem">
+            Compartilhe o link de inscrição:
+            <button class="btn btn-secondary btn-sm" onclick="copyLink('${dayId}')">🔗 Copiar link</button>
+          </p>`;
+        return;
+      }
+
+      body.innerHTML = `
+        <div style="overflow-x:auto">
+          <table class="days-table" style="font-size:.82rem">
+            <thead>
+              <tr>
+                <th>Nome</th><th>Email</th><th>Empresa</th><th>Área</th><th>Cargo</th>
+                <th title="Desenvolvimento">Dev</th>
+                <th title="Operações">Ops</th>
+                <th title="Containers">Cont.</th>
+                <th title="Kubernetes">K8s</th>
+                <th title="OpenShift">OCP</th>
+                <th title="Seg. Containers">SegC</th>
+                <th title="Seg. Kubernetes">SegK</th>
+                <th>Data</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${regs.map((r) => `
+                <tr>
+                  <td><strong>${esc(r.nome)}</strong>${r.whatsapp ? `<br><span style="color:var(--rh-green);font-size:.75rem">📱 ${esc(r.whatsapp)}</span>` : ''}</td>
+                  <td>${esc(r.email)}</td>
+                  <td>${esc(r.empresa)}</td>
+                  <td>${esc(r.area)}</td>
+                  <td>${esc(r.cargo)}</td>
+                  <td style="text-align:center" title="${NIVEL_LABEL(r.nivelDev)}">${r.nivelDev}</td>
+                  <td style="text-align:center" title="${NIVEL_LABEL(r.nivelOps)}">${r.nivelOps}</td>
+                  <td style="text-align:center" title="${NIVEL_LABEL(r.nivelContainers)}">${r.nivelContainers}</td>
+                  <td style="text-align:center" title="${NIVEL_LABEL(r.nivelKubernetes)}">${r.nivelKubernetes}</td>
+                  <td style="text-align:center" title="${NIVEL_LABEL(r.nivelOpenShift)}">${r.nivelOpenShift}</td>
+                  <td style="text-align:center" title="${NIVEL_LABEL(r.nivelSegContainers)}">${r.nivelSegContainers}</td>
+                  <td style="text-align:center" title="${NIVEL_LABEL(r.nivelSegKubernetes)}">${r.nivelSegKubernetes}</td>
+                  <td style="white-space:nowrap">${new Date(r.createdAt).toLocaleDateString('pt-BR')}</td>
+                  <td><button class="btn btn-danger btn-sm" onclick="deleteReg('${dayId}','${r.id}','${esc(r.nome)}')">🗑</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    } catch (e) {
+      body.innerHTML = `<p style="color:red;padding:1rem">Erro: ${e.message}</p>`;
+    }
+  }
+
+  async function deleteReg(dayId, regId, nome) {
+    if (!confirm(`Remover inscrição de "${nome}"?`)) return;
+    try {
+      const res = await fetch(`${API}/api/days/${dayId}/registrations/${regId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Erro ao remover');
+      showAlert(`Inscrição de "${nome}" removida.`);
+      await renderRegistrations(dayId);
+      await loadDays();
+    } catch (e) { showAlert(e.message, 'error'); }
+  }
+
+  // ---- Export CSV ----
+  async function exportCsv() {
+    if (!currentRegDayId) return;
+    try {
+      const res = await fetch(`${API}/api/days/${currentRegDayId}/registrations`);
+      const regs = await res.json();
+      if (!regs.length) { showAlert('Sem inscrições para exportar.', 'error'); return; }
+
+      const cols = ['nome','email','empresa','area','cargo','funcaoDescricao','telefone','whatsapp',
+        'nivelDev','nivelOps','nivelContainers','nivelKubernetes','nivelOpenShift','nivelSegContainers','nivelSegKubernetes','createdAt'];
+      const header = ['Nome','Email','Empresa','Área','Cargo','Função (desc.)','Telefone','WhatsApp',
+        'Dev','Ops','Containers','Kubernetes','OpenShift','Seg.Containers','Seg.Kubernetes','Data Inscrição'];
+
+      const csv = [header.join(';'),
+        ...regs.map((r) => cols.map((c) => `"${String(r[c] ?? '').replace(/"/g, '""')}"`).join(';'))
+      ].join('\n');
+
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `inscricoes-${currentRegDayId}.csv`;
+      a.click();
+    } catch (e) { showAlert(e.message, 'error'); }
   }
 
   // ---- Init ----

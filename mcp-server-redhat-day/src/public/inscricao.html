@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inscrição — Red Hat Day</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --rh-red: #ee0000;
+      --rh-red-dark: #a30000;
+      --rh-gray: #151515;
+      --rh-gray-mid: #4a4a4a;
+      --rh-gray-light: #f5f5f5;
+      --rh-border: #d2d2d2;
+      --rh-white: #ffffff;
+      --rh-green: #3e8635;
+    }
+
+    body {
+      font-family: 'Red Hat Display', system-ui, -apple-system, sans-serif;
+      background: var(--rh-gray-light);
+      color: var(--rh-gray);
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--rh-gray);
+      color: var(--rh-white);
+      padding: 0 2rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: white; font-weight: 700; font-size: 1rem; }
+    .logo-hat { width: 32px; height: 32px; }
+    .logo-badge { background: var(--rh-red); color: white; font-size: .65rem; padding: 1px 6px; border-radius: 10px; font-weight: 700; }
+
+    .container { max-width: 680px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+
+    .event-card {
+      background: white;
+      border: 1px solid var(--rh-border);
+      border-top: 4px solid var(--rh-red);
+      border-radius: 6px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .event-title { font-size: 1.4rem; font-weight: 700; color: var(--rh-gray); margin-bottom: .4rem; }
+    .event-meta  { font-size: .85rem; color: var(--rh-gray-mid); display: flex; gap: 1.2rem; flex-wrap: wrap; }
+    .event-meta span::before { margin-right: .3rem; }
+
+    .card {
+      background: white;
+      border: 1px solid var(--rh-border);
+      border-radius: 6px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+      font-size: .82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--rh-red);
+      border-bottom: 1px solid var(--rh-border);
+      padding-bottom: .5rem;
+      margin-bottom: 1.2rem;
+      margin-top: 1.5rem;
+    }
+    .section-title:first-child { margin-top: 0; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem 1.2rem; }
+    .form-group { display: flex; flex-direction: column; gap: .3rem; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: .82rem; font-weight: 600; color: var(--rh-gray-mid); }
+    label .req { color: var(--rh-red); }
+    input[type=text], input[type=email], input[type=tel], textarea, select {
+      border: 1px solid var(--rh-border);
+      border-radius: 4px;
+      padding: .45rem .7rem;
+      font-size: .9rem;
+      font-family: inherit;
+      background: white;
+      color: var(--rh-gray);
+      transition: border-color .2s;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--rh-red);
+      box-shadow: 0 0 0 2px rgba(238,0,0,.1);
+    }
+    textarea { resize: vertical; min-height: 68px; }
+
+    /* Rating scale */
+    .rating-group { display: flex; flex-direction: column; gap: .5rem; }
+    .rating-label-row { display: flex; justify-content: space-between; font-size: .72rem; color: var(--rh-gray-mid); }
+    .rating-input { display: flex; gap: .35rem; flex-wrap: wrap; }
+    .rating-input input[type=radio] { display: none; }
+    .rating-input label {
+      width: 2.2rem; height: 2.2rem;
+      border: 1px solid var(--rh-border);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; font-weight: 700;
+      cursor: pointer;
+      color: var(--rh-gray-mid);
+      transition: all .15s;
+      user-select: none;
+    }
+    .rating-input input[type=radio]:checked + label {
+      background: var(--rh-red);
+      border-color: var(--rh-red);
+      color: white;
+    }
+    .rating-input label:hover { border-color: var(--rh-red); color: var(--rh-red); }
+
+    .btn {
+      padding: .55rem 1.4rem;
+      border: none;
+      border-radius: 4px;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity .15s;
+    }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-primary { background: var(--rh-red); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--rh-red-dark); }
+
+    .form-actions { margin-top: 1.5rem; display: flex; justify-content: center; }
+
+    .success-box {
+      display: none;
+      text-align: center;
+      padding: 3rem 2rem;
+    }
+    .success-box.visible { display: block; }
+    .success-icon { font-size: 4rem; margin-bottom: 1rem; }
+    .success-title { font-size: 1.4rem; font-weight: 700; color: var(--rh-green); margin-bottom: .5rem; }
+    .success-sub { font-size: .95rem; color: var(--rh-gray-mid); }
+
+    .error-msg {
+      background: #ffe7e7;
+      border: 1px solid var(--rh-red);
+      color: var(--rh-red-dark);
+      padding: .7rem 1rem;
+      border-radius: 4px;
+      font-size: .88rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .error-msg.visible { display: block; }
+
+    .loading-box { text-align: center; padding: 3rem; color: var(--rh-gray-mid); }
+
+    @media (max-width: 560px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: 1; }
+      .container { padding: 1rem .75rem 3rem; }
+      .card, .event-card { padding: 1rem 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="/">
+    <svg class="logo-hat" viewBox="0 0 40 40" fill="none">
+      <ellipse cx="20" cy="28" rx="16" ry="5" fill="#EE0000"/>
+      <path d="M10 28 Q8 16 20 12 Q32 16 30 28" fill="#CC0000"/>
+      <ellipse cx="20" cy="12" rx="6" ry="4" fill="#EE0000"/>
+      <path d="M14 28 Q14 22 20 20 Q26 22 26 28" fill="#BB0000"/>
+    </svg>
+    <span>Red Hat Day</span>
+    <span class="logo-badge">Inscrição</span>
+  </a>
+</header>
+
+<div class="container">
+  <div id="loading-box" class="loading-box">Carregando evento...</div>
+
+  <div id="not-found" class="card" style="display:none;text-align:center;padding:3rem">
+    <div style="font-size:3rem">🔍</div>
+    <div style="font-weight:700;margin:.8rem 0 .4rem">Evento não encontrado</div>
+    <div style="color:var(--rh-gray-mid);font-size:.9rem">Verifique o link de inscrição e tente novamente.</div>
+  </div>
+
+  <div id="main-content" style="display:none">
+    <div class="event-card">
+      <div class="event-title" id="ev-title">Red Hat Day</div>
+      <div class="event-meta">
+        <span>📅 <span id="ev-date"></span></span>
+        <span>🏢 <span id="ev-client"></span></span>
+        <span>⏰ <span id="ev-type"></span></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="error-msg" class="error-msg"></div>
+
+      <div id="form-wrapper">
+        <div class="section-title">Dados pessoais</div>
+        <form id="reg-form">
+          <div class="form-grid">
+            <div class="form-group full">
+              <label for="nome">Nome Completo <span class="req">*</span></label>
+              <input type="text" id="nome" required placeholder="Seu nome completo" />
+            </div>
+            <div class="form-group">
+              <label for="email">Email Corporativo <span class="req">*</span></label>
+              <input type="email" id="email" required placeholder="voce@empresa.com" />
+            </div>
+            <div class="form-group">
+              <label for="empresa">Empresa <span class="req">*</span></label>
+              <input type="text" id="empresa" required placeholder="Nome da empresa" />
+            </div>
+            <div class="form-group">
+              <label for="area">Área / Setor <span class="req">*</span></label>
+              <input type="text" id="area" required placeholder="Ex: TI, Infraestrutura, Dev" />
+            </div>
+            <div class="form-group">
+              <label for="cargo">Cargo / Função <span class="req">*</span></label>
+              <input type="text" id="cargo" required placeholder="Ex: Analista, Arquiteto" />
+            </div>
+            <div class="form-group full">
+              <label for="funcaoDescricao">Descreva sua função em poucas palavras <span style="font-weight:400;color:#888">(opcional)</span></label>
+              <textarea id="funcaoDescricao" placeholder="Responsabilidades principais..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="telefone">Telefone fixo <span style="font-weight:400;color:#888">(opcional)</span></label>
+              <input type="tel" id="telefone" placeholder="+55 61 3000-0000" />
+            </div>
+            <div class="form-group">
+              <label for="whatsapp">WhatsApp <span style="font-weight:400;color:#888">(opcional)</span></label>
+              <input type="tel" id="whatsapp" placeholder="+55 61 9 0000-0000" />
+            </div>
+          </div>
+
+          <div class="section-title">Nível de experiência</div>
+          <p style="font-size:.82rem;color:var(--rh-gray-mid);margin-bottom:1.2rem">Avalie seu nível de 1 (iniciante) a 10 (especialista).</p>
+
+          <div style="display:flex;flex-direction:column;gap:1.4rem">
+            <div class="form-group">
+              <label>Desenvolvimento de software <span class="req">*</span></label>
+              <div class="rating-label-row"><span>Nunca desenvolvi</span><span>Desenvolvedor experiente</span></div>
+              <div id="r-dev" class="rating-input"></div>
+            </div>
+            <div class="form-group">
+              <label>Operações de TI <span class="req">*</span></label>
+              <div class="rating-label-row"><span>Não conheço nada</span><span>Nível Hacker</span></div>
+              <div id="r-ops" class="rating-input"></div>
+            </div>
+            <div class="form-group">
+              <label>Containers / Docker <span class="req">*</span></label>
+              <div class="rating-label-row"><span>Não conheço nada</span><span>Nível Jedi/Master</span></div>
+              <div id="r-containers" class="rating-input"></div>
+            </div>
+            <div class="form-group">
+              <label>Kubernetes <span class="req">*</span></label>
+              <div class="rating-label-row"><span>Não conheço nada</span><span>Nível Jedi/Master</span></div>
+              <div id="r-kubernetes" class="rating-input"></div>
+            </div>
+            <div class="form-group">
+              <label>OpenShift <span class="req">*</span></label>
+              <div class="rating-label-row"><span>Não conheço nada</span><span>Nível Jedi/Master</span></div>
+              <div id="r-openshift" class="rating-input"></div>
+            </div>
+            <div class="form-group">
+              <label>Segurança para Containers <span class="req">*</span></label>
+              <div class="rating-label-row"><span>Não conheço nada</span><span>Nível Jedi/Master</span></div>
+              <div id="r-seg-containers" class="rating-input"></div>
+            </div>
+            <div class="form-group">
+              <label>Segurança para Kubernetes <span class="req">*</span></label>
+              <div class="rating-label-row"><span>Não conheço nada</span><span>Nível Jedi/Master</span></div>
+              <div id="r-seg-kubernetes" class="rating-input"></div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="submit-btn">Enviar inscrição</button>
+          </div>
+        </form>
+      </div>
+
+      <div id="success-box" class="success-box">
+        <div class="success-icon">✅</div>
+        <div class="success-title">Inscrição realizada!</div>
+        <div class="success-sub">Obrigado, <strong id="success-name"></strong>! Sua inscrição foi registrada com sucesso.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const TYPE_LABEL = { full: 'Dia inteiro (09h–17h)', morning: 'Manhã (09h–12h)', afternoon: 'Tarde (13h30–17h)' };
+
+  function formatDate(d) {
+    if (!d) return '';
+    const [y, m, day] = d.split('-');
+    return `${day}/${m}/${y}`;
+  }
+
+  // Build radio rating groups
+  const RATINGS = [
+    { id: 'r-dev',            field: 'nivelDev' },
+    { id: 'r-ops',            field: 'nivelOps' },
+    { id: 'r-containers',     field: 'nivelContainers' },
+    { id: 'r-kubernetes',     field: 'nivelKubernetes' },
+    { id: 'r-openshift',      field: 'nivelOpenShift' },
+    { id: 'r-seg-containers', field: 'nivelSegContainers' },
+    { id: 'r-seg-kubernetes', field: 'nivelSegKubernetes' },
+  ];
+
+  function buildRatings() {
+    for (const { id, field } of RATINGS) {
+      const wrap = document.getElementById(id);
+      let html = '';
+      for (let i = 1; i <= 10; i++) {
+        html += `<input type="radio" name="${field}" id="${field}-${i}" value="${i}" required />`;
+        html += `<label for="${field}-${i}">${i}</label>`;
+      }
+      wrap.innerHTML = html;
+    }
+  }
+
+  // Get day ID from URL: /inscricao/DAY_ID
+  function getDayId() {
+    const parts = window.location.pathname.split('/');
+    return parts[parts.length - 1] || parts[parts.length - 2];
+  }
+
+  const dayId = getDayId();
+
+  async function loadEvent() {
+    try {
+      const res = await fetch(`/api/days/${dayId}`);
+      if (!res.ok) throw new Error('not found');
+      const day = await res.json();
+      document.getElementById('ev-title').textContent = `Red Hat Day — ${day.clientName}`;
+      document.getElementById('ev-date').textContent = formatDate(day.date);
+      document.getElementById('ev-client').textContent = day.clientName;
+      document.getElementById('ev-type').textContent = TYPE_LABEL[day.type] || day.type;
+      document.title = `Inscrição — Red Hat Day ${day.clientName}`;
+      document.getElementById('loading-box').style.display = 'none';
+      document.getElementById('main-content').style.display = 'block';
+    } catch {
+      document.getElementById('loading-box').style.display = 'none';
+      document.getElementById('not-found').style.display = 'block';
+    }
+  }
+
+  document.getElementById('reg-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+    document.getElementById('error-msg').classList.remove('visible');
+
+    try {
+      // Collect ratings
+      const ratings = {};
+      for (const { field } of RATINGS) {
+        const checked = document.querySelector(`input[name="${field}"]:checked`);
+        if (!checked) throw new Error(`Por favor, avalie todos os campos de nível de experiência.`);
+        ratings[field] = parseInt(checked.value);
+      }
+
+      const body = {
+        nome:             document.getElementById('nome').value.trim(),
+        email:            document.getElementById('email').value.trim(),
+        empresa:          document.getElementById('empresa').value.trim(),
+        area:             document.getElementById('area').value.trim(),
+        cargo:            document.getElementById('cargo').value.trim(),
+        funcaoDescricao:  document.getElementById('funcaoDescricao').value.trim() || undefined,
+        telefone:         document.getElementById('telefone').value.trim() || undefined,
+        whatsapp:         document.getElementById('whatsapp').value.trim() || undefined,
+        ...ratings,
+      };
+
+      const res = await fetch(`/api/days/${dayId}/registrations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Erro ao enviar inscrição');
+      }
+
+      const reg = await res.json();
+      document.getElementById('success-name').textContent = reg.nome;
+      document.getElementById('form-wrapper').style.display = 'none';
+      document.getElementById('success-box').classList.add('visible');
+    } catch (err) {
+      const el = document.getElementById('error-msg');
+      el.textContent = err.message;
+      el.classList.add('visible');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Enviar inscrição';
+    }
+  });
+
+  buildRatings();
+  loadEvent();
+</script>
+</body>
+</html>

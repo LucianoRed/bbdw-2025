@@ -124,3 +124,78 @@ export function updatePresentation(day, presentationId, fields) {
   if (fields.order !== undefined) p.order = Number(fields.order);
   return p;
 }
+
+// ------------------------------------------------------------------ Registrations
+
+const KEY_REG     = (dayId, regId) => `rhd:reg:${dayId}:${regId}`;
+const KEY_REG_IDX = (dayId)        => `rhd:reg:idx:${dayId}`;
+
+export async function addRegistration(dayId, {
+  nome, email, empresa, area, cargo,
+  funcaoDescricao, telefone, whatsapp,
+  nivelDev, nivelOps, nivelContainers,
+  nivelKubernetes, nivelOpenShift,
+  nivelSegContainers, nivelSegKubernetes,
+}) {
+  const r = getRedis();
+  const id = uuidv4();
+  const now = new Date().toISOString();
+  const reg = {
+    id,
+    dayId,
+    nome:               nome         || '',
+    email:              email        || '',
+    empresa:            empresa      || '',
+    area:               area         || '',
+    cargo:              cargo        || '',
+    funcaoDescricao:    funcaoDescricao    || '',
+    telefone:           telefone           || '',
+    whatsapp:           whatsapp           || '',
+    nivelDev:           Number(nivelDev)           || 0,
+    nivelOps:           Number(nivelOps)           || 0,
+    nivelContainers:    Number(nivelContainers)    || 0,
+    nivelKubernetes:    Number(nivelKubernetes)    || 0,
+    nivelOpenShift:     Number(nivelOpenShift)     || 0,
+    nivelSegContainers: Number(nivelSegContainers) || 0,
+    nivelSegKubernetes: Number(nivelSegKubernetes) || 0,
+    createdAt: now,
+  };
+  await r.set(KEY_REG(dayId, id), JSON.stringify(reg));
+  await r.sadd(KEY_REG_IDX(dayId), id);
+  return reg;
+}
+
+export async function listRegistrations(dayId) {
+  const r = getRedis();
+  const ids = await r.smembers(KEY_REG_IDX(dayId));
+  if (!ids.length) return [];
+  const pipeline = r.pipeline();
+  for (const id of ids) pipeline.get(KEY_REG(dayId, id));
+  const results = await pipeline.exec();
+  return results
+    .map(([err, val]) => (err || !val ? null : JSON.parse(val)))
+    .filter(Boolean)
+    .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+}
+
+export async function deleteRegistration(dayId, regId) {
+  const r = getRedis();
+  const raw = await r.get(KEY_REG(dayId, regId));
+  if (!raw) return null;
+  const reg = JSON.parse(raw);
+  await r.del(KEY_REG(dayId, regId));
+  await r.srem(KEY_REG_IDX(dayId), regId);
+  return reg;
+}
+
+export async function deleteAllRegistrations(dayId) {
+  const r = getRedis();
+  const ids = await r.smembers(KEY_REG_IDX(dayId));
+  if (!ids.length) return 0;
+  const pipeline = r.pipeline();
+  for (const id of ids) pipeline.del(KEY_REG(dayId, id));
+  pipeline.del(KEY_REG_IDX(dayId));
+  await pipeline.exec();
+  return ids.length;
+}
+

@@ -9,7 +9,7 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 import { toolsRegistry } from './tools/registry.js';
-import { listDays, getDay, createDay, deleteDay, saveDay, addPresentation } from './db.js';
+import { listDays, getDay, createDay, deleteDay, saveDay, addPresentation, addRegistration, listRegistrations, deleteRegistration } from './db.js';
 import { buildSchedule } from './tools/reports.js';
 import { getProducts } from './products.js';
 
@@ -85,8 +85,7 @@ app.get('/api/products', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-app.post('/api/days/:id/auto-agenda', async (req, res, next) => {
-  try {
+app.post('/api/days/:id/auto-agenda', async (req, res, next) => {  try {
     const day = await getDay(req.params.id);
     if (!day) return res.status(404).json({ error: 'Não encontrado' });
 
@@ -138,6 +137,37 @@ app.post('/api/days/:id/auto-agenda', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ---- Registrations ----
+
+app.get('/api/days/:id/registrations', async (req, res, next) => {
+  try {
+    const day = await getDay(req.params.id);
+    if (!day) return res.status(404).json({ error: 'Não encontrado' });
+    res.json(await listRegistrations(req.params.id));
+  } catch (e) { next(e); }
+});
+
+app.post('/api/days/:id/registrations', async (req, res, next) => {
+  try {
+    const day = await getDay(req.params.id);
+    if (!day) return res.status(404).json({ error: 'Evento não encontrado' });
+    const { nome, email, empresa, area, cargo } = req.body || {};
+    if (!nome || !email || !empresa || !area || !cargo) {
+      return res.status(400).json({ error: 'nome, email, empresa, area e cargo são obrigatórios' });
+    }
+    const reg = await addRegistration(req.params.id, req.body);
+    res.status(201).json(reg);
+  } catch (e) { next(e); }
+});
+
+app.delete('/api/days/:id/registrations/:regId', async (req, res, next) => {
+  try {
+    const removed = await deleteRegistration(req.params.id, req.params.regId);
+    if (!removed) return res.status(404).json({ error: 'Inscrição não encontrada' });
+    res.json({ message: `Inscrição de ${removed.nome} removida.` });
+  } catch (e) { next(e); }
+});
+
 // JSON error handler — garante que erros nunca retornem HTML
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
@@ -148,6 +178,11 @@ app.use((err, req, res, next) => {
     : msg;
   console.error('[RHD] API error:', msg);
   res.status(err.status || 500).json({ error: userMsg });
+});
+
+// Página pública de inscrição: /inscricao/:dayId
+app.get('/inscricao/:dayId', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'inscricao.html'));
 });
 
 const mcpServer = new Server(
