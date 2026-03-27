@@ -57,6 +57,8 @@ const deployState = {
     openaiApiKey: "",
     openaiSeiModel: "gpt-4o-mini",
     openaiSeiWorkflowId: "",
+    transparenciaApiKey: "",
+    datajudApiKey: "",
     namespace: "bbdw-demo",
     gitRepoUrl: "https://github.com/LucianoRed/bbdw-2025.git",
   },
@@ -157,6 +159,13 @@ export function setConfig(config) {
   if (!config.openaiSeiWorkflowId) {
     delete config.openaiSeiWorkflowId;
   }
+  // transparenciaApiKey e datajudApiKey são opcionais
+  if (!config.transparenciaApiKey) {
+    delete config.transparenciaApiKey;
+  }
+  if (!config.datajudApiKey) {
+    delete config.datajudApiKey;
+  }
   Object.assign(deployState.config, config);
   broadcast({ type: "config-update", data: getConfig() });
   saveState();
@@ -252,7 +261,9 @@ export async function deployComponent(componentId) {
                 .replace("{{sa_token}}", deployState.config.saToken || ocpToken)
                 .replace("{{openai_api_key}}", deployState.config.openaiApiKey || "")
                 .replace("{{openai_sei_model}}", deployState.config.openaiSeiModel || "gpt-4o-mini")
-                .replace("{{openai_sei_workflow_id}}", deployState.config.openaiSeiWorkflowId || ""),
+                .replace("{{openai_sei_workflow_id}}", deployState.config.openaiSeiWorkflowId || "")
+                .replace("{{transparencia_api_key}}", deployState.config.transparenciaApiKey || "")
+                .replace("{{datajud_api_key}}", deployState.config.datajudApiKey || ""),
             }));
           }
 
@@ -315,7 +326,9 @@ export async function deployComponent(componentId) {
               .replace("{{sa_token}}", deployState.config.saToken || ocpToken)
               .replace("{{openai_api_key}}", deployState.config.openaiApiKey || "")
               .replace("{{openai_sei_model}}", deployState.config.openaiSeiModel || "gpt-4o-mini")
-              .replace("{{openai_sei_workflow_id}}", deployState.config.openaiSeiWorkflowId || ""),
+              .replace("{{openai_sei_workflow_id}}", deployState.config.openaiSeiWorkflowId || "")
+              .replace("{{transparencia_api_key}}", deployState.config.transparenciaApiKey || "")
+              .replace("{{datajud_api_key}}", deployState.config.datajudApiKey || ""),
           }));
         }
 

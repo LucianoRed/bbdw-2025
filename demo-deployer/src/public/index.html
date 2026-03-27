@@ -616,6 +616,16 @@
             <input type="text" id="openaiSeiWorkflowId" placeholder="wf_...">
           </div>
         </div>
+        <div class="config-grid" style="margin-top: 12px;">
+          <div class="form-group">
+            <label>Portal da Transparência API Key <span style="color:var(--text-muted);font-weight:400;font-size:11px;">(opcional — MCP Brasil)</span></label>
+            <input type="password" id="transparenciaApiKey" placeholder="Deixe vazio para dados públicos">
+          </div>
+          <div class="form-group">
+            <label>DataJud API Key <span style="color:var(--text-muted);font-weight:400;font-size:11px;">(opcional — MCP Brasil)</span></label>
+            <input type="password" id="datajudApiKey" placeholder="Deixe vazio para dados públicos">
+          </div>
+        </div>
         <p style="font-size: 11px; color: var(--text-muted); margin-top: 10px;">Cada componente será deployado no seu próprio namespace (ex: mcp-server-matriculas → namespace mcp-server-matriculas)</p>
         <div style="margin-top: 14px; display: flex; gap: 10px;">
           <button class="btn btn-accent" onclick="saveConfig()">💾 Salvar Config</button>
@@ -748,6 +758,18 @@
         if (seiWorkflowInput) {
           seiWorkflowInput.value = state.config.openaiSeiWorkflowId || '';
         }
+        const transparenciaInput = document.getElementById('transparenciaApiKey');
+        if (transparenciaInput) {
+          transparenciaInput.placeholder = state.config.transparenciaApiKey
+            ? '🔒 Key salva (deixe vazio para manter)'
+            : 'Deixe vazio para dados públicos';
+        }
+        const datajudInput = document.getElementById('datajudApiKey');
+        if (datajudInput) {
+          datajudInput.placeholder = state.config.datajudApiKey
+            ? '🔒 Key salva (deixe vazio para manter)'
+            : 'Deixe vazio para dados públicos';
+        }
       }
     } catch (e) {
       showToast('Erro ao carregar estado', 'error');
@@ -772,6 +794,8 @@
       openaiApiKey: document.getElementById('openaiApiKey').value,
       openaiSeiModel: document.getElementById('openaiSeiModel').value,
       openaiSeiWorkflowId: document.getElementById('openaiSeiWorkflowId').value,
+      transparenciaApiKey: document.getElementById('transparenciaApiKey').value,
+      datajudApiKey: document.getElementById('datajudApiKey').value,
     };
     try {
       await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
