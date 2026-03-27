@@ -284,7 +284,73 @@
       .form-group.full { grid-column: 1; }
     }
 
-    /* ---- Modals ---- */
+    /* ---- Insights panel ---- */
+    .insights-panel {
+      margin-bottom: 1rem;
+      padding: 1.25rem;
+      background: #f0f7ff;
+      border: 1px solid #bedfff;
+      border-radius: 6px;
+    }
+    .insights-panel-title {
+      font-weight: 700;
+      font-size: .93rem;
+      color: var(--rh-blue);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .insight-card {
+      background: white;
+      border: 1px solid var(--rh-border);
+      border-radius: 5px;
+      padding: .85rem 1rem;
+      margin-bottom: .75rem;
+    }
+    .insight-card:last-child { margin-bottom: 0; }
+    .insight-product { font-weight: 700; font-size: .88rem; color: var(--rh-gray); margin-bottom: .4rem; }
+    .insight-audience {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      margin-bottom: .6rem;
+      flex-wrap: wrap;
+    }
+    .level-badge {
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: .75rem;
+      font-weight: 700;
+    }
+    .level-beginner   { background: #e7f9e7; color: var(--rh-green); }
+    .level-mid        { background: #fff8e1; color: #7a5c00; }
+    .level-advanced   { background: #e7f3ff; color: var(--rh-blue); }
+    .level-expert     { background: #ffe7e7; color: var(--rh-red-dark); }
+    .level-mixed      { background: #f3f3f3; color: #555; }
+    .insight-bar-wrap { flex: 1; min-width: 120px; }
+    .insight-bar {
+      height: 6px;
+      background: var(--rh-border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .insight-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width .3s;
+    }
+    .insight-recs { font-size: .82rem; color: var(--rh-gray-mid); line-height: 1.55; }
+    .insight-recs li { margin-bottom: .25rem; }
+    .insight-summary {
+      display: flex;
+      gap: 1.5rem;
+      font-size: .82rem;
+      color: var(--rh-gray-mid);
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .insight-summary strong { color: var(--rh-gray); }
     .modal-overlay {
       display: none; position: fixed; inset: 0;
       background: rgba(0,0,0,.5); z-index: 200;
@@ -407,6 +473,7 @@
       </div>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap">
         <button class="btn btn-primary btn-sm" onclick="toggleAutoAgenda()">🪄 Agenda Automática</button>
+        <button class="btn btn-secondary btn-sm" id="insights-btn" onclick="toggleInsights()">💡 Insights da Audiência</button>
         <button class="btn btn-secondary btn-sm" onclick="hideSchedule()">✕ Fechar</button>
       </div>
     </div>
@@ -436,6 +503,15 @@
         <button class="btn btn-primary btn-sm" id="aa-btn" onclick="autoAgenda()">✔ Criar agenda</button>
         <button class="btn btn-secondary btn-sm" onclick="toggleAutoAgenda()">Cancelar</button>
       </div>
+    </div>
+
+    <!-- Insights panel -->
+    <div id="insights-panel" style="display:none" class="insights-panel">
+      <div class="insights-panel-title">
+        💡 Insights da Audiência
+        <span id="insights-loading" style="font-size:.8rem;font-weight:400;color:#666"></span>
+      </div>
+      <div id="insights-body"></div>
     </div>
 
     <!-- Add Presentation inline form -->
@@ -757,8 +833,188 @@
           </div>`;
       }).join('');
       setupSlotDnD(id);
+      if (document.getElementById('insights-panel').style.display !== 'none') {
+        renderInsights(id);
+      }
     } catch (e) {
       document.getElementById('schedule-slots').innerHTML = `<p style="color:red">Erro: ${e.message}</p>`;
+    }
+  }
+
+  // ---- Audience Insights ----
+
+  // Maps product names to the registration skill fields most relevant to that product
+  const PRODUCT_SKILLS_MAP = [
+    { pattern: /openshift ai|rhoai/i,                       skills: ['nivelOpenShift','nivelDev','nivelContainers'] },
+    { pattern: /advanced cluster security|acs\b|stackrox/i, skills: ['nivelSegContainers','nivelSegKubernetes','nivelContainers'] },
+    { pattern: /advanced cluster management|acm\b/i,        skills: ['nivelKubernetes','nivelOpenShift','nivelOps'] },
+    { pattern: /data foundation|odf\b/i,                    skills: ['nivelKubernetes','nivelContainers','nivelOps'] },
+    { pattern: /service mesh/i,                             skills: ['nivelKubernetes','nivelContainers','nivelDev'] },
+    { pattern: /serverless/i,                               skills: ['nivelDev','nivelContainers','nivelKubernetes'] },
+    { pattern: /pipeline|tekton/i,                          skills: ['nivelDev','nivelContainers','nivelOps'] },
+    { pattern: /gitops|argocd/i,                            skills: ['nivelDev','nivelKubernetes','nivelOps'] },
+    { pattern: /virtualizat/i,                              skills: ['nivelOps','nivelKubernetes','nivelContainers'] },
+    { pattern: /satellite/i,                                skills: ['nivelOps','nivelDev'] },
+    { pattern: /insights/i,                                 skills: ['nivelOps'] },
+    { pattern: /ansible/i,                                  skills: ['nivelOps','nivelDev'] },
+    { pattern: /quay/i,                                     skills: ['nivelContainers','nivelDev','nivelSegContainers'] },
+    { pattern: /openshift/i,                                skills: ['nivelOpenShift','nivelContainers','nivelKubernetes'] },
+    { pattern: /rhel|enterprise linux/i,                    skills: ['nivelOps','nivelDev'] },
+  ];
+
+  const SKILL_LABEL = {
+    nivelDev: 'Desenvolvimento', nivelOps: 'Operações',
+    nivelContainers: 'Containers', nivelKubernetes: 'Kubernetes',
+    nivelOpenShift: 'OpenShift', nivelSegContainers: 'Seg. Containers',
+    nivelSegKubernetes: 'Seg. Kubernetes',
+  };
+
+  function getSkillsForProduct(productName) {
+    const entry = PRODUCT_SKILLS_MAP.find((e) => e.pattern.test(productName));
+    return entry ? entry.skills : ['nivelDev','nivelOps'];
+  }
+
+  function levelInfo(avg) {
+    if (avg <= 3)  return { label: 'Iniciante',      cls: 'level-beginner', color: '#3e8635' };
+    if (avg <= 6)  return { label: 'Intermediário',  cls: 'level-mid',      color: '#f0ab00' };
+    if (avg <= 9)  return { label: 'Avançado',       cls: 'level-advanced', color: '#0066cc' };
+    return         { label: 'Expert',                cls: 'level-expert',   color: '#a30000' };
+  }
+
+  function buildRecs(skillAvgs, skills, regs) {
+    const recs = [];
+    const primary = skills[0];
+    const avg = skillAvgs[primary] || 0;
+
+    // Variance / heterogeneity
+    const vals = regs.map((r) => Number(r[primary] || 0));
+    const variance = vals.length > 1
+      ? vals.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / vals.length
+      : 0;
+    const stdDev = Math.sqrt(variance);
+
+    if (stdDev > 2.5) {
+      recs.push(`⚠️ <strong>Audiência heterogênea</strong> (desvio ±${stdDev.toFixed(1)}): considere começar com conceitos básicos antes de avançar.`);
+    }
+
+    if (avg <= 3) {
+      recs.push('📌 Começar pelo problema que o produto resolve antes de entrar em detalhes técnicos.');
+      recs.push('🖼️ Usar demos visuais e casos de uso concretos. Evitar jargões sem explicar.');
+    } else if (avg <= 6) {
+      recs.push('🔧 A audiência conhece o básico — focar em arquitetura, casos de uso e diferencial competitivo.');
+      recs.push('💬 Deixar espaço para perguntas técnicas durante a discussão.');
+    } else if (avg <= 9) {
+      recs.push('🚀 Audiência técnica — ir direto ao ponto. Demos ao vivo, configurações reais e edge cases.');
+      recs.push('🤝 Perguntar ao público sobre seus cenários específicos para personalizar a conversa.');
+    } else {
+      recs.push('🏆 Audiência expert — trocar experiências em vez de ensinar. Discutir roadmap, limitações e comparações.');
+    }
+
+    // Weak areas that are secondary skills
+    const weakSkills = skills.slice(1).filter((s) => (skillAvgs[s] || 0) < 5);
+    if (weakSkills.length) {
+      recs.push(`💡 Explicar conceito(s) de base: ${weakSkills.map((s) => SKILL_LABEL[s]).join(', ')}.`);
+    }
+
+    return recs;
+  }
+
+  async function toggleInsights() {
+    const panel = document.getElementById('insights-panel');
+    if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+    if (!currentDayId) return;
+    panel.style.display = 'block';
+    await renderInsights(currentDayId);
+  }
+
+  async function renderInsights(dayId) {
+    const body = document.getElementById('insights-body');
+    const loading = document.getElementById('insights-loading');
+    body.innerHTML = '';
+    loading.textContent = 'Carregando...';
+
+    try {
+      const [dayRes, regsRes] = await Promise.all([
+        fetch(`${API}/api/days/${dayId}`),
+        fetch(`${API}/api/days/${dayId}/registrations`),
+      ]);
+      const day = await dayRes.json();
+      const regs = await regsRes.json();
+
+      loading.textContent = '';
+
+      if (!regs.length) {
+        body.innerHTML = `<p style="color:#888;font-size:.88rem">Nenhum participante inscrito ainda. Compartilhe o link de inscrição para coletar o perfil técnico da audiência.</p>`;
+        return;
+      }
+
+      const presentations = day.presentations.filter((p) => p.product);
+      if (!presentations.length) {
+        body.innerHTML = `<p style="color:#888;font-size:.88rem">Nenhuma apresentação na agenda ainda.</p>`;
+        return;
+      }
+
+      // Global averages across all regs
+      const allFields = ['nivelDev','nivelOps','nivelContainers','nivelKubernetes','nivelOpenShift','nivelSegContainers','nivelSegKubernetes'];
+      const globalAvgs = {};
+      for (const f of allFields) {
+        globalAvgs[f] = regs.reduce((s, r) => s + Number(r[f] || 0), 0) / regs.length;
+      }
+
+      const overallAvg = allFields.reduce((s, f) => s + globalAvgs[f], 0) / allFields.length;
+      const weakest  = allFields.reduce((a, f) => globalAvgs[f] < globalAvgs[a] ? f : a);
+      const strongest = allFields.reduce((a, f) => globalAvgs[f] > globalAvgs[a] ? f : a);
+
+      // Summary
+      const summaryHtml = `
+        <div class="insight-summary">
+          <span>👥 <strong>${regs.length}</strong> inscrito(s)</span>
+          <span>📊 Nível médio geral: <strong>${overallAvg.toFixed(1)}/10</strong></span>
+          <span>💪 Mais forte: <strong>${SKILL_LABEL[strongest]}</strong> (${globalAvgs[strongest].toFixed(1)})</span>
+          <span>📌 Oportunidade: <strong>${SKILL_LABEL[weakest]}</strong> (${globalAvgs[weakest].toFixed(1)})</span>
+        </div>`;
+
+      const sortedPres = [...presentations].sort((a, b) => a.order - b.order);
+
+      const cardsHtml = sortedPres.map((p) => {
+        const skills = getSkillsForProduct(p.product);
+        const skillAvgs = {};
+        for (const s of skills) skillAvgs[s] = globalAvgs[s] || 0;
+
+        const primaryAvg = skillAvgs[skills[0]];
+        const info = levelInfo(primaryAvg);
+        const recs = buildRecs(skillAvgs, skills, regs);
+
+        const barsHtml = skills.map((s) => {
+          const avg = skillAvgs[s];
+          const pct = Math.round(avg * 10);
+          const { color } = levelInfo(avg);
+          return `
+            <div style="margin-bottom:.35rem">
+              <div style="display:flex;justify-content:space-between;font-size:.78rem;color:#666;margin-bottom:2px">
+                <span>${SKILL_LABEL[s]}</span><span>${avg.toFixed(1)}/10</span>
+              </div>
+              <div class="insight-bar">
+                <div class="insight-bar-fill" style="width:${pct}%;background:${color}"></div>
+              </div>
+            </div>`;
+        }).join('');
+
+        return `
+          <div class="insight-card">
+            <div class="insight-product">📦 ${esc(p.title || p.product)}</div>
+            <div class="insight-audience">
+              <span class="level-badge ${info.cls}">${info.label} (${primaryAvg.toFixed(1)}/10)</span>
+              <div class="insight-bar-wrap">${barsHtml}</div>
+            </div>
+            <ul class="insight-recs">${recs.map((r) => `<li>${r}</li>`).join('')}</ul>
+          </div>`;
+      }).join('');
+
+      body.innerHTML = summaryHtml + cardsHtml;
+    } catch (e) {
+      loading.textContent = '';
+      body.innerHTML = `<p style="color:red;font-size:.88rem">Erro: ${e.message}</p>`;
     }
   }
 
