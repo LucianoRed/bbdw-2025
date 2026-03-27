@@ -109,6 +109,21 @@ app.delete('/api/days/:id/presentations/:presId', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+app.patch('/api/days/:id/presentations/reorder', async (req, res, next) => {
+  try {
+    const day = await getDay(req.params.id);
+    if (!day) return res.status(404).json({ error: 'Não encontrado' });
+    const { order } = req.body || {};
+    if (!Array.isArray(order)) return res.status(400).json({ error: 'order deve ser um array de IDs' });
+    const presMap = Object.fromEntries(day.presentations.map((p) => [p.id, p]));
+    const reordered = order.filter((id) => presMap[id]).map((id, idx) => ({ ...presMap[id], order: idx + 1 }));
+    const missing = day.presentations.filter((p) => !order.includes(p.id)).map((p, idx) => ({ ...p, order: reordered.length + idx + 1 }));
+    day.presentations = [...reordered, ...missing];
+    await saveDay(day);
+    res.json(day);
+  } catch (e) { next(e); }
+});
+
 app.get('/api/days/:id/schedule', async (req, res, next) => {
   try {
     const day = await getDay(req.params.id);

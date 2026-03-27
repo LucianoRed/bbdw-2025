@@ -233,6 +233,23 @@
       margin: 0.25rem 0;
     }
 
+    /* ---- Drag and drop ---- */
+    .schedule-slot[data-pres-id] { cursor: default; transition: opacity .15s; }
+    .schedule-slot[data-pres-id].dragging { opacity: .3; }
+    .schedule-slot[data-pres-id].drag-over .slot-time { background: var(--rh-red-dark); }
+    .schedule-slot[data-pres-id].drag-over .slot-content { background: var(--rh-red-light); }
+    .slot-drag-handle {
+      font-size: 1.1rem;
+      color: rgba(255,255,255,.45);
+      cursor: grab;
+      user-select: none;
+      line-height: 1;
+      padding: .1rem 0;
+      transition: color .15s;
+    }
+    .slot-drag-handle:hover { color: rgba(255,255,255,.9); }
+    .slot-drag-handle:active { cursor: grabbing; }
+
     .schedule-header {
       display: flex;
       justify-content: space-between;
@@ -717,8 +734,9 @@
           return `<div class="slot-break" style="color:var(--rh-red);border-color:var(--rh-red)">${slot.label}</div>`;
         }
         return `
-          <div class="schedule-slot">
+          <div class="schedule-slot" data-pres-id="${slot.id}">
             <div class="slot-time">
+              <div class="slot-drag-handle" title="Arrastar para reordenar">⠿</div>
               <span>${slot.startTime}</span>
               <span style="font-size:.7rem;margin-top:2px;opacity:.7">${slot.durationMinutes + slot.discussionMinutes}min</span>
             </div>
@@ -738,9 +756,70 @@
             </div>
           </div>`;
       }).join('');
+      setupSlotDnD(id);
     } catch (e) {
       document.getElementById('schedule-slots').innerHTML = `<p style="color:red">Erro: ${e.message}</p>`;
     }
+  }
+
+  // ---- Drag and drop reorder ----
+  let _dragSrcId = null;
+
+  function setupSlotDnD(dayId) {
+    const slots = [...document.querySelectorAll('#schedule-slots [data-pres-id]')];
+    if (slots.length < 2) return;
+
+    slots.forEach((el) => {
+      el.setAttribute('draggable', 'true');
+
+      el.addEventListener('dragstart', (e) => {
+        _dragSrcId = el.dataset.presId;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', _dragSrcId);
+        setTimeout(() => el.classList.add('dragging'), 0);
+      });
+
+      el.addEventListener('dragend', () => {
+        el.classList.remove('dragging');
+        document.querySelectorAll('#schedule-slots [data-pres-id]')
+          .forEach((s) => s.classList.remove('drag-over'));
+      });
+
+      el.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (el.dataset.presId !== _dragSrcId) el.classList.add('drag-over');
+      });
+
+      el.addEventListener('dragleave', (e) => {
+        if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over');
+      });
+
+      el.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        el.classList.remove('drag-over');
+        const targetId = el.dataset.presId;
+        if (!_dragSrcId || _dragSrcId === targetId) return;
+
+        const allSlots = [...document.querySelectorAll('#schedule-slots [data-pres-id]')];
+        const ids = allSlots.map((s) => s.dataset.presId);
+        const from = ids.indexOf(_dragSrcId);
+        ids.splice(from, 1);
+        const newTo = ids.indexOf(targetId);
+        ids.splice(newTo, 0, _dragSrcId);
+
+        try {
+          const res = await fetch(`${API}/api/days/${dayId}/presentations/reorder`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order: ids }),
+          });
+          if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+          await renderSchedule(dayId);
+          await loadDays();
+        } catch (err) { showAlert(err.message, 'error'); }
+      });
+    });
   }
 
   // ---- Auto-agenda ----
