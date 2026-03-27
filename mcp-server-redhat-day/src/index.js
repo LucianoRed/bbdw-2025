@@ -25,55 +25,77 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api', express.json());
 
-app.get('/api/days', async (req, res) => {
-  res.json(await listDays());
+app.get('/api/days', async (req, res, next) => {
+  try { res.json(await listDays()); } catch (e) { next(e); }
 });
 
-app.get('/api/days/:id', async (req, res) => {
-  const day = await getDay(req.params.id);
-  if (!day) return res.status(404).json({ error: 'Não encontrado' });
-  res.json(day);
+app.get('/api/days/:id', async (req, res, next) => {
+  try {
+    const day = await getDay(req.params.id);
+    if (!day) return res.status(404).json({ error: 'Não encontrado' });
+    res.json(day);
+  } catch (e) { next(e); }
 });
 
-app.post('/api/days', async (req, res) => {
-  const { clientName, clientContact, date, type, clientInterests } = req.body || {};
-  if (!clientName || !date || !type) {
-    return res.status(400).json({ error: 'clientName, date e type são obrigatórios' });
-  }
-  const valid = ['full', 'morning', 'afternoon'];
-  if (!valid.includes(type)) {
-    return res.status(400).json({ error: `type deve ser: ${valid.join(' | ')}` });
-  }
-  const day = await createDay({ clientName, clientContact, date, type, clientInterests });
-  res.status(201).json(day);
+app.post('/api/days', async (req, res, next) => {
+  try {
+    const { clientName, clientContact, date, type, clientInterests } = req.body || {};
+    if (!clientName || !date || !type) {
+      return res.status(400).json({ error: 'clientName, date e type são obrigatórios' });
+    }
+    const valid = ['full', 'morning', 'afternoon'];
+    if (!valid.includes(type)) {
+      return res.status(400).json({ error: `type deve ser: ${valid.join(' | ')}` });
+    }
+    const day = await createDay({ clientName, clientContact, date, type, clientInterests });
+    res.status(201).json(day);
+  } catch (e) { next(e); }
 });
 
-app.delete('/api/days/:id', async (req, res) => {
-  const removed = await deleteDay(req.params.id);
-  if (!removed) return res.status(404).json({ error: 'Não encontrado' });
-  res.json({ message: `Red Hat Day de ${removed.clientName} removido.` });
+app.delete('/api/days/:id', async (req, res, next) => {
+  try {
+    const removed = await deleteDay(req.params.id);
+    if (!removed) return res.status(404).json({ error: 'Não encontrado' });
+    res.json({ message: `Red Hat Day de ${removed.clientName} removido.` });
+  } catch (e) { next(e); }
 });
 
-app.post('/api/days/:id/presentations', async (req, res) => {
-  const day = await getDay(req.params.id);
-  if (!day) return res.status(404).json({ error: 'Não encontrado' });
-  const p = addPresentation(day, req.body);
-  await saveDay(day);
-  res.status(201).json(p);
+app.post('/api/days/:id/presentations', async (req, res, next) => {
+  try {
+    const day = await getDay(req.params.id);
+    if (!day) return res.status(404).json({ error: 'Não encontrado' });
+    const p = addPresentation(day, req.body);
+    await saveDay(day);
+    res.status(201).json(p);
+  } catch (e) { next(e); }
 });
 
-app.get('/api/days/:id/schedule', async (req, res) => {
-  const day = await getDay(req.params.id);
-  if (!day) return res.status(404).json({ error: 'Não encontrado' });
-  res.json(buildSchedule(day));
+app.get('/api/days/:id/schedule', async (req, res, next) => {
+  try {
+    const day = await getDay(req.params.id);
+    if (!day) return res.status(404).json({ error: 'Não encontrado' });
+    res.json(buildSchedule(day));
+  } catch (e) { next(e); }
 });
 
-app.get('/api/products', async (req, res) => {
-  const forceRefresh = req.query.refresh === 'true';
-  res.json(await getProducts(forceRefresh));
+app.get('/api/products', async (req, res, next) => {
+  try {
+    const forceRefresh = req.query.refresh === 'true';
+    res.json(await getProducts(forceRefresh));
+  } catch (e) { next(e); }
 });
 
-// ------------------------------------------------------------------ MCP Server
+// JSON error handler — garante que erros nunca retornem HTML
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  const msg = err?.message || 'Erro interno';
+  const isRedis = msg.includes('enableOfflineQueue') || msg.includes('ECONNREFUSED') || msg.includes('Redis');
+  const userMsg = isRedis
+    ? `Redis não está disponível (${process.env.REDIS_URL || 'redis://localhost:6379'})`
+    : msg;
+  console.error('[RHD] API error:', msg);
+  res.status(err.status || 500).json({ error: userMsg });
+});
 
 const mcpServer = new Server(
   { name: 'mcp-server-redhat-day', version: '1.0.0' },
