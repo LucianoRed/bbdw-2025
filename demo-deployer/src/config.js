@@ -134,6 +134,13 @@ export const COMPONENTS = [
     playbook: "deploy-component.yml",
     contextDir: "mcp-server-redhat-day",
     port: 3007,
+    envVars: [
+      { key: "REDIS_URL", value: "redis://redis:6379" },
+    ],
+    subSteps: [
+      { id: "redis", name: "Redis", playbook: "deploy-redis.yml" },
+      { id: "mcp-server-redhat-day-app", name: "MCP Red Hat Day App", playbook: "deploy-component.yml", contextDir: "mcp-server-redhat-day" },
+    ],
   },
   {
     id: "imagem-crash",
