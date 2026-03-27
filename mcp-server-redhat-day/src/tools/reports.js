@@ -3,9 +3,16 @@ import { getDay } from '../db.js';
 // ------------------------------------------------------------------ Schedule calculation
 
 const SCHEDULE_CONFIG = {
-  full: { start: '09:00', lunchStart: '12:00', lunchEnd: '13:30', end: '17:00' },
-  morning: { start: '09:00', end: '12:00' },
-  afternoon: { start: '13:30', end: '17:00' },
+  full:      { start: '09:00', coffeeAM: '10:30', lunchStart: '12:00', lunchEnd: '13:30', coffeePM: '15:30', end: '17:00' },
+  morning:   { start: '09:00', coffeeAM: '10:30', end: '12:00' },
+  afternoon: { start: '13:30', coffeePM: '15:30', end: '17:00' },
+};
+
+// Minutos úteis por tipo (sem coffee breaks — descontados depois)
+const AVAILABLE_MINUTES = {
+  full:      { raw: 390, coffeeBreaks: 2 }, // 180 manhã + 210 tarde
+  morning:   { raw: 180, coffeeBreaks: 1 }, // 09h–12h
+  afternoon: { raw: 210, coffeeBreaks: 1 }, // 13h30–17h
 };
 
 function timeToMinutes(t) {
@@ -19,25 +26,43 @@ function minutesToTime(totalMin) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-function buildSchedule(day) {
+function buildSchedule(day, { coffeeBreakMinutes = 30 } = {}) {
   const cfg = SCHEDULE_CONFIG[day.type] || SCHEDULE_CONFIG.full;
   const sorted = [...day.presentations].sort((a, b) => a.order - b.order);
 
   let cursor = timeToMinutes(cfg.start);
   const lunchStart = cfg.lunchStart ? timeToMinutes(cfg.lunchStart) : null;
-  const lunchEnd = cfg.lunchEnd ? timeToMinutes(cfg.lunchEnd) : null;
-  const endTime = timeToMinutes(cfg.end);
+  const lunchEnd   = cfg.lunchEnd   ? timeToMinutes(cfg.lunchEnd)   : null;
+  const coffeeAM   = cfg.coffeeAM   ? timeToMinutes(cfg.coffeeAM)   : null;
+  const coffeePM   = cfg.coffeePM   ? timeToMinutes(cfg.coffeePM)   : null;
+  const endTime    = timeToMinutes(cfg.end);
 
   const scheduled = [];
   let slotNumber = 1;
+  let coffeeAMDone = false;
+  let coffeePMDone = false;
 
   for (const p of sorted) {
     const duration = (Number(p.durationMinutes) || 20) + (Number(p.discussionMinutes) || 10);
 
-    // Insert lunch break if we just crossed noon
+    // Inserir coffee break da manhã se o slot cruzar o horário
+    if (coffeeAM !== null && !coffeeAMDone && cursor < coffeeAM && cursor + duration > coffeeAM) {
+      coffeeAMDone = true;
+      scheduled.push({ type: 'coffee', label: '☕ Coffee Break', start: minutesToTime(coffeeAM), end: minutesToTime(coffeeAM + coffeeBreakMinutes) });
+      cursor = coffeeAM + coffeeBreakMinutes;
+    }
+
+    // Inserir almoço se o slot cruzar o meio-dia
     if (lunchStart !== null && cursor < lunchStart && cursor + duration > lunchStart) {
       scheduled.push({ type: 'break', label: '🍽️ Almoço', start: minutesToTime(lunchStart), end: minutesToTime(lunchEnd) });
       cursor = lunchEnd;
+    }
+
+    // Inserir coffee break da tarde se o slot cruzar o horário
+    if (coffeePM !== null && !coffeePMDone && cursor < coffeePM && cursor + duration > coffeePM) {
+      coffeePMDone = true;
+      scheduled.push({ type: 'coffee', label: '☕ Coffee Break', start: minutesToTime(coffeePM), end: minutesToTime(coffeePM + coffeeBreakMinutes) });
+      cursor = coffeePM + coffeeBreakMinutes;
     }
 
     if (cursor >= endTime) {
@@ -70,10 +95,8 @@ function buildSchedule(day) {
     .filter((s) => s.type === 'presentation')
     .reduce((acc, s) => acc + (s.durationMinutes || 20) + (s.discussionMinutes || 10), 0);
 
-  const availableMinutes =
-    day.type === 'full'
-      ? (lunchStart - timeToMinutes(cfg.start)) + (endTime - lunchEnd)
-      : endTime - timeToMinutes(cfg.start);
+  const times = AVAILABLE_MINUTES[day.type] || AVAILABLE_MINUTES.full;
+  const availableMinutes = times.raw - (times.coffeeBreaks * coffeeBreakMinutes);
 
   return { scheduled, usedMinutes, availableMinutes };
 }

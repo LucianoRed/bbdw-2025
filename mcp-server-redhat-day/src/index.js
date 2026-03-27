@@ -85,6 +85,59 @@ app.get('/api/products', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+app.post('/api/days/:id/auto-agenda', async (req, res, next) => {
+  try {
+    const day = await getDay(req.params.id);
+    if (!day) return res.status(404).json({ error: 'Não encontrado' });
+
+    const {
+      durationMinutes   = 20,
+      discussionMinutes = 10,
+      coffeeBreakMinutes = 30,
+      clearExisting      = true,
+    } = req.body || {};
+
+    if (clearExisting) day.presentations = [];
+
+    const products  = await getProducts();
+    const interests = day.clientInterests || [];
+
+    // Score products by client interests
+    const scored = products.map((p) => {
+      let score = 0;
+      const pName     = p.name.toLowerCase();
+      const pCategory = (p.category || '').toLowerCase();
+      for (const interest of interests) {
+        const lower = interest.toLowerCase();
+        if (pName.includes(lower))     score += 3;
+        else if (pCategory.includes(lower)) score += 1;
+        for (const kw of lower.split(/\s+/)) {
+          if (kw.length > 3 && pName.includes(kw)) score += 2;
+        }
+      }
+      return { ...p, score };
+    });
+
+    // Calculate how many slots fit given coffee breaks
+    const AVAIL = { full: { raw: 390, coffeeBreaks: 2 }, morning: { raw: 180, coffeeBreaks: 1 }, afternoon: { raw: 210, coffeeBreaks: 1 } };
+    const times = AVAIL[day.type] || AVAIL.full;
+    const availableMinutes = times.raw - (times.coffeeBreaks * Number(coffeeBreakMinutes));
+    const slotMinutes = Number(durationMinutes) + Number(discussionMinutes);
+    const maxSlots = Math.max(1, Math.floor(availableMinutes / slotMinutes));
+
+    const selected = scored
+      .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+      .slice(0, maxSlots);
+
+    for (const product of selected) {
+      addPresentation(day, { product: product.name, durationMinutes: Number(durationMinutes), discussionMinutes: Number(discussionMinutes) });
+    }
+
+    await saveDay(day);
+    res.json({ day, totalAdded: selected.length, maxSlots, availableMinutes });
+  } catch (e) { next(e); }
+});
+
 // JSON error handler — garante que erros nunca retornem HTML
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {

@@ -222,6 +222,17 @@
       margin: 0.25rem 0;
     }
 
+    .slot-coffee {
+      grid-column: 1 / -1;
+      background: #fff8e1;
+      border: 1px dashed #f0ab00;
+      text-align: center;
+      padding: 0.5rem;
+      font-size: 0.82rem;
+      color: #7a5c00;
+      margin: 0.25rem 0;
+    }
+
     .schedule-header {
       display: flex;
       justify-content: space-between;
@@ -353,8 +364,36 @@
         </div>
         <div class="schedule-stats" id="schedule-stats"></div>
       </div>
-      <div style="display:flex;gap:.5rem">
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="toggleAutoAgenda()">🪄 Agenda Automática</button>
         <button class="btn btn-secondary btn-sm" onclick="hideSchedule()">✕ Fechar</button>
+      </div>
+    </div>
+
+    <!-- Auto-agenda form -->
+    <div id="auto-agenda-panel" style="display:none;margin-bottom:1rem;padding:1rem;background:#fff8e1;border:1px solid #f0ab00;border-radius:4px">
+      <div style="font-weight:600;font-size:.9rem;color:#7a5c00;margin-bottom:.75rem">🪄 Criar agenda automática</div>
+      <p style="font-size:.82rem;color:#7a5c00;margin-bottom:.75rem">
+        Seleciona produtos com base nos interesses do cliente e preenche a agenda automaticamente.
+        As apresentações existentes serão substituídas.
+      </p>
+      <div class="form-grid" style="margin-bottom:.75rem">
+        <div class="form-group">
+          <label>Apresentação (min)</label>
+          <input type="number" id="aa-duration" value="20" min="5" max="120" />
+        </div>
+        <div class="form-group">
+          <label>Discussão (min)</label>
+          <input type="number" id="aa-discussion" value="10" min="0" max="60" />
+        </div>
+        <div class="form-group">
+          <label>Coffee Break (min)</label>
+          <input type="number" id="aa-coffee" value="30" min="0" max="60" />
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-primary btn-sm" id="aa-btn" onclick="autoAgenda()">✔ Criar agenda</button>
+        <button class="btn btn-secondary btn-sm" onclick="toggleAutoAgenda()">Cancelar</button>
       </div>
     </div>
 
@@ -533,6 +572,9 @@
       }
 
       container.innerHTML = scheduled.map((slot) => {
+        if (slot.type === 'coffee') {
+          return `<div class="slot-coffee">${slot.label} — ${slot.start} às ${slot.end}</div>`;
+        }
         if (slot.type === 'break') {
           return `<div class="slot-break">${slot.label} — ${slot.start} às ${slot.end}</div>`;
         }
@@ -555,6 +597,42 @@
       }).join('');
     } catch (e) {
       document.getElementById('schedule-slots').innerHTML = `<p style="color:red">Erro: ${e.message}</p>`;
+    }
+  }
+
+  // ---- Auto-agenda ----
+  function toggleAutoAgenda() {
+    const panel = document.getElementById('auto-agenda-panel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function autoAgenda() {
+    const btn = document.getElementById('aa-btn');
+    btn.disabled = true;
+    btn.textContent = 'Gerando...';
+    try {
+      const body = {
+        durationMinutes:    parseInt(document.getElementById('aa-duration').value)   || 20,
+        discussionMinutes:  parseInt(document.getElementById('aa-discussion').value) || 10,
+        coffeeBreakMinutes: parseInt(document.getElementById('aa-coffee').value)     || 30,
+        clearExisting: true,
+      };
+      const res = await fetch(`${API}/api/days/${currentDayId}/auto-agenda`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+      const { totalAdded } = await res.json();
+      document.getElementById('auto-agenda-panel').style.display = 'none';
+      showAlert(`Agenda criada com ${totalAdded} apresentações!`);
+      await renderSchedule(currentDayId);
+      await loadDays();
+    } catch (err) {
+      showAlert(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '✔ Criar agenda';
     }
   }
 
