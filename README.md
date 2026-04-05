@@ -15,9 +15,9 @@ A forma mais rápida de colocar tudo no ar é via o **Demo Deployer**: uma aplic
 oc new-project demo-deployer
 
 # 2. Criar a aplicação
-oc new-app --name=demo-deployer \\
-  --strategy=docker \\
-  --context-dir=demo-deployer \\
+oc new-app --name=demo-deployer \
+  --strategy=docker \
+  --context-dir=demo-deployer \
   https://github.com/LucianoRed/bbdw-2025.git
 
 # 3. Acompanhar o build
@@ -25,9 +25,9 @@ oc logs -f bc/demo-deployer
 
 # 4. Criar PVC (salve como pvc-demo-deployer.yaml e aplique com oc create -f)
 # 5. Montar o PVC
-oc set volume deployment/demo-deployer \\
-  --add --name=demo-deployer-data \\
-  --type=pvc --claim-name=demo-deployer-data \\
+oc set volume deployment/demo-deployer \
+  --add --name=demo-deployer-data \
+  --type=pvc --claim-name=demo-deployer-data \
   --mount-path=/app/data
 
 # 6. Expor a rota e habilitar TLS
