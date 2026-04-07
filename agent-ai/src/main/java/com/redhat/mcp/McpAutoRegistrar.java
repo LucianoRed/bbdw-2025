@@ -22,6 +22,7 @@ public class McpAutoRegistrar {
     void onStart(@Observes StartupEvent ev) {
         // Adicione chamadas autoRegister() aqui para registrar MCPs via variáveis de ambiente
         autoRegister("MCP Brasil", System.getenv("MCP_BRASIL_URL"));
+        autoRegister("MCP K8s Binpacking", System.getenv("MCP_K8S_BINPACKING_URL"));
     }
 
     private void autoRegister(String name, String url) {

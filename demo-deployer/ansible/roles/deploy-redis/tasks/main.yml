@@ -1,8 +1,32 @@
 ---
 # Role: deploy-redis — deploy do Redis para o agent-ai
 # Usa manifesto declarativo (oc apply) para garantir que as flags
-# --protected-mode no e --save "" sejam aplicadas desde o início,
-# evitando o problema de patches estratégicos com nome de container incorreto.
+# sejam aplicadas desde o início, evitando o problema de patches
+# estratégicos com nome de container incorreto.
+# Dados persistidos em PVC (1Gi) montado em /data com AOF habilitado.
+
+- name: "Criar manifesto PVC do Redis"
+  copy:
+    dest: /tmp/redis-pvc.yaml
+    content: |
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: redis-data
+        namespace: {{ namespace }}
+        labels:
+          app: redis
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+
+- name: "Aplicar PVC Redis"
+  command: "oc apply -f /tmp/redis-pvc.yaml -n {{ namespace }}"
+  register: redis_pvc_apply
+  changed_when: "'configured' in redis_pvc_apply.stdout or 'created' in redis_pvc_apply.stdout"
 
 - name: "Criar manifesto Deployment do Redis"
   copy:
@@ -38,17 +62,24 @@
               # o primeiro elemento de "args" como executável — por isso definimos command.
               command: ["redis-stack-server"]
               args:
-                - "--save"
-                - ""
-                - "--stop-writes-on-bgsave-error"
-                - "no"
                 - "--protected-mode"
                 - "no"
+                - "--appendonly"
+                - "yes"
+                - "--appendfsync"
+                - "everysec"
               ports:
               - containerPort: 6379
                 protocol: TCP
               - containerPort: 8001
                 protocol: TCP
+              volumeMounts:
+              - name: redis-data
+                mountPath: /data
+            volumes:
+            - name: redis-data
+              persistentVolumeClaim:
+                claimName: redis-data
 
 - name: "Criar manifesto Service do Redis"
   copy:
@@ -87,6 +118,7 @@
 - name: "Log do resultado do apply"
   debug:
     msg:
+      - "PVC: {{ redis_pvc_apply.stdout }}"
       - "Deployment: {{ redis_deploy_apply.stdout }}"
       - "Service: {{ redis_svc_apply.stdout }}"
 
@@ -117,4 +149,5 @@
     redis_result:
       service: "redis.{{ namespace }}.svc.cluster.local"
       port: 6379
+      pvc: "redis-data (1Gi, AOF habilitado)"
       status: "deployed"

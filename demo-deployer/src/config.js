@@ -38,6 +38,23 @@ export const COMPONENTS = [
     ],
   },
   {
+    id: "mcp-server-k8s-binpacking",
+    name: "MCP Server K8s Binpacking",
+    description: "Analise read-only de nodes, uso de pods, binpacking e recomendacoes de consolidacao",
+    icon: "📦",
+    category: "mcp",
+    order: 2,
+    namespace: "mcp-server-k8s-binpacking",
+    playbook: "deploy-component.yml",
+    contextDir: "mcp-server-k8s-binpacking",
+    port: 3000,
+    envVars: [
+      { key: "K8S_API_URL", value: "{{ocp_api_url}}" },
+      { key: "K8S_BEARER_TOKEN", value: "{{sa_token}}" },
+      { key: "K8S_SKIP_TLS_VERIFY", value: "true" },
+    ],
+  },
+  {
     id: "mcp-server-downdetector",
     name: "MCP Server Downdetector",
     description: "Verificação de status de websites (uptime/downtime)",
@@ -174,6 +191,7 @@ export const COMPONENTS = [
       { key: "OPENAI_API_KEY",        value: "{{openai_api_key}}" },
       { key: "MCP_SEI_AGENT_URL",     value: "http://mcp-server-sei-agent.mcp-server-sei-agent.svc.cluster.local:3000/mcp" },
       { key: "MCP_BRASIL_URL",         value: "http://mcp-server-brasil.mcp-server-brasil.svc.cluster.local:8000/mcp" },
+      { key: "MCP_K8S_BINPACKING_URL", value: "http://mcp-server-k8s-binpacking.mcp-server-k8s-binpacking.svc.cluster.local:3000/mcp" },
     ],
     subSteps: [
       { id: "redis", name: "Redis", playbook: "deploy-redis.yml" },
@@ -295,7 +313,7 @@ export const OFERTAS = [
     color: "#00897B",
     // System prompt null = remove qualquer prompt customizado, usa o padrão do agente (K8s/OpenShift)
     systemPrompt: null,
-    componentIds: ["agent-ai", "mcp-inspector", "mcp-server-k8s-live", "mcp-server-k8s-security"],
+    componentIds: ["agent-ai", "mcp-inspector", "mcp-server-k8s-live", "mcp-server-k8s-security", "mcp-server-k8s-binpacking"],
     topology: {
       center: { label: "AIOps", icon: "🧠", color: "#00897B" },
       nodes: [
@@ -303,6 +321,7 @@ export const OFERTAS = [
         { componentId: "mcp-inspector",           label: "MCP Inspector", icon: "🔍", color: "#FF9800" },
         { componentId: "mcp-server-k8s-live",     label: "K8s Live",      icon: "📊", color: "#2196F3" },
         { componentId: "mcp-server-k8s-security", label: "K8s Security",  icon: "🛡️", color: "#E91E63" },
+        { componentId: "mcp-server-k8s-binpacking", label: "K8s Binpacking", icon: "📦", color: "#00897B" },
       ],
     },
   },

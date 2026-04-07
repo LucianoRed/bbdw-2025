@@ -1,0 +1,17 @@
+{
+  "name": "mcp-server-k8s-binpacking",
+  "version": "0.1.0",
+  "description": "MCP server read-only para analise de binpacking e capacidade em clusters Kubernetes/OpenShift",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.0",
+    "prom-client": "^15.0.0"
+  }
+}
